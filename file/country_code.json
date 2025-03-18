@@ -1,0 +1,842 @@
+[
+    {
+        "record_id": "0",
+        "name": "Russia",
+        "code": "\ud83c\uddf7\ud83c\uddfa"
+    },
+    {
+        "record_id": "1",
+        "name": "Ukraine",
+        "code": "\ud83c\uddfa\ud83c\udde6"
+    },
+    {
+        "record_id": "2",
+        "name": "Kazakhstan",
+        "code": "\ud83c\uddf0\ud83c\uddff"
+    },
+    {
+        "record_id": "3",
+        "name": "China",
+        "code": "\ud83c\udde8\ud83c\uddf3"
+    },
+    {
+        "record_id": "4",
+        "name": "Philippines",
+        "code": "\ud83c\uddf5\ud83c\udded"
+    },
+    {
+        "record_id": "6",
+        "name": "Indonesia",
+        "code": "\ud83c\uddee\ud83c\udde9"
+    },
+    {
+        "record_id": "7",
+        "name": "Malaysia",
+        "code": "\ud83c\uddf2\ud83c\uddfe"
+    },
+    {
+        "record_id": "8",
+        "name": "Kenya",
+        "code": "\ud83c\uddf0\ud83c\uddea"
+    },
+    {
+        "record_id": "9",
+        "name": "Tanzania",
+        "code": "\ud83c\uddf9\ud83c\uddff"
+    },
+    {
+        "record_id": "10",
+        "name": "Vietnam",
+        "code": "\ud83c\uddfb\ud83c\uddf3"
+    },
+    {
+        "record_id": "11",
+        "name": "Kyrgyzstan",
+        "code": "\ud83c\uddf0\ud83c\uddec"
+    },
+    {
+        "record_id": "12",
+        "name": "Usa",
+        "code": "\ud83c\uddfa\ud83c\uddf8"
+    },
+    {
+        "record_id": "13",
+        "name": "Israel",
+        "code": "\ud83c\uddee\ud83c\uddf1"
+    },
+    {
+        "record_id": "14",
+        "name": "Hongkong",
+        "code": "\ud83c\udded\ud83c\uddf0"
+    },
+    {
+        "record_id": "15",
+        "name": "Poland",
+        "code": "\ud83c\uddf5\ud83c\uddf1"
+    },
+    {
+        "record_id": "17",
+        "name": "Madagascar",
+        "code": "\ud83c\uddf2\ud83c\uddec"
+    },
+    {
+        "record_id": "19",
+        "name": "Nigeria",
+        "code": "\ud83c\uddf3\ud83c\uddec"
+    },
+    {
+        "record_id": "20",
+        "name": "Macau",
+        "code": "\ud83c\uddf2\ud83c\uddf4"
+    },
+    {
+        "record_id": "21",
+        "name": "Egypt",
+        "code": "\ud83c\uddea\ud83c\uddec"
+    },
+    {
+        "record_id": "22",
+        "name": "India",
+        "code": "\ud83c\uddee\ud83c\uddf3"
+    },
+    {
+        "record_id": "23",
+        "name": "Ireland",
+        "code": "\ud83c\uddee\ud83c\uddea"
+    },
+    {
+        "record_id": "24",
+        "name": "Cambodia",
+        "code": "\ud83c\uddf0\ud83c\udded"
+    },
+    {
+        "record_id": "25",
+        "name": "Laos",
+        "code": "\ud83c\uddf1\ud83c\udde6"
+    },
+    {
+        "record_id": "26",
+        "name": "Haiti",
+        "code": "\ud83c\udded\ud83c\uddf9"
+    },
+    {
+        "record_id": "27",
+        "name": "Ivorycoast",
+        "code": "\ud83c\udde8\ud83c\uddee"
+    },
+    {
+        "record_id": "28",
+        "name": "Gambia",
+        "code": "\ud83c\uddec\ud83c\uddf2"
+    },
+    {
+        "record_id": "29",
+        "name": "Serbia",
+        "code": "\ud83c\uddf7\ud83c\uddf8"
+    },
+    {
+        "record_id": "31",
+        "name": "Southafrica",
+        "code": "\ud83c\uddff\ud83c\udde6"
+    },
+    {
+        "record_id": "32",
+        "name": "Romania",
+        "code": "\ud83c\uddf7\ud83c\uddf4"
+    },
+    {
+        "record_id": "33",
+        "name": "Colombia",
+        "code": "\ud83c\udde8\ud83c\uddf4"
+    },
+    {
+        "record_id": "34",
+        "name": "Estonia",
+        "code": "\ud83c\uddea\ud83c\uddea"
+    },
+    {
+        "record_id": "35",
+        "name": "Azerbaijan",
+        "code": "\ud83c\udde6\ud83c\uddff"
+    },
+    {
+        "record_id": "36",
+        "name": "Canada",
+        "code": "\ud83c\udde8\ud83c\udde6"
+    },
+    {
+        "record_id": "37",
+        "name": "Morocco",
+        "code": "\ud83c\uddf2\ud83c\udde6"
+    },
+    {
+        "record_id": "38",
+        "name": "Ghana",
+        "code": "\ud83c\uddec\ud83c\udded"
+    },
+    {
+        "record_id": "39",
+        "name": "Argentina",
+        "code": "\ud83c\udde6\ud83c\uddf7"
+    },
+    {
+        "record_id": "40",
+        "name": "Uzbekistan",
+        "code": "\ud83c\uddfa\ud83c\uddff"
+    },
+    {
+        "record_id": "41",
+        "name": "Cameroon",
+        "code": "\ud83c\udde8\ud83c\uddf2"
+    },
+    {
+        "record_id": "42",
+        "name": "Chad",
+        "code": "\ud83c\uddf9\ud83c\udde9"
+    },
+    {
+        "record_id": "43",
+        "name": "Germany",
+        "code": "\ud83c\udde9\ud83c\uddea"
+    },
+    {
+        "record_id": "44",
+        "name": "Lithuania",
+        "code": "\ud83c\uddf1\ud83c\uddf9"
+    },
+    {
+        "record_id": "45",
+        "name": "Croatia",
+        "code": "\ud83c\udded\ud83c\uddf7"
+    },
+    {
+        "record_id": "46",
+        "name": "Sweden",
+        "code": "\ud83c\uddf8\ud83c\uddea"
+    },
+    {
+        "record_id": "48",
+        "name": "Netherlands",
+        "code": "\ud83c\uddf3\ud83c\uddf1"
+    },
+    {
+        "record_id": "49",
+        "name": "Latvia",
+        "code": "\ud83c\uddf1\ud83c\uddfb"
+    },
+    {
+        "record_id": "50",
+        "name": "Austria",
+        "code": "\ud83c\udde6\ud83c\uddf9"
+    },
+    {
+        "record_id": "51",
+        "name": "Belarus",
+        "code": "\ud83c\udde7\ud83c\uddfe"
+    },
+    {
+        "record_id": "52",
+        "name": "Thailand",
+        "code": "\ud83c\uddf9\ud83c\udded"
+    },
+    {
+        "record_id": "53",
+        "name": "Saudiarabia",
+        "code": "\ud83c\uddf8\ud83c\udde6"
+    },
+    {
+        "record_id": "54",
+        "name": "Mexico",
+        "code": "\ud83c\uddf2\ud83c\uddfd"
+    },
+    {
+        "record_id": "55",
+        "name": "Taiwan",
+        "code": "\ud83c\uddf9\ud83c\uddfc"
+    },
+    {
+        "record_id": "56",
+        "name": "Spain",
+        "code": "\ud83c\uddea\ud83c\uddf8"
+    },
+    {
+        "record_id": "58",
+        "name": "Algeria",
+        "code": "\ud83c\udde9\ud83c\uddff"
+    },
+    {
+        "record_id": "59",
+        "name": "Slovenia",
+        "code": "\ud83c\uddf8\ud83c\uddee"
+    },
+    {
+        "record_id": "60",
+        "name": "Bangladesh",
+        "code": "\ud83c\udde7\ud83c\udde9"
+    },
+    {
+        "record_id": "61",
+        "name": "Senegal",
+        "code": "\ud83c\uddf8\ud83c\uddf3"
+    },
+    {
+        "record_id": "62",
+        "name": "Turkey",
+        "code": "\ud83c\uddf9\ud83c\uddf7"
+    },
+    {
+        "record_id": "63",
+        "name": "Czech",
+        "code": "\ud83c\udde8\ud83c\uddff"
+    },
+    {
+        "record_id": "64",
+        "name": "Srilanka",
+        "code": "\ud83c\uddf1\ud83c\uddf0"
+    },
+    {
+        "record_id": "65",
+        "name": "Peru",
+        "code": "\ud83c\uddf5\ud83c\uddea"
+    },
+    {
+        "record_id": "66",
+        "name": "Pakistan",
+        "code": "\ud83c\uddf5\ud83c\uddf0"
+    },
+    {
+        "record_id": "67",
+        "name": "Newzealand",
+        "code": "\ud83c\uddf3\ud83c\uddff"
+    },
+    {
+        "record_id": "68",
+        "name": "Guinea",
+        "code": "\ud83c\uddec\ud83c\uddf3"
+    },
+    {
+        "record_id": "70",
+        "name": "Venezuela",
+        "code": "\ud83c\uddfb\ud83c\uddea"
+    },
+    {
+        "record_id": "71",
+        "name": "Ethiopia",
+        "code": "\ud83c\uddea\ud83c\uddf9"
+    },
+    {
+        "record_id": "72",
+        "name": "Mongolia",
+        "code": "\ud83c\uddf2\ud83c\uddf3"
+    },
+    {
+        "record_id": "73",
+        "name": "Brazil",
+        "code": "\ud83c\udde7\ud83c\uddf7"
+    },
+    {
+        "record_id": "74",
+        "name": "Afghanistan",
+        "code": "\ud83c\udde6\ud83c\uddeb"
+    },
+    {
+        "record_id": "75",
+        "name": "Uganda",
+        "code": "\ud83c\uddfa\ud83c\uddec"
+    },
+    {
+        "record_id": "76",
+        "name": "Angola",
+        "code": "\ud83c\udde6\ud83c\uddf4"
+    },
+    {
+        "record_id": "77",
+        "name": "Cyprus",
+        "code": "\ud83c\udde8\ud83c\uddfe"
+    },
+    {
+        "record_id": "78",
+        "name": "France",
+        "code": "\ud83c\uddeb\ud83c\uddf7"
+    },
+    {
+        "record_id": "79",
+        "name": "Papuanewguinea",
+        "code": "\ud83c\uddf5\ud83c\uddec"
+    },
+    {
+        "record_id": "80",
+        "name": "Mozambique",
+        "code": "\ud83c\uddf2\ud83c\uddff"
+    },
+    {
+        "record_id": "81",
+        "name": "Nepal",
+        "code": "\ud83c\uddf3\ud83c\uddf5"
+    },
+    {
+        "record_id": "82",
+        "name": "Belgium",
+        "code": "\ud83c\udde7\ud83c\uddea"
+    },
+    {
+        "record_id": "83",
+        "name": "Bulgaria",
+        "code": "\ud83c\udde7\ud83c\uddec"
+    },
+    {
+        "record_id": "84",
+        "name": "Hungary",
+        "code": "\ud83c\udded\ud83c\uddfa"
+    },
+    {
+        "record_id": "85",
+        "name": "Moldova",
+        "code": "\ud83c\uddf2\ud83c\udde9"
+    },
+    {
+        "record_id": "86",
+        "name": "Italy",
+        "code": "\ud83c\uddee\ud83c\uddf9"
+    },
+    {
+        "record_id": "87",
+        "name": "Paraguay",
+        "code": "\ud83c\uddf5\ud83c\uddfe"
+    },
+    {
+        "record_id": "88",
+        "name": "Honduras",
+        "code": "\ud83c\udded\ud83c\uddf3"
+    },
+    {
+        "record_id": "89",
+        "name": "Tunisia",
+        "code": "\ud83c\uddf9\ud83c\uddf3"
+    },
+    {
+        "record_id": "90",
+        "name": "Nicaragua",
+        "code": "\ud83c\uddf3\ud83c\uddee"
+    },
+    {
+        "record_id": "91",
+        "name": "Easttimor",
+        "code": "\ud83c\uddf9\ud83c\uddf1"
+    },
+    {
+        "record_id": "92",
+        "name": "Bolivia",
+        "code": "\ud83c\udde7\ud83c\uddf4"
+    },
+    {
+        "record_id": "93",
+        "name": "Costarica",
+        "code": "\ud83c\udde8\ud83c\uddf7"
+    },
+    {
+        "record_id": "94",
+        "name": "Guatemala",
+        "code": "\ud83c\uddec\ud83c\uddf9"
+    },
+    {
+        "record_id": "97",
+        "name": "Puertorico",
+        "code": "\ud83c\uddf5\ud83c\uddf7"
+    },
+    {
+        "record_id": "99",
+        "name": "Togo",
+        "code": "\ud83c\uddf9\ud83c\uddec"
+    },
+    {
+        "record_id": "100",
+        "name": "Kuwait",
+        "code": "\ud83c\uddf0\ud83c\uddfc"
+    },
+    {
+        "record_id": "101",
+        "name": "Salvador",
+        "code": "\ud83c\uddf8\ud83c\uddfb"
+    },
+    {
+        "record_id": "103",
+        "name": "Jamaica",
+        "code": "\ud83c\uddef\ud83c\uddf2"
+    },
+    {
+        "record_id": "104",
+        "name": "Tit",
+        "code": "\ud83c\uddf9\ud83c\uddf9"
+    },
+    {
+        "record_id": "105",
+        "name": "Ecuador",
+        "code": "\ud83c\uddea\ud83c\udde8"
+    },
+    {
+        "record_id": "106",
+        "name": "Swaziland",
+        "code": "\ud83c\uddf8\ud83c\uddff"
+    },
+    {
+        "record_id": "107",
+        "name": "Oman",
+        "code": "\ud83c\uddf4\ud83c\uddf2"
+    },
+    {
+        "record_id": "108",
+        "name": "Bosniaandherzegovina",
+        "code": "\ud83c\udde7\ud83c\udde6"
+    },
+    {
+        "record_id": "109",
+        "name": "Dominicana",
+        "code": "\ud83c\udde9\ud83c\uddf4"
+    },
+    {
+        "record_id": "112",
+        "name": "Panama",
+        "code": "\ud83c\uddf5\ud83c\udde6"
+    },
+    {
+        "record_id": "114",
+        "name": "Mauritania",
+        "code": "\ud83c\uddf2\ud83c\uddf7"
+    },
+    {
+        "record_id": "115",
+        "name": "Sierraleone",
+        "code": "\ud83c\uddf8\ud83c\uddf1"
+    },
+    {
+        "record_id": "116",
+        "name": "Jordan",
+        "code": "\ud83c\uddef\ud83c\uddf4"
+    },
+    {
+        "record_id": "117",
+        "name": "Portugal",
+        "code": "\ud83c\uddf5\ud83c\uddf9"
+    },
+    {
+        "record_id": "118",
+        "name": "Barbados",
+        "code": "\ud83c\udde7\ud83c\udde7"
+    },
+    {
+        "record_id": "119",
+        "name": "Burundi",
+        "code": "\ud83c\udde7\ud83c\uddee"
+    },
+    {
+        "record_id": "120",
+        "name": "Benin",
+        "code": "\ud83c\udde7\ud83c\uddef"
+    },
+    {
+        "record_id": "122",
+        "name": "Bahamas",
+        "code": "\ud83c\udde7\ud83c\uddf8"
+    },
+    {
+        "record_id": "123",
+        "name": "Botswana",
+        "code": "\ud83c\udde7\ud83c\uddfc"
+    },
+    {
+        "record_id": "124",
+        "name": "Belize",
+        "code": "\ud83c\udde7\ud83c\uddff"
+    },
+    {
+        "record_id": "126",
+        "name": "Dominica",
+        "code": "\ud83c\udde9\ud83c\uddf2"
+    },
+    {
+        "record_id": "127",
+        "name": "Grenada",
+        "code": "\ud83c\uddec\ud83c\udde9"
+    },
+    {
+        "record_id": "128",
+        "name": "Georgia",
+        "code": "\ud83c\uddec\ud83c\uddea"
+    },
+    {
+        "record_id": "129",
+        "name": "Greece",
+        "code": "\ud83c\uddec\ud83c\uddf7"
+    },
+    {
+        "record_id": "130",
+        "name": "Guineabissau",
+        "code": "\ud83c\uddec\ud83c\uddfc"
+    },
+    {
+        "record_id": "131",
+        "name": "Guyana",
+        "code": "\ud83c\uddec\ud83c\uddfe"
+    },
+    {
+        "record_id": "133",
+        "name": "Comoros",
+        "code": "\ud83c\uddf0\ud83c\uddf2"
+    },
+    {
+        "record_id": "134",
+        "name": "Saintkittsandnevis",
+        "code": "\ud83c\uddf0\ud83c\uddf3"
+    },
+    {
+        "record_id": "135",
+        "name": "Liberia",
+        "code": "\ud83c\uddf1\ud83c\uddf7"
+    },
+    {
+        "record_id": "136",
+        "name": "Lesotho",
+        "code": "\ud83c\uddf1\ud83c\uddf8"
+    },
+    {
+        "record_id": "137",
+        "name": "Malawi",
+        "code": "\ud83c\uddf2\ud83c\uddfc"
+    },
+    {
+        "record_id": "138",
+        "name": "Namibia",
+        "code": "\ud83c\uddf3\ud83c\udde6"
+    },
+    {
+        "record_id": "139",
+        "name": "Niger",
+        "code": "\ud83c\uddf3\ud83c\uddea"
+    },
+    {
+        "record_id": "140",
+        "name": "Rwanda",
+        "code": "\ud83c\uddf7\ud83c\uddfc"
+    },
+    {
+        "record_id": "141",
+        "name": "Slovakia",
+        "code": "\ud83c\uddf8\ud83c\uddf0"
+    },
+    {
+        "record_id": "142",
+        "name": "Suriname",
+        "code": "\ud83c\uddf8\ud83c\uddf7"
+    },
+    {
+        "record_id": "143",
+        "name": "Tajikistan",
+        "code": "\ud83c\uddf9\ud83c\uddef"
+    },
+    {
+        "record_id": "145",
+        "name": "Bahrain",
+        "code": "\ud83c\udde7\ud83c\udded"
+    },
+    {
+        "record_id": "146",
+        "name": "Reunion",
+        "code": "\ud83c\uddf7\ud83c\uddea"
+    },
+    {
+        "record_id": "147",
+        "name": "Zambia",
+        "code": "\ud83c\uddff\ud83c\uddf2"
+    },
+    {
+        "record_id": "148",
+        "name": "Armenia",
+        "code": "\ud83c\udde6\ud83c\uddf2"
+    },
+    {
+        "record_id": "150",
+        "name": "Congo",
+        "code": "\ud83c\udde8\ud83c\uddec"
+    },
+    {
+        "record_id": "151",
+        "name": "Chile",
+        "code": "\ud83c\udde8\ud83c\uddf1"
+    },
+    {
+        "record_id": "152",
+        "name": "Burkinafaso",
+        "code": "\ud83c\udde7\ud83c\uddeb"
+    },
+    {
+        "record_id": "154",
+        "name": "Gabon",
+        "code": "\ud83c\uddec\ud83c\udde6"
+    },
+    {
+        "record_id": "155",
+        "name": "Albania",
+        "code": "\ud83c\udde6\ud83c\uddf1"
+    },
+    {
+        "record_id": "156",
+        "name": "Uruguay",
+        "code": "\ud83c\uddfa\ud83c\uddfe"
+    },
+    {
+        "record_id": "157",
+        "name": "Mauritius",
+        "code": "\ud83c\uddf2\ud83c\uddfa"
+    },
+    {
+        "record_id": "158",
+        "name": "Bhutan",
+        "code": "\ud83c\udde7\ud83c\uddf9"
+    },
+    {
+        "record_id": "159",
+        "name": "Maldives",
+        "code": "\ud83c\uddf2\ud83c\uddfb"
+    },
+    {
+        "record_id": "160",
+        "name": "Guadeloupe",
+        "code": "\ud83c\uddec\ud83c\uddf5"
+    },
+    {
+        "record_id": "161",
+        "name": "Turkmenistan",
+        "code": "\ud83c\uddf9\ud83c\uddf2"
+    },
+    {
+        "record_id": "162",
+        "name": "Frenchguiana",
+        "code": "\ud83c\uddec\ud83c\uddeb"
+    },
+    {
+        "record_id": "163",
+        "name": "Finland",
+        "code": "\ud83c\uddeb\ud83c\uddee"
+    },
+    {
+        "record_id": "164",
+        "name": "Saintlucia",
+        "code": "\ud83c\uddf1\ud83c\udde8"
+    },
+    {
+        "record_id": "165",
+        "name": "Luxembourg",
+        "code": "\ud83c\uddf1\ud83c\uddfa"
+    },
+    {
+        "record_id": "166",
+        "name": "Saintvincentandgrenadines",
+        "code": "\ud83c\uddfb\ud83c\udde8"
+    },
+    {
+        "record_id": "167",
+        "name": "Equatorialguinea",
+        "code": "\ud83c\uddec\ud83c\uddf6"
+    },
+    {
+        "record_id": "168",
+        "name": "Djibouti",
+        "code": "\ud83c\udde9\ud83c\uddef"
+    },
+    {
+        "record_id": "169",
+        "name": "Antiguaandbarbuda",
+        "code": "\ud83c\udde6\ud83c\uddec"
+    },
+    {
+        "record_id": "170",
+        "name": "Caymanislands",
+        "code": "\ud83c\uddf0\ud83c\uddfe"
+    },
+    {
+        "record_id": "171",
+        "name": "Montenegro",
+        "code": "\ud83c\uddf2\ud83c\uddea"
+    },
+    {
+        "record_id": "172",
+        "name": "Denmark",
+        "code": "\ud83c\udde9\ud83c\uddf0"
+    },
+    {
+        "record_id": "173",
+        "name": "Switzerland",
+        "code": "\ud83c\udde8\ud83c\udded"
+    },
+    {
+        "record_id": "174",
+        "name": "Norway",
+        "code": "\ud83c\uddf3\ud83c\uddf4"
+    },
+    {
+        "record_id": "175",
+        "name": "Australia",
+        "code": "\ud83c\udde6\ud83c\uddfa"
+    },
+    {
+        "record_id": "176",
+        "name": "Eritrea",
+        "code": "\ud83c\uddea\ud83c\uddf7"
+    },
+    {
+        "record_id": "178",
+        "name": "Saotomeandprincipe",
+        "code": "\ud83c\uddf8\ud83c\uddf9"
+    },
+    {
+        "record_id": "179",
+        "name": "Aruba",
+        "code": "\ud83c\udde6\ud83c\uddfc"
+    },
+    {
+        "record_id": "180",
+        "name": "Montserrat",
+        "code": "\ud83c\uddf2\ud83c\uddf8"
+    },
+    {
+        "record_id": "181",
+        "name": "Anguilla",
+        "code": "\ud83c\udde6\ud83c\uddee"
+    },
+    {
+        "record_id": "183",
+        "name": "Northmacedonia",
+        "code": "\ud83c\uddf2\ud83c\uddf0"
+    },
+    {
+        "record_id": "184",
+        "name": "Seychelles",
+        "code": "\ud83c\uddf8\ud83c\udde8"
+    },
+    {
+        "record_id": "185",
+        "name": "Newcaledonia",
+        "code": "\ud83c\uddf3\ud83c\udde8"
+    },
+    {
+        "record_id": "186",
+        "name": "Capeverde",
+        "code": "\ud83c\udde8\ud83c\uddfb"
+    },
+    {
+        "record_id": "187",
+        "name": "Usa",
+        "code": "\ud83c\uddfa\ud83c\uddf8"
+    },
+    {
+        "record_id": "196",
+        "name": "Singapore",
+        "code": "\ud83c\uddf8\ud83c\uddec"
+    },
+    {
+        "record_id": "201",
+        "name": "Gibraltar",
+        "code": "\ud83c\uddec\ud83c\uddee"
+    }
+]

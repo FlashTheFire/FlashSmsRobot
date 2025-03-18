@@ -1,0 +1,13 @@
+aiohttp==3.9.1
+aioredis>=2.0.0
+orjson==3.9.10
+python-telegram-bot==20.7
+redis==5.0.1
+python-dotenv==1.0.0
+asyncio==3.4.3
+phonenumbers==8.13.25
+python-dotenv>=1.0.0
+redis>=5.0.1
+python-telegram-bot>=20.7
+cryptography>=41.0.7
+pydantic>=2.5.2
