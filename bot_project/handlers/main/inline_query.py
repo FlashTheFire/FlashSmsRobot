@@ -5,6 +5,11 @@ import time
 from datetime import datetime
 import re
 from typing import Optional, Dict, Any, List, Tuple
+import difflib
+import asyncio
+from functools import partial
+import logging
+from termcolor import colored
 
 import redis.asyncio as redis
 from redis.exceptions import RedisError
@@ -13,17 +18,23 @@ from telebot.types import (
     InlineQueryResultArticle,
     InputTextMessageContent,
     InlineKeyboardMarkup,
-    InlineKeyboardButton
+    InlineKeyboardButton,
+    Message,
+    InlineQuery,
+    InlineQueryResultArticle,
+    CallbackQuery,
 )
 from utils.functions import small_caps
 from utils.config import SERVICE_INDEX, COMMISSION
 from handlers.manager.operation import get_async_logger
 from handlers.security import InputValidator
+from handlers.methods.purchase.show_country import country_management
 from utils.redis_manager import RedisManager, redis_manager
 
 SERVICE_INDEX = "service_index"
 CACHE_TTL = 240
 CACHE_RESULTS_PER_PAGE = 50
+RESULTS_PER_PAGE = 8
 
 ALPHANUM_REGEX = re.compile(r'^[A-Za-z0-9 ]+$')
 
@@ -70,15 +81,73 @@ class UserSearchManagement:
             logging.error("Cannot register handlers: manager not initialized")
             return
         try:
+            # 1️⃣ Only register this one inline handler—no manual register_inline_handler calls
+            @bot.inline_handler(lambda q: getattr(q, 'chat_type', None) != 'sender')
+            async def inline_referral(query: InlineQuery):
+                # build your referral link dynamically
+                me = await bot.get_me()
+                bot_username   = me.username
+                referral_link  = f"https://t.me/{bot_username}?start={query.from_user.id}"
+
+                referral_text = (
+                    "<b>⚡ <u>Fʟᴀsʜ Sᴍs Oᴛᴘ Bᴏᴛ</u> ❯</b>\n\n"
+                    "<b>👉 Wᴀɴᴛ Tᴏ Rᴇᴄᴇɪᴠᴇ Oᴛᴘs Fʀᴏᴍ Aɴʏ Aᴘᴘ Oʀ "
+                    "Wᴇʙsɪᴛᴇ Oɴ Uɴʟɪᴍɪᴛᴇᴅ Nᴜᴍʙᴇʀs?</b>\n"
+                    f"🔗 <a href=\"{referral_link}\">Gᴇᴛ Sᴛᴀʀᴛᴇᴅ Wɪᴛʜ FʟᴀsʜSᴍs</a>\n\n"
+                    "<b>🎯 Tᴏᴘ‑Rᴀᴛᴇᴅ Sᴇʀᴠɪᴄᴇs:</b>\n"
+                    "<code>    </code><b>•</b>  <i>Tᴇʟᴇɢʀᴀᴍ</i>     <b>•</b> <i>Wʜᴀᴛsᴀᴘᴘ</i> <b>[✆]</b>\n"
+                    "<code>    </code><b>•</b>  <i>Gᴍᴀɪʟ</i>            <b>•</b> <i>Fᴀᴄᴇʙᴏᴏᴋ</i> <b>[ⓕ]</b>\n"
+                    "<code>    </code><b>•</b>  <i>Iɴsᴛᴀɢʀᴀᴍ</i>    <b>•</b> <i>Tᴡɪᴛᴛᴇʀ</i> <b>[𝕏]</b>\n"
+                    "<code>    </code><b>•</b> <i>Wɪɴᴢᴏ, Rᴜᴍᴍʏ & Mᴀɴʏ Mᴏʀᴇ...</i>\n\n"
+                    "<b>💼 Aᴠᴀɪʟᴀʙʟᴇ Iɴ</b> <code>170+</code> <b>Cᴏᴜɴᴛʀɪᴇs, "
+                    "Sᴜᴘᴘᴏʀᴛɪɴɢ</b> <code>1500+</code> <b>Aᴘᴘs Wɪᴛʜ Pʀᴇᴍɪᴜᴍ Oᴘᴇʀᴀᴛᴏʀs</b>\n"
+                    "<b>🚀 Fᴀsᴛ • Sᴇᴄᴜʀᴇ • 24/7 Aᴄᴄᴇss</b>"
+                )
+                kb = InlineKeyboardMarkup()
+                kb.add(
+                    InlineKeyboardButton(
+                        text="⚡ Gᴇᴛ Oᴛᴘ Jᴜsᴛ Lɪᴋᴇ Fʟᴀsʜ ↗",
+                        url=referral_link
+                    )
+                )
+
+
+                result = InlineQueryResultArticle(
+                    id="refer_and_earn",
+                    title="💸 Rᴇғᴇʀ Aɴᴅ Eᴀʀɴ 💎",
+                    description="Invite friends to FlashSMS and earn rewards!",
+                    thumbnail_url="https://te.legra.ph/file/8f211c54558cd48392a5f.jpg",
+                    thumbnail_width=100,
+                    thumbnail_height=100,
+                    reply_markup=kb,
+                    input_message_content=InputTextMessageContent(
+                        message_text=referral_text,
+                        parse_mode="HTML"
+                    )
+                )
+
+                # only answer if not private
+                await bot.answer_inline_query(
+                    query.id,
+                    results=[result],
+                    cache_time=0,
+                    switch_pm_text="⚡ Gᴇᴛ Oᴛᴘ Jᴜsᴛ Lɪᴋᴇ Fʟᴀsʜ",
+                    switch_pm_parameter="start"
+                )
+    
             bot.register_inline_handler(
                 lambda inline_query: asyncio.create_task(self.handle_inline_query(inline_query))
                 if not inline_query.query.startswith('#') else None,
                 func=lambda inline_query: not inline_query.query.startswith('#')
             )
             bot.register_inline_handler(
-                lambda inline_query: asyncio.create_task(self.show_service_manager(inline_query)),
+                lambda inline_query: asyncio.create_task(self.handle_inline_query(inline_query, is_admin=True)),
                 lambda inline_query: inline_query.query.startswith("#Sᴇʀᴠɪᴄᴇ")
             )
+            
+            bot.register_message_handler(self.handle_search_message, content_types=['text'])
+            bot.register_callback_query_handler(self.handle_pagination, func=lambda call: call.data.startswith("search:"))
+
             logging.info("Inline query handlers registered successfully")
         except Exception as e:
             logging.error(f"Failed to register inline query handlers: {e}")
@@ -100,6 +169,57 @@ class UserSearchManagement:
         elif lower_query in lower_name:
             return "substring"
         return "other"
+
+    async def format_number_to_text(self, num: float) -> str:
+        """
+        Converts a number into a formatted text string using rounding.
+    
+        Rules:
+          - If num < 100: return "Fᴇᴡ"
+          - If 100 ≤ num < 1000: round the number and return with " Nᴜᴍʙᴇʀ" or " Nᴜᴍʙᴇʀ's"
+          - If 1000 ≤ num < 100000: divide by 1000 and round to one decimal place, then append
+              " Tʜᴏᴜsᴀɴᴅ" (if value is 1) or " Tʜᴏsᴀɴᴅ's" (if greater than 1)
+          - If 100000 ≤ num < 10000000: divide by 100000, round to one decimal, and append " Lᴀᴋʜ" or " Lᴀᴋʜ's"
+          - Otherwise (num ≥ 10000000): divide by 10000000, round to one decimal, and append " Cʀᴏʀᴇ" or " Cʀᴏʀᴇ's"
+        """
+        if num < 100:
+            return "Fᴇᴡ Nᴜᴍʙᴇʀs"
+        elif num < 1000:
+            value = round(num)
+            if value == 1:
+                return f"{value} Nᴜᴍʙᴇʀ"
+            else:
+                return f"{value} Nᴜᴍʙᴇʀs"
+        elif num < 100000:
+            # Thousands range
+            value = round(num / 1000, 1)
+            # If rounding yields a whole number, convert to int
+            if value.is_integer():
+                value = int(value)
+            if int(value) == 1:
+                return f"{value} Tʜᴏsᴀɴᴅ"
+            else:
+                return f"{value} Tʜᴏsᴀɴᴅs"
+        elif num < 10000000:
+            # Lakhs range
+            value = round(num / 100000, 1)
+            if value.is_integer():
+                value = int(value)
+            if int(value) == 1:
+                return f"{value} Lᴀᴋʜ"
+            else:
+                return f"{value} Lᴀᴋʜs"
+        else:
+            # Crores range
+            value = round(num / 10000000, 1)
+            if value.is_integer():
+                value = int(value)
+            if int(value) == 1:
+                return f"{value} Cʀᴏʀᴇ"
+            else:
+                return f"{value} Cʀᴏʀᴇs"
+
+
 
     async def build_simple_advanced_query(self, user_input: str) -> str:
         """
@@ -131,21 +251,54 @@ class UserSearchManagement:
         or_clause = f"{variant1}|{variant2}|{variant3}|{variant4}|{processed}"
         return f" @search_tags:({or_clause})"
 
-    async def _search_pattern(self, pattern: str) -> List[Tuple[str, Dict[str, Any]]]:
+    async def _search_pattern(
+        self,
+        pattern: str,
+        app_count: str = None,
+        app_price: str = None,
+        tool_limit: int = 1500,
+        sort_by: str = None,
+        country_name_query: Optional[str] = None
+    ) -> List[Tuple[str, Dict[str, Any]]]:
+        """
+        Search the Redis index using a custom FT.SEARCH query.
+        
+        :param pattern: Custom search query string.
+        :param app_count: Optional count filter. Defaults to "[1 +inf]".
+        :param app_price: Optional price filter. Defaults to "[0.01 +inf]".
+        :param limit: Optional limit for the number of results. Defaults to 1500.
+        :param sort_by: Optional field to sort the results by. Defaults to None.
+        :return: List of tuples containing the app_id and a dictionary of app data.
+        """
         redis_client = self.redis_client
+        query_str = f'{pattern} @is_show_server:(True) @is_show_app:(True) @is_show_country:(True)'
+        if country_name_query:
+            query_str += f" @country_name:(%%{country_name_query}%%|{country_name_query}*|{country_name_query})"
+        if app_price:
+            query_str += f" @app_price:{app_price}"
+        else:
+            query_str += " @app_price:[0.01 +inf]"
+        #if app_count:
+        #    query_str += f" @app_count:{app_count}"
+        
         redis_query = [
             'FT.AGGREGATE', SERVICE_INDEX,
-            f'@app_price:[0.01 +inf] @app_count:[1 +inf]{pattern} @is_show_server:(True) @is_show_app:(True) @is_show_country:(True)',
+            query_str,
             'LOAD', '3', '@app_name', '@app_code', '@app_price',
             'GROUPBY', '1', '@app_name',
             'REDUCE', 'MIN', '1', '@app_price', 'AS', 'MinPrice',
             'REDUCE', 'SUM', '1', '@app_count', 'AS', 'Total',
             'REDUCE', 'FIRST_VALUE', '4', '@app_id', 'BY', '@app_price', 'ASC', 'AS', 'app_id',
             'REDUCE', 'FIRST_VALUE', '1', '@app_code', 'AS', 'app_code',
-            'SORTBY', '2', '@app_name', 'ASC',
-            'LIMIT', '0', '1500'
         ]
-        print(redis_query)
+
+        if sort_by is not None:
+            # Add SORTBY for MinPrice with the given order ASC or DESC
+            redis_query += ['SORTBY', '2', '@MinPrice', sort_by]
+
+        # Add LIMIT in all cases
+        redis_query += ['LIMIT', '0', str(tool_limit)]
+        print(colored(redis_query, 'blue'))
         try:
             result = await redis_client.execute_command(*redis_query)
         except Exception as e:
@@ -169,7 +322,7 @@ class UserSearchManagement:
         
         return items
 
-    async def search_advanced(self, query: str, offset: int = 0, limit: Optional[int] = None) -> Dict[str, Any]:
+    async def search_advanced(self, query: str, offset: int = 0, limit: Optional[int] = 1500, app_count: str=None, app_price: str=None, sort_by: Optional[str] = None, country_name_query: Optional[str] = None, tool_limit: Optional[int] = 1500) -> Dict[str, Any]:
         try:
             redis_client = self.redis_client
             cache_key = f"search_cache:{query}"
@@ -185,14 +338,14 @@ class UserSearchManagement:
 
             # Use the advanced query builder to create a single pattern.
             advanced_query = await self.build_simple_advanced_query(query)
-            # For debugging, print the advanced query.
+            # For debugging, #print the advanced query.
             logging.debug(f"Advanced query: {advanced_query}")
 
             # Build a single configuration tuple for the advanced query.
             pattern_configs = [("advanced", advanced_query)]
             
             # Launch the search task(s).
-            tasks = [self._search_pattern(pattern) for _, pattern in pattern_configs]
+            tasks = [self._search_pattern(pattern, app_count=app_count, app_price=app_price, sort_by=sort_by, tool_limit=tool_limit, country_name_query=country_name_query) for _, pattern in pattern_configs]
             results_by_pattern = await asyncio.gather(*tasks)
             
             # Define a priority mapping for categorization.
@@ -251,9 +404,13 @@ class UserSearchManagement:
             logging.error(f"Error validating inline query: {e}")
             return {"valid": False, "error": "Internal validation error"}
 
-    async def query_apps(self, inline_query) -> None:
+    async def query_apps(self, inline_query, is_admin: bool = False) -> None:
         try:
-            query_text = inline_query.query.strip().lower()
+            if not is_admin:
+                query_text = inline_query.query.strip().lower()
+            elif is_admin:
+                query_text = inline_query.query.strip().lower().removeprefix("#sᴇʀᴠɪᴄᴇ").strip()
+
             offset = int(inline_query.offset) if inline_query.offset else 0
             start_time = time.time()
 
@@ -280,7 +437,7 @@ class UserSearchManagement:
             if not search_results or not search_results.get("results"):
                 keyboard = InlineKeyboardMarkup()
                 keyboard.add(
-                    InlineKeyboardButton("🔍 Contact Support", url="https://t.me/udaysupport")
+                    InlineKeyboardButton("⌕ Contact Support", url="https://t.me/udaysupport")
                 )
                 await self.bot.answer_inline_query(
                     inline_query.id,
@@ -294,12 +451,12 @@ class UserSearchManagement:
                             input_message_content=InputTextMessageContent(
                                 message_text=(
                                     " *Nᴏ Sᴇʀᴠɪᴄᴇs Fᴏᴜɴᴅ*\n\n"
-                                    " Yᴏᴜʀ sᴇᴀʀᴄʜ ᴅɪᴅɴ'ᴛ ᴍᴀᴛᴄʜ ᴀɴʏ ᴀᴠᴀɪʟᴀʙʟᴇ sᴇʀᴠɪᴄᴇs.\n"
+                                    " Yᴏᴜʀ Sᴇᴀʀᴄʜ Dɪᴅɴ'ᴛ Mᴀᴛᴄʜ Aɴʏ Aᴠᴀɪʟᴀʙʟᴇ Sᴇʀᴠɪᴄᴇs.\n"
                                     " Sᴜɢɢᴇsᴛɪᴏɴs:\n"
-                                    "• Cʜᴇᴄᴋ ʏᴏᴜʀ sᴘᴇʟʟɪɴɢ\n"
-                                    "• Tʀʏ ᴍᴏʀᴇ ɢᴇɴᴇʀᴀʟ ᴋᴇʏᴡᴏʀᴅs\n"
-                                    "• Cᴏɴᴛᴀᴄᴛ ᴏᴜʀ sᴜᴘᴘᴏʀᴛ ᴛᴇᴀᴍ ғᴏʀ ᴀssɪsᴛᴀɴᴄᴇ\n\n"
-                                    " Wᴇ'ʀᴇ ᴄᴏɴsᴛᴀɴᴛʟʏ ᴀᴅᴅɪɴɢ ɴᴇᴡ sᴇʀᴠɪᴄᴇs!"
+                                    "• Cʜᴇᴄᴋ Yᴏᴜʀ Sᴘᴇʟʟɪɴɢ\n"
+                                    "• Tʀʏ Mᴏʀᴇ Gᴇɴᴇʀᴀʟ Kᴇʏᴡᴏʀᴅs\n"
+                                    "• Cᴏɴᴛᴀᴄᴛ Oᴜʀ Sᴜᴘᴘᴏʀᴛ Tᴇᴀᴍ Fᴏʀ Assɪsᴛᴀɴᴄᴇ\n\n"
+                                    " Wᴇ'ʀᴇ Cᴏɴsᴛᴀɴᴛʟʏ Aᴅᴅɪɴɢ Nᴇᴡ Sᴇʀᴠɪᴄᴇs!"
                                 ),
                                 parse_mode="Markdown"
                             )
@@ -313,6 +470,7 @@ class UserSearchManagement:
             used_result_ids = set()
             # Cache price-country data for the session
             price_country_data = await self.redis_client.json().get('main_data:price-country') or {}
+            country_data = await self.redis_client.json().get('main_data:details:country_data') or {}
             
             for app_name, data in search_results["results"].items():
                 try:
@@ -351,7 +509,7 @@ class UserSearchManagement:
                                     country for country, _ in sorted(
                                         country_prices.items(), 
                                         key=lambda x: x[1]
-                                    )[:3]
+                                    )[:4]
                                 ]
 
                         except Exception as e:
@@ -359,18 +517,21 @@ class UserSearchManagement:
                     
                     # Format country display - only show ... if we have more unique countries
                     has_more = len(country_prices) > 3  # More efficient than using set
-                    country_list = countries + (["..."] if has_more else [])
-                    top_country_display = f"[{', '.join(country_list) or '🌍'}]"
+                    country_list = [country_data.get(country_id, {}).get('country_code', '') for country_id in countries[:3]]
+                    top_country_display = f"[{', '.join(country_list)}{',...' if has_more else ''}]"
+
 
                     # Build description with optimized string concatenation
                     description = "".join([
                         f"❯ Tʜᴇ Sᴛᴀʀᴛɪɴɢ Pʀɪᴄᴇ Is Oɴʟʏ {lowest_price:.2f} Pᴏɪɴᴛ's.\n",
                         f"• Aᴠᴀɪʟᴀʙʟᴇ Aᴄʀᴏss » {top_country_display}\n",
-                        f"• Tᴏᴛᴀʟ Sᴛᴏᴄᴋ » {total_stock}"
+                        f"• Tᴏᴛᴀʟ Sᴛᴏᴄᴋ » {await self.format_number_to_text(total_stock)}"
                     ])
 
                     # Result ID generation without string interpolation
                     result_id = "_".join([app_name, str(total_stock), f"{lowest_price:.2f}"])
+                    input_text = f"#Sᴇʀᴠɪᴄᴇ|{app_id}" if is_admin else f"/Buy_{app_id}" 
+                    switch_query = f"#Sᴇʀᴠɪᴄᴇ " if is_admin else ""
                     if result_id not in used_result_ids:
                         used_result_ids.add(result_id)
                         results.append(
@@ -378,10 +539,10 @@ class UserSearchManagement:
                                 id=result_id,
                                 title=clean_app_name.title().translate(await small_caps()),
                                 description=description,
-                                thumbnail_url=f"https://udayscripts.in/image/service/{first_code}.png" if first_code else "https://img.icons8.com/color/48/000000/shop.png",
-                                input_message_content=InputTextMessageContent(f"/Buy_{app_id}"),
+                                thumbnail_url=f"https://smsactivate.s3.eu-central-1.amazonaws.com/assets/ico/{first_code}0.webp" if first_code else "https://img.icons8.com/color/48/000000/shop.png",
+                                input_message_content=InputTextMessageContent(input_text),
                                 reply_markup=InlineKeyboardMarkup().add(
-                                    InlineKeyboardButton("🛒 Sᴇʀᴠɪᴄᴇs", switch_inline_query_current_chat="")
+                                    InlineKeyboardButton("🛒 Sᴇʀᴠɪᴄᴇs", switch_inline_query_current_chat=switch_query)
                                 )
                             )
                         )
@@ -413,174 +574,224 @@ class UserSearchManagement:
                 cache_time=5
             )
 
-    async def handle_inline_query(self, inline_query) -> None:
+    async def handle_inline_query(self, inline_query, is_admin=False) -> None:
         """Handle an incoming inline query by processing it."""
-        return await self.query_apps(inline_query)
+        return await self.query_apps(inline_query, is_admin)
 
-    async def query_apps_admin(self, inline_query) -> None:
+    async def validate_search_query(self, user_id: str, query: str) -> dict:
+        if len(query) > 20:
+            return {"valid": False, "error": "Query must not exceed 20 characters."}
+        # Further validation and sanitization logic...
+        return {"valid": True, "sanitized_query": query}
+
+    async def handle_search_message(self, message: Message, app_count: str="[1 +inf]", app_price: str="[0.01 +inf]", tool_limit: int=None, sort_by: Optional[str] = None, country_name_query: Optional[str] = None):
+        """
+        Process a plain text search message.
+        If a result is at least 80% similar to the query, replace the message text with a buy command and process it.
+        Otherwise, display the top results with pagination buttons.
+        """
         try:
-            query_text = inline_query.query.strip().lower().removeprefix("#sᴇʀᴠɪᴄᴇ").strip()
-            offset = int(inline_query.offset) if inline_query.offset else 0
+            query_text = message.text.strip().lower()
+            print("query_text:", query_text)
+            # Validate query (must not exceed 20 characters, etc.)
+            validation = await self.validate_search_query(str(message.from_user.id), query_text)
+            if not validation["valid"]:
+                return
+
+            query_text = validation.get("sanitized_query", query_text)
+            offset = 0  # initial offset
             start_time = time.time()
 
-            validation_result = await self.validate_inline_query(str(inline_query.from_user.id), query_text)
-            if not validation_result["valid"]:
-                await self.bot.answer_inline_query(
-                    inline_query.id,
-                    [
-                        InlineQueryResultArticle(
-                            id="error",
-                            title="Error",
-                            description=validation_result["error"],
-                            thumbnail_url="https://img.freepik.com/free-vector/bird-colorful-logo-gradient-vector_343694-1365.jpg",
-                            input_message_content=InputTextMessageContent(message_text=validation_result["error"])
-                        )
-                    ],
-                    cache_time=5
-                )
-                return
-
-            query_text = validation_result.get("sanitized_query", "")
-            search_results = await self.search_advanced(query=query_text, offset=offset, limit=CACHE_RESULTS_PER_PAGE)
-
+            search_results = await self.search_advanced(
+                query=query_text,
+                offset=offset,
+                limit=tool_limit or RESULTS_PER_PAGE,
+                country_name_query=country_name_query,
+                app_count=app_count,
+                app_price=app_price,
+                sort_by=sort_by
+            )
             if not search_results or not search_results.get("results"):
-                keyboard = InlineKeyboardMarkup()
-                keyboard.add(
-                    InlineKeyboardButton("🔍 Contact Support", url="https://t.me/udaysupport")
-                )
-                await self.bot.answer_inline_query(
-                    inline_query.id,
-                    [
-                        InlineQueryResultArticle(
-                            id="not_found",
-                            title=" Nᴏ Sᴇʀᴠɪᴄᴇs Aᴠᴀɪʟᴀʙʟᴇ",
-                            description="Wᴇ'ʀᴇ ᴄᴏɴsᴛᴀɴᴛʟʏ ᴜᴘᴅᴀᴛɪɴɢ ᴏᴜʀ sᴇʀᴠɪᴄᴇs. Tʀʏ ᴀɴᴏᴛʜᴇʀ sᴇᴀʀᴄʜ ᴏʀ ᴄᴏɴᴛᴀᴄᴛ sᴜᴘᴘᴏʀᴛ!",
-                            thumbnail_url="https://img.freepik.com/free-vector/bird-colorful-logo-gradient-vector_343694-1365.jpg",
-                            reply_markup=keyboard,
-                            input_message_content=InputTextMessageContent(
-                                message_text=(
-                                    " *Nᴏ Sᴇʀᴠɪᴄᴇs Fᴏᴜɴᴅ*\n\n"
-                                    " Yᴏᴜʀ sᴇᴀʀᴄʜ ᴅɪᴅɴ'ᴛ ᴍᴀᴛᴄʜ ᴀɴʏ ᴀᴠᴀɪʟᴀʙʟᴇ sᴇʀᴠɪᴄᴇs.\n"
-                                    " Sᴜɢɢᴇsᴛɪᴏɴs:\n"
-                                    "• Cʜᴇᴄᴋ ʏᴏᴜʀ sᴘᴇʟʟɪɴɢ\n"
-                                    "• Tʀʏ ᴍᴏʀᴇ ɢᴇɴᴇʀᴀʟ ᴋᴇʏᴡᴏʀᴅs\n"
-                                    "• Cᴏɴᴛᴀᴄᴛ ᴏᴜʀ sᴜᴘᴘᴏʀᴛ ᴛᴇᴀᴍ ғᴏʀ ᴀssɪsᴛᴀɴᴄᴇ\n\n"
-                                    " Wᴇ'ʀᴇ ᴄᴏɴsᴛᴀɴᴛʟʏ ᴀᴅᴅɪɴɢ ɴᴇᴡ sᴇʀᴠɪᴄᴇs!"
-                                ),
-                                parse_mode="Markdown"
-                            )
-                        )
-                    ],
+                if message.chat.id != 'tool':
+                    await self.bot.send_message(
+                        message.chat.id,
+                        "No Services Found.\n\nSuggestions:\n• Check Your Spelling\n• Try General Keywords\n• Contact Support/Admin For Help.".translate(await small_caps())
+                    )
+                else:
+                    return[]
+                return
 
-                    cache_time=30
+            # Process top search items
+            search_items = list(search_results["results"].items())[:RESULTS_PER_PAGE]
+            exact_match = None
+            for app_name, data in search_items:
+                similarity = difflib.SequenceMatcher(None, query_text, app_name.lower()).ratio()
+                if similarity >= 0.8:
+                    exact_match = (app_name, data)
+                    break
+
+            # If an exact match is found, change the message text and process the buy command.
+            if exact_match:
+                if message.chat.id != 'tool':
+                    app_name, data = exact_match
+                    app_id = str(data.get("app_id", app_name))
+                    message.text = f"/Buy_{app_id}"
+                    process_task = partial(country_management.process_buy_command, message)
+                    asyncio.create_task(process_task())
+                elif message.chat.id == 'tool':
+                    app_name, data = exact_match
+                    app_id = str(data.get("app_id", app_name))
+                    message.text = f"/Buy_{app_id}"
+                    return [{"app_id": app_id, "app_name": app_name}]
+                return
+
+            # Otherwise, build the results text.
+            result_text = ""
+            result = []
+            for app_name, data in search_items:
+                app_id = str(data.get("app_id", app_name))
+                total_stock = int(data.get("total_stock", 0))
+                lowest_price = float(data.get("lowest_price", 0.0)) * float(COMMISSION)
+                result.append({"app_id": app_id, "app_name": app_name, "total_stock": total_stock, "lowest_price": lowest_price})
+                result_text += await self.format_app_result(app_name, app_id, total_stock, lowest_price) + "\n\n"
+            
+            if message.chat.id == 'tool':
+                return result
+            # Build the inline keyboard based on pagination availability.
+            # (At initial search, offset==0, so no previous page.)
+            has_prev = offset > 0
+            has_next = len(search_items) >= RESULTS_PER_PAGE
+
+            keyboard = InlineKeyboardMarkup()
+            if not has_prev and not has_next:
+                # Neither previous nor next exist.
+                keyboard.row(
+                    InlineKeyboardButton("⌕ Sᴇᴀʀᴄʜ", switch_inline_query_current_chat=f"{query_text}")
+                )
+            elif has_prev and has_next:
+                keyboard.row(
+                    InlineKeyboardButton("« Pʀᴇᴠɪoᴜs", callback_data=f"search:prev:{offset}:{query_text}"),
+                    InlineKeyboardButton("⌕", switch_inline_query_current_chat=f"{query_text}"),
+                    InlineKeyboardButton("Nᴇxᴛ »", callback_data=f"search:next:{offset}:{query_text}")
+                )
+            elif has_next:
+                # Only next exists.
+                keyboard.row(
+                    InlineKeyboardButton("⌕ Sᴇᴀʀᴄʜ", switch_inline_query_current_chat=f"{query_text}"),
+                    InlineKeyboardButton("Nᴇxᴛ »", callback_data=f"search:next:{offset}:{query_text}")
+                )
+            elif has_prev:
+                # Only previous exists.
+                keyboard.row(
+                    InlineKeyboardButton("« Pʀᴇᴠɪoᴜs", callback_data=f"search:prev:{offset}:{query_text}"),
+                    InlineKeyboardButton("⌕ Sᴇᴀʀᴄʜ", switch_inline_query_current_chat=f"{query_text}")
+                )
+
+            await self.bot.send_message(message.chat.id, result_text, reply_markup=keyboard, parse_mode='html')
+            end_time = time.time()
+            logging.info(f"Search message processing time: {end_time - start_time:.3f}s")
+        except Exception as e:
+            logging.error(f"Error in handle_search_message: {e}")
+            await self.bot.send_message(message.chat.id, "An error occurred while processing your search. Please try again later.")
+
+    async def handle_pagination(self, call: CallbackQuery):
+        """
+        Handle callback queries for pagination buttons.
+        Callback data format: "search:<direction>:<current_offset>:<query_text>"
+        """
+        try:
+            parts = call.data.split(":")
+            if len(parts) < 4:
+                await self.bot.answer_callback_query(call.id, text="Invalid callback data.")
+                return
+
+            direction, current_offset, query_text = parts[1], int(parts[2]), parts[3]
+            if direction == "next":
+                offset = current_offset + RESULTS_PER_PAGE
+            elif direction == "prev":
+                offset = max(current_offset - RESULTS_PER_PAGE, 0)
+            else:
+                await self.bot.answer_callback_query(call.id, text="Unknown direction.")
+                return
+
+            search_results = await self.search_advanced(query=query_text, offset=offset, limit=RESULTS_PER_PAGE)
+            if not search_results or not search_results.get("results"):
+                await self.bot.edit_message_text(
+                    "No more results.",
+                    chat_id=call.message.chat.id,
+                    message_id=call.message.message_id
                 )
                 return
-            results = []
-            used_result_ids = set()
-            # Cache price-country data for the session
-            price_country_data = await self.redis_client.json().get('main_data:price-country') or {}
-            
-            for app_name, data in search_results["results"].items():
-                try:
-                    app_id = str(data.get('app_id', app_name))
-                    clean_app_name = self.input_validator.sanitize_text(app_name)
-                    total_stock = int(data.get("total_stock", 0))
-                    lowest_price = float(data.get("lowest_price", 0.0)) * float(COMMISSION)
-                    app_code = data.get("app_code", "")
-                    first_code = app_code.split(",")[0].strip().lower() if "," in app_code else app_code.lower()
-                    
-                    # Fast price data lookup with default
-                    app_price_data = price_country_data.get(app_id, {})
-                    
-                    # Ultra-fast country processing - single pass O(n)
-                    countries = []
-                    country_prices = {}  # {country: lowest_price}
-                    
-                    if app_price_data:
-                        try:
-                            # Single pass to get lowest price per country
-                            for price_str, country in app_price_data.items():
-                                try:
-                                    price = float(price_str)
-                                    if price <= 0:
-                                        continue
-                                        
-                                    curr_price = country_prices.get(country)
-                                    if curr_price is None or price < curr_price:
-                                        country_prices[country] = price
-                                except (ValueError, TypeError):
-                                    continue
 
-                            # Get top 3 countries by price - using sorted for cleaner code
-                            if country_prices:
-                                countries = [
-                                    country for country, _ in sorted(
-                                        country_prices.items(), 
-                                        key=lambda x: x[1]
-                                    )[:3]
-                                ]
+            search_items = list(search_results["results"].items())[:RESULTS_PER_PAGE]
+            result_text = ""
+            for app_name, data in search_items:
+                app_id = str(data.get("app_id", app_name))
+                total_stock = int(data.get("total_stock", 0))
+                lowest_price = float(data.get("lowest_price", 0.0)) * float(COMMISSION)
+                result_text += await self.format_app_result(app_name, app_id, total_stock, lowest_price) + "\n\n"
 
-                        except Exception as e:
-                            logging.error(f"Error processing price data for app {app_id}: {e}")
-                    
-                    # Format country display - only show ... if we have more unique countries
-                    has_more = len(country_prices) > 3  # More efficient than using set
-                    country_list = countries + (["..."] if has_more else [])
-                    top_country_display = f"[{', '.join(country_list) or '🌍'}]"
+            # Determine pagination availability.
+            has_prev = offset > 0
+            has_next = len(search_items) >= RESULTS_PER_PAGE
 
-                    # Build description with optimized string concatenation
-                    description = "".join([
-                        f"❯ Tʜᴇ Sᴛᴀʀᴛɪɴɢ Pʀɪᴄᴇ Is Oɴʟʏ {lowest_price:.2f} Pᴏɪɴᴛ's.\n",
-                        f"• Aᴠᴀɪʟᴀʙʟᴇ Aᴄʀᴏss » {top_country_display}\n",
-                        f"• Tᴏᴛᴀʟ Sᴛᴏᴄᴋ » {total_stock}"
-                    ])
+            keyboard = InlineKeyboardMarkup()
+            if not has_prev and not has_next:
+                keyboard.row(
+                    InlineKeyboardButton("⌕ Sᴇᴀʀᴄʜ", switch_inline_query_current_chat=f"{query_text}")
+                )
+            elif has_prev and has_next:
+                keyboard.row(
+                    InlineKeyboardButton("« Pʀᴇᴠɪoᴜs", callback_data=f"search:prev:{offset}:{query_text}"),
+                    InlineKeyboardButton("⌕ Sᴇᴀʀᴄʜ", switch_inline_query_current_chat=f"{query_text}"),
+                    InlineKeyboardButton("Nᴇxᴛ »", callback_data=f"search:next:{offset}:{query_text}")
+                )
+            elif has_next:
+                keyboard.row(
+                    InlineKeyboardButton("⌕ Sᴇᴀʀᴄʜ", switch_inline_query_current_chat=f"{query_text}"),
+                    InlineKeyboardButton("Nᴇxᴛ »", callback_data=f"search:next:{offset}:{query_text}")
+                )
+            elif has_prev:
+                keyboard.row(
+                    InlineKeyboardButton("« Pʀᴇᴠɪoᴜs", callback_data=f"search:prev:{offset}:{query_text}"),
+                    InlineKeyboardButton("⌕ Sᴇᴀʀᴄʜ", switch_inline_query_current_chat=f"{query_text}")
+                )
+            try:
+                await self.bot.edit_message_text(
+                    result_text,
+                    chat_id=call.message.chat.id,
+                    message_id=call.message.message_id,
+                    reply_markup=keyboard,
+                    parse_mode='html'
+                )
+                await self.bot.answer_callback_query(call.id)
+            except Exception as e:
+                logging.error(f"Error editing message: {e}")
+                await self.bot.answer_callback_query(call.id, text="🔒 Aɴᴏᴛʜᴇʀ Tʀᴀɴsᴀᴄᴛɪᴏɴ Iɴ Pʀᴏɢʀᴇss, Pʟᴇᴀsᴇ Wᴀɪᴛ...", show_alert=False)
+        except Exception as e:
+            logging.error(f"Error in pagination handler: {e}")
+            await self.bot.answer_callback_query(call.id, text="An error occurred while paginating.")
 
-                    # Result ID generation without string interpolation
-                    result_id = "_".join([app_name, str(total_stock), f"{lowest_price:.2f}"])
-                    if result_id not in used_result_ids:
-                        used_result_ids.add(result_id)
-                        results.append(
-                            InlineQueryResultArticle(
-                                id=result_id,
-                                title=clean_app_name.title().translate(await small_caps()),
-                                description=description,
-                                thumbnail_url=f"https://udayscripts.in/image/service/{first_code}.png" if first_code else "https://img.icons8.com/color/48/000000/shop.png",
-                                input_message_content=InputTextMessageContent(f"#Sᴇʀᴠɪᴄᴇ|{app_id}"),
-                                reply_markup=InlineKeyboardMarkup().add(
-                                    InlineKeyboardButton("🛒 Sᴇʀᴠɪᴄᴇs", switch_inline_query_current_chat="#Sᴇʀᴠɪᴄᴇ ")
-                                )
-                            )
-                        )
-                except Exception as e:
-                    logging.error(f"Error processing app {app_name}: {e}")
-                    continue
-
-            end_time = time.time()
-            logging.info(f"Total execution time: {end_time - start_time:.3f}s")
-
-            await self.bot.answer_inline_query(
-                inline_query.id,
-                results[:50],
-                cache_time=30,
-                next_offset=str(offset + CACHE_RESULTS_PER_PAGE) if len(results) >= CACHE_RESULTS_PER_PAGE else ""
+    async def format_app_result(self, app_name: str, app_id: str, total_stock: int, lowest_price: float) -> str:
+        """
+        Format a search result for display.
+        Expects an async function small_caps() (defined elsewhere) for text translation.
+        """
+        try:
+            caps_map = await small_caps()  # small_caps must be defined elsewhere.
+            return (
+                f"<u><b>{app_name.title().translate(caps_map)}</b></u> <b>[</b><i>{await self.format_number_to_text(total_stock)}</i><b>]</b>\n "
+                f"   <code>❯</code> <i>Sᴛᴀʀᴛɪɴɢ Pʀɪᴄᴇ</i> <b>»</b> "
+                f"<code>💎</code> <code>{f'{lowest_price:.2f}'.translate(caps_map)}</code> \n"
+                f"    <b>•</b> <i>Cʟɪᴄᴋ Tᴏ Sᴇᴇ</i> <b>»</b> <i>/Buy_{app_id}</i>"
             )
         except Exception as e:
-            logging.error(f"Error in query_apps: {e}")
-            await self.bot.answer_inline_query(
-                inline_query.id,
-                [
-                    InlineQueryResultArticle(
-                        id="error",
-                        title="Error",
-                        description="An error occurred while processing your request",
-                        input_message_content=InputTextMessageContent(message_text="Error: Please try again later")
-                    )
-                ],
-                cache_time=5
-            )
- 
-    async def show_service_manager(self, inline_query) -> None:
-        return await self.query_apps_admin(inline_query)
+            logging.error(f"Error formatting result for {app_name}: {e}")
+            return f"<b>{app_name.title()}</b> - <i>Error processing result</i>"
+
+
+
+
 # Initialize the search manager instance for inline queries.
 search_manager = UserSearchManagement()
 

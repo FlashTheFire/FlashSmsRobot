@@ -7,8 +7,31 @@ import random
 from datetime import datetime
 from functools import wraps
 from io import BytesIO
+from termcolor import colored
 import os
+import re
 
+import asyncio
+import json
+import logging
+import time
+from pathlib import Path
+from functools import wraps
+from datetime import datetime, timedelta
+from typing import Optional, Tuple, Dict
+
+from aiohttp import web
+import aiohttp
+import aiofiles
+import redis.asyncio as redis
+
+from utils.redis_manager import redis_manager
+import json
+import logging
+import cloudinary
+import cloudinary.uploader
+from typing import Tuple, Dict
+from redis.asyncio import Redis
 import aiohttp
 from PIL import Image
 import numpy as np
@@ -18,12 +41,15 @@ from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 
 from typing import Union, Optional, Dict, Any, List, Tuple
 
+from redis import WatchError
+from redis.asyncio import Redis
 from pydantic import BaseModel, ValidationError
 
 from redis.commands.search.field import TextField, NumericField, TagField
-from redis.commands.search.indexDefinition import IndexDefinition, IndexType
+from redis.commands.search.index_definition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
 from redis.exceptions import RedisError
+from datetime import datetime, timedelta
 
 from forex_python.converter import CurrencyRates
 
@@ -37,17 +63,29 @@ from utils.functions import small_caps, decode_barcode_id, encode_order_id, Adva
 from utils.redis_manager import RedisManager, redis_manager
 from utils.redis_keys import RedisKeys
 from handlers.manager.operation_lock import OperationLockManager, OperationType, AsyncOperationContext, operation_lock_manager
-from utils.config import  WEBHOOK_HOST as FIVE_SIM_URL
+
+SMS_BOWER_TAX = 1.27
+GRIZZLY_SMS_TAX = 1.208
+SMS_ACTIVATE_TAX = 1.14
+FIVE_SIM_TAX = 1.12
 
 # ---------------- Global Constants ----------------
 ORDER_INFO_INDEX = "order_index"
 USER_INFO_INDEX = "user_index"
-ORDER_CURRENT_PREFIX = "order:current:"
 ORDER_INFO_PREFIX = "order_data:"
 USER_INFO_PREFIX = "user_data:"
 DEPOSIT_INFO_INDEX = "deposit_index"
 DEPOSIT_INFO_PREFIX = "deposit_data:"
 user_key_profile = "user_data:{user_id}:profile:main"
+
+ORDER_PREFIX = "987654321"
+# Configure Cloudinary
+cloudinary.config(
+    cloud_name="djfsvvzto",
+    api_key="291392939686751",
+    api_secret="t5YvGkbk7ez71mzMS-3ZZoBFlFQ"
+)
+
 # ---------------- Asynchronous Logging ----------------
 class AsyncHandler(logging.Handler):
     def emit(self, record):
@@ -110,6 +148,10 @@ class OrderManagement:
         self._initialized = False
         self.logger: Optional[AdvancedLogger] = None
         self.enable_logging = enable_logging
+        self.FIELD_MAP = {
+            "PRICE": "order_amount",
+            "DATE":  "recorded_at"
+            }
 
     async def _init_logger(self):
         if not self.logger:
@@ -137,6 +179,13 @@ class OrderManagement:
             else:
                 query_parts.append(f"@{field}:{value}")
         return ' '.join(query_parts) if query_parts else '*'
+    
+    async def extract_order_number(self, order_id: str) -> str:
+        """
+        Extracts the numeric part of the order_id string
+        """
+        match = re.search(r'\d+', order_id)
+        return match.group() if match else ""
 
     @handle_redis_exceptions
     async def ensure_connection(self):
@@ -215,9 +264,6 @@ class OrderManagement:
         ]))
         async with redis_client.pipeline(transaction=True) as pipe:
             await pipe.hset(order_info_key, mapping=data)
-            #user_order_key = f"{USER_INFO_PREFIX}{user_id}:order:{order_id}"
-            #filtered_data = {k: v for k, v in data.items() if k not in ('recorded_at', 'search_tags')}
-            #await pipe.hset(user_order_key, mapping=filtered_data)
             await pipe.execute()
 
         return {'response': True, 'message': "ORDER-ADDED", 'order_id': order_id}
@@ -331,7 +377,6 @@ class OrderManagement:
             return {'response': False, 'error': f'Order already {status}'}
 
         order_info_key = f"{ORDER_INFO_PREFIX}info:{order_id}"
-        user_order_key = f"{USER_INFO_PREFIX}{user_id}:order:{order_id}"
         
         await self.logger.info(f"Updating order status to {status.lower()} for order {order_id}")
         
@@ -340,6 +385,8 @@ class OrderManagement:
         if order_info.get('order_status') == 'PROCESSING':
             return {'response': False, 'error': 'Order status is PROCESSING'}
         if order_info.get('sms_list', '[]') != '[]':
+            return {'response': False, 'error': 'Order has SMS'}
+        if order_info.get('last_sms'):
             return {'response': False, 'error': 'Order has SMS'}
 
         try:
@@ -361,7 +408,6 @@ class OrderManagement:
         
         async with self.redis_manager.redis_client.pipeline(transaction=True) as pipe:
             await pipe.hset(order_info_key, mapping=updates)
-            await pipe.hset(user_order_key, mapping=updates)
             await pipe.execute()
 
         await self.logger.info(f"Successfully {status.lower()} order {order_id} with refund")
@@ -405,32 +451,249 @@ class OrderManagement:
         """Process individual document from search results."""
         return {k: v for k, v in doc.__dict__.items() if not k.startswith('__')}
 
-    async def aggregate_orders(self, filters: Dict[str, Any]) -> Dict[str, float]:
-        """Perform a RediSearch aggregation query to compute total order amount and count asynchronously."""
-        await self._init_logger()
+    async def aggregate_orders(
+        self,
+        filters: Dict[str, Any],
+        limit: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Ultra-fast order aggregation using RediSearch.
+
+        Returns:
+            {
+                "total_amount": float,
+                "count": int,
+                "order_ids": List[[float order_amount,
+                                   float recorded_at,
+                                   str order_number]]
+            }
+        """
+        return_ids = filters.pop("_return_ids", False)
+        sort_specs = filters.pop("sort", [])
+
         try:
+            # 1) Build query
             query_str = await self.build_query(filters)
-            aggregation_query = [
-                "FT.AGGREGATE", ORDER_INFO_INDEX, query_str,
+
+            # 2) Aggregation command
+            agg_cmd = [
+                "FT.AGGREGATE",
+                ORDER_INFO_INDEX,
+                query_str,
                 "GROUPBY", "0",
                 "REDUCE", "SUM", "1", "@order_amount", "AS", "total_amount",
                 "REDUCE", "COUNT", "0", "AS", "count"
             ]
-            result = await self.redis_manager.redis_client.execute_command(*aggregation_query)
-            await self.logger.info(f"Aggregation result: {result}")
-            
-            if not result or len(result) < 2:
-                return {"total_amount": 0.0, "count": 0}
 
-            total_amount = float(result[1][1]) if result[1][1] else 0.0
-            count = int(result[1][3]) if result[1][3] else 0
+            # 3) Optional: build ID fetch command using FT.AGGREGATE
+            id_cmd: Optional[List[Any]] = None
+            if return_ids:
+                id_cmd = [
+                    "FT.AGGREGATE",
+                    ORDER_INFO_INDEX,
+                    query_str,
+                    "LOAD", "3", "__key", "order_amount", "recorded_at"
+                ]
 
-            return {"total_amount": total_amount, "count": count}
+                if sort_specs:
+                    id_cmd += ["SORTBY", str(len(sort_specs) * 2)]
+                    for spec in sort_specs:
+                        redis_field = self.FIELD_MAP[spec["field"]]
+                        id_cmd += [f"@{redis_field}", spec["direction"]]
+
+                if limit is not None:
+                    id_cmd += ["LIMIT", "0", str(limit)]
+
+            # 4) Pipeline both commands
+            pipe = self.redis_manager.redis_client.pipeline(transaction=False)
+            pipe.execute_command(*agg_cmd)
+            if id_cmd:
+                pipe.execute_command(*id_cmd)
+
+            results = await pipe.execute()
+
+            # 5) Parse aggregation result
+            output = {"total_amount": 0.0, "count": 0}
+            if results[0] and len(results[0]) > 1:
+                row = results[0][1]
+                data = {row[i]: row[i+1] for i in range(0, len(row), 2)}
+                output["total_amount"] = float(data.get("total_amount", 0))
+                output["count"] = int(data.get("count", 0))
+
+            # 6) Add order IDs if requested
+            if return_ids and len(results) > 1:
+                _, *rows = results[1]
+                order_rows = []
+                for row in rows:
+                    row_dict = {row[i]: row[i+1] for i in range(0, len(row), 2)}
+                    raw_key = row_dict.get("__key")
+                    if raw_key:
+                        order_number = await self.extract_order_number(raw_key)
+                        order_rows.append([
+                            ("amount", float(row_dict.get("order_amount", 0))),
+                            ("timestamp", float(row_dict.get("recorded_at", 0))),
+                            ("order_number", order_number)
+                        ])
+
+                output["order_ids"] = order_rows
+
+            return output
+
         except Exception as e:
-            await self.logger.error(f"Error aggregating orders: {e}")
-            return {"total_amount": 0.0, "count": 0}
+            print(f"[aggregate_orders] {e}")
+            return {
+                "total_amount": 0.0,
+                "count": 0,
+                "order_ids": [] if return_ids else None,
+            }
 
-# ---------------- UserManagement Class ----------------
+
+    async def manage_number_order(self,
+        redis_client: Redis = None,
+        country_id: int = None,
+        server_id: int = None,
+        app_id: str = None,
+        operator: str = None,
+        order_id: Optional[str] = None,
+        action: str = "reserve",   # reserve | add | status | cancel
+        user_id: Optional[int] = None,
+        sms_code: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Reserve: pick a random free number with HRANDFIELD, mark it reserved
+        Add:    embed the SMS code into that number via its order_id
+        Status: look up status by stripping prefix→num
+        Cancel: same, but reset that field
+        """
+        numbers_key = f"free_numbers:{country_id}:{server_id}:{app_id}:{operator}"
+        print(numbers_key)
+        # helper to decode a single hash-field:
+        async def get_data(num: str) -> Dict[str, Any]:
+            raw = await redis_client.hget(numbers_key, num)
+            return json.loads(raw) if raw else {}
+
+        # helper to write back a single field
+        async def set_data(num: str, data: Dict[str, Any]):
+            await redis_client.hset(numbers_key, num, json.dumps(data))
+
+        # ────────────── RESERVE ──────────────
+        if action == "reserve":
+            now_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+            # try up to N times to find a free number
+            for _ in range(1000):  
+                num = await redis_client.hrandfield(numbers_key)
+                if not num:
+                    return {"status": False, "message": "NO_NUMBERS"}
+
+                # Redis returns bytes if decode_responses=False; normalize:
+                if isinstance(num, bytes):
+                    num = num.decode()
+
+                print(f"[manage_number_order] Attempting to reserve {num}")
+                data = await get_data(num)
+                print(f"[manage_number_order] Data for {num}: {data}")
+                # skip if already used
+                if data.get("sms_received"):
+                    print(f"[manage_number_order] {num} already has SMS")
+                    continue
+                print(f"[manage_number_order] user_id: {user_id}")
+                if int(user_id) in data.get("user_ids", []):
+                    print(f"[manage_number_order] {num} already has user {user_id}")
+                    continue
+
+                # now reserve this `num`
+                new_order = order_id or f"{ORDER_PREFIX}{num}"
+                print(f"[manage_number_order] Reserved {num} to {new_order}")
+                data.update({
+                    "order_id":    new_order,
+                    "sms_received": True,
+                    "sms_waiting":  "STATUS_WAIT_CODE",
+                    "reserved_at":  now_iso,
+                    # track multiple reservers if you want:
+                    "user_ids":    data.get("user_ids", []) + ([user_id] if user_id else [])
+                })
+                await set_data(num, data)
+
+                return {
+                    "status":   True,
+                    "number":   num,
+                    "order_id": new_order,
+                    "details":  data
+                }
+
+            return {"status": False, "message": "NO_NUMBERS"}
+
+        # For add/status/cancel we reconstruct the number from the order_id:
+        if not order_id or not order_id.startswith(ORDER_PREFIX):
+            return {"status": False, "message": "INVALID_ORDER_ID"}
+
+        num = order_id[len(ORDER_PREFIX):]  # strip prefix to get the phone
+
+        data = await get_data(num)
+        if not data:
+            return {"status": False, "message": "STATUS_WAIT_CODE"}
+
+        # ────────────── ADD SMS CODE ──────────────
+        if action == "add":
+            if not sms_code:
+                return {"status": False, "message": "NO_SMS_CODE"}
+    
+            data["sms_waiting"] = f"STATUS_OK:{sms_code}"
+            await set_data(num, data)
+
+            return {
+                "status":      True,
+                "number":      num,
+                "order_id":    order_id,
+                "sms_waiting": data["sms_waiting"]
+            }
+
+        # ────────────── STATUS ──────────────
+        if action == "status":
+            sms_waiting = data.get("sms_waiting", "STATUS_WAIT_CODE")
+            reserved_at = data.get("reserved_at")
+
+            # auto-cancel after 10 minutes
+            if reserved_at:
+                try:
+                    then = datetime.strptime(reserved_at, "%Y-%m-%dT%H:%M:%SZ")
+                    if sms_waiting == "STATUS_WAIT_CODE" and datetime.utcnow() - then > timedelta(minutes=10):
+                        data["sms_waiting"] = "STATUS_CANCEL"
+                        await set_data(num, data)
+                        sms_waiting = "STATUS_CANCEL"
+                except ValueError:
+                    pass
+
+            return {
+                "status":      True,
+                "order_id":    order_id,
+                "number":      num,
+                "sms_waiting": sms_waiting
+            }
+
+        # ────────────── CANCEL ──────────────
+        if action == "cancel":
+            if data.get("sms_waiting") != "STATUS_WAIT_CODE":
+                return {"status": False, "message": "STATUS_CANCEL"}
+
+            data.update({
+                "order_id":     "",
+                "sms_received": False,
+                "sms_waiting":  "",
+                "reserved_at":  "",
+                "user_ids":     []
+            })
+            await set_data(num, data)
+
+            return {
+                "status":  True,
+                "message": "Number canceled successfully",
+                "number":  num
+            }
+
+        return {"status": False, "message": "INVALID_ACTION"}
+
 class UserManagement:
     """Manage user operations with Redis asynchronously."""
     
@@ -561,20 +824,23 @@ class UserManagement:
                         parse_mode='HTML'
                     )
                     if result:
-                        await bot.pin_chat_message(
-                            chat_id=channel_id,
-                            message_id=result.message_id,
-                            disable_notification=True
-                        )
+                        try:
+                            await bot.pin_chat_message(
+                                chat_id=channel_id,
+                                message_id=result.message_id,
+                                disable_notification=True
+                            )
+                        except Exception as e:
+                            print(f"Error pinning message: {str(e)}")
                 return result.message_id if result else None
             except Exception as e:
-                await self.logger.error(f"Error in user_metrics_report: {str(e)}")
+                print(f"Error in user_metrics_report: {str(e)}")
                 return None
         except Exception as e:
-            await self.logger.error(f"Error in user_metrics_report: {str(e)}")
+            print(f"Error in user_metrics_report: {str(e)}")
             return None
 
-    async def send_order_report(self, bot: AsyncTeleBot, method: str, order_id: str, user_id: str, channel_id: str, details: dict) -> Optional[int]:
+    async def send_order_report(self, bot: AsyncTeleBot, method: str, order_id: str, user_id: str, channel_id: str, details: dict, is_api: bool = False) -> Optional[int]:
         await self._init_logger()
         try:
             await self.logger.info(f"Sending order report for order_id: {order_id}, user_id: {user_id}")
@@ -583,7 +849,7 @@ class UserManagement:
             forum_id = await self.redis_manager.redis_client.hget(profile_key, "forum_id")
             await self.logger.info(f"Retrieved forum_id: {forum_id}")
 
-            message = "<b>#Usᴇʀ_Oʀᴅᴇʀ_Dᴇᴛᴀɪʟs ❯</b>\n\n<b>Tʀᴀɴsᴀᴄᴛɪᴏɴ Dᴇᴛᴀɪʟs »</b>\n"
+            message = "<b>#Usᴇʀ_Oʀᴅᴇʀ_Dᴇᴛᴀɪʟs ❯</b>\n\n<b>Tʀᴀɴsᴀᴄᴛɪᴏɴ Dᴇᴛᴀɪʟs »</b>\n" if int(details.get('msg_id')) != int("0") else "<b>#Aᴘɪ_Oʀᴅᴇʀ_Dᴇᴛᴀɪʟs ❯</b>\n\n<b>Tʀᴀɴsᴀᴄᴛɪᴏɴ Dᴇᴛᴀɪʟs »</b>\n"
             valid_status = details.get('valid_status' if method == 'edit_message_text' else 'valid_until', '')
             if valid_status in ['⏱️ Oʀᴅᴇʀ Is Cᴀɴᴄᴇʟʟᴇᴅ', '⏱️ Oʀᴅᴇʀ Hᴀs Exᴘɪʀᴇᴅ', '✅ Oʀᴅᴇʀ Hᴀs Cᴏᴍᴘʟᴇᴛᴇᴅ'] or ':' in valid_status:
                 message += "<blockquote expandable>"
@@ -612,7 +878,7 @@ class UserManagement:
             admin_keyboard = InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton('🔗 Usᴇʀ', url=f'tg://openmessage?user_id={user_id}'),
-                    InlineKeyboardButton('🔍 Dᴇᴛᴀɪʟs', callback_data='placeholder')
+                    InlineKeyboardButton('⌕ Dᴇᴛᴀɪʟs', callback_data='placeholder')
                 ]
             ])
             
@@ -762,6 +1028,7 @@ class UserManagement:
             TextField("first_name", sortable=True),
             TextField("last_name", sortable=True),
             TextField("language_code", sortable=True),
+            TextField("forum_id"),
             TextField("status", sortable=True),
             TextField("registration_date", sortable=True)
         ]
@@ -1091,7 +1358,6 @@ class DepositManagement:
         try:
             redis_client = await self.ensure_connection()
             deposit_info_key = f"{DEPOSIT_INFO_PREFIX}info:{deposit_id}"
-            user_deposit_key = f"user_data:{user_id}:deposit:{deposit_id}"
 
             data.setdefault('recorded_at', time.time())
             data['search_tags'] = " ".join(filter(None, [
@@ -1103,7 +1369,6 @@ class DepositManagement:
 
             async with redis_client.pipeline() as pipe:
                 await pipe.hset(deposit_info_key, mapping=data)
-                await pipe.hset(user_deposit_key, mapping=data)
                 await pipe.execute()
 
             return {'response': True, 'message': "DEPOSIT-ADDED", 'deposit_id': deposit_id, 'user_id': user_id, 'result': data}
@@ -1281,7 +1546,7 @@ class DepositManagement:
                 admin_keyboard = InlineKeyboardMarkup()
                 admin_keyboard.row(
                     InlineKeyboardButton('🔗 Usᴇʀ', url=f'tg://openmessage?user_id={user_id}'),
-                    InlineKeyboardButton('🔍 Dᴇᴛᴀɪʟs', callback_data='placeholder')
+                    InlineKeyboardButton('⌕ Dᴇᴛᴀɪʟs', callback_data='placeholder')
                 )
     
                 try:
@@ -1368,7 +1633,6 @@ class DepositManagement:
             return {'response': False, 'error': f'Deposit already {status}'}
 
         deposit_info_key = f"{DEPOSIT_INFO_PREFIX}info:{deposit_id}"
-        user_deposit_key = f"user_data:{user_id}:deposit:{deposit_id}"
         await self.logger.info(f"Updating deposit status to {status.lower()} for deposit {deposit_id}")
 
         try:
@@ -1390,7 +1654,6 @@ class DepositManagement:
         redis_client = await self.ensure_connection()
         async with redis_client.pipeline(transaction=True) as pipe:
             await pipe.hset(deposit_info_key, mapping=updates)
-            await pipe.hset(user_deposit_key, mapping=updates)
             await pipe.execute()
 
         await self.logger.info(f"Successfully {status.lower()} deposit {deposit_id}")
@@ -1445,7 +1708,6 @@ class DepositManagement:
             await self.logger.error(f"Error searching current deposits: {e}")
             return {'response': False, 'error': str(e)}
 
-
 class FinancialManagement:
     """
     High-performance asynchronous financial summary aggregator.
@@ -1470,7 +1732,11 @@ class FinancialManagement:
         end_timestamp: Optional[float] = None,
         deposit_types: Optional[List[str]] = None,
         order_types: Optional[List[str]] = None,
-        region: Optional[str] = None,
+        return_order_ids: bool = False,
+        limit: Optional[int] = None,
+        is_tool: bool = False,
+        sort_fields: Optional[List[Tuple[str, str]]] = None,
+        app_price: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Asynchronously retrieve a financial summary for the specified user with optimized data processing.
@@ -1479,11 +1745,14 @@ class FinancialManagement:
         try:
             user_profile_task = asyncio.create_task(self.user_mgr.get_user_data(user_id))
 
-            deposit_filters = await self._build_deposit_filters(user_id, start_timestamp, end_timestamp, deposit_types, region)
-            order_filters = await self._build_order_filters(user_id, start_timestamp, end_timestamp, order_types, region)
+            deposit_filters = await self._build_deposit_filters(user_id, start_timestamp, end_timestamp, deposit_types)
+            order_filters = await self._build_order_filters(
+                user_id, start_timestamp, end_timestamp, order_types,
+                return_order_ids, app_price, sort_fields
+            )
 
             deposit_task = asyncio.create_task(self.deposit_mgr.aggregate_deposits(deposit_filters))
-            order_task = asyncio.create_task(self.order_mgr.aggregate_orders(order_filters))
+            order_task = asyncio.create_task(self.order_mgr.aggregate_orders(order_filters, limit=limit))
 
             user_profile_response, deposit_agg, order_agg = await asyncio.gather(
                 user_profile_task, deposit_task, order_task
@@ -1500,7 +1769,44 @@ class FinancialManagement:
 
             current_balance = deposit_agg["total_amount"] - order_agg["total_amount"]
             spend_balance = order_agg["total_amount"]
-
+            if is_tool:
+                if start_timestamp or end_timestamp:
+                    return {
+                        "response": True,
+                        "full_name": user_profile.get("first_name", ""),
+                        "metrics": {
+                            "spend_balance": spend_balance,
+                            "deposits": {
+                                "total_amount": deposit_agg["total_amount"],
+                                "count": deposit_agg["count"],
+                            },
+                            "orders": {
+                                "total_amount": order_agg["total_amount"],
+                                "count": order_agg["count"],
+                                "order_ids": order_agg.get("order_ids", [])
+                            },
+                        },
+                        "updated_at": time.time()
+                    }
+                else:
+                    return {
+                        "response": True,
+                        "full_name": user_profile.get("first_name", ""),
+                        "metrics": {
+                            "current_balance": current_balance,
+                            "spend_balance": spend_balance,
+                            "deposits": {
+                                "total_amount": deposit_agg["total_amount"],
+                                "count": deposit_agg["count"],
+                            },
+                            "orders": {
+                                "total_amount": order_agg["total_amount"],
+                                "count": order_agg["count"],
+                                "order_ids": order_agg.get("order_ids", [])
+                            },
+                        },
+                        "updated_at": time.time()
+                    }
             return {
                 "response": True,
                 "user_profile": user_profile.get("first_name", ""),
@@ -1514,6 +1820,7 @@ class FinancialManagement:
                     "orders": {
                         "total_amount": order_agg["total_amount"],
                         "count": order_agg["count"],
+                        "order_ids": order_agg.get("order_ids", [])
                     },
                 },
                 "timestamp": datetime.utcnow().isoformat(),
@@ -1528,34 +1835,170 @@ class FinancialManagement:
         user_id: str,
         start_timestamp: Optional[float],
         end_timestamp: Optional[float],
-        deposit_types: Optional[List[str]],
-        region: Optional[str],
+        deposit_types: Optional[List[str]]
     ) -> Dict[str, Any]:
         filters = {"user_id": user_id, "deposit_status": ["COMPLETED", "PROCESSING"]}
         if start_timestamp and end_timestamp:
             filters["recorded_at"] = (start_timestamp, end_timestamp)
         if deposit_types:
             filters["deposit_type"] = deposit_types
-        if region:
-            filters["region"] = region
         return filters
 
     async def _build_order_filters(
         self,
         user_id: str,
-        start_timestamp: Optional[float],
-        end_timestamp: Optional[float],
-        order_types: Optional[List[str]],
-        region: Optional[str],
+        start_timestamp: Optional[float] = None,
+        end_timestamp:   Optional[float] = None,
+        order_types:     Optional[List[str]]  = None,
+        include_order_ids: bool               = False,
+        app_price:       Optional[str]         = "[0.01 +inf]",
+        sort_fields:     Optional[List[Dict[str, str]]] = None,
     ) -> Dict[str, Any]:
-        filters = {"user_id": user_id, "order_status": ["COMPLETED", "PROCESSING", "PENDING"]}
-        if start_timestamp and end_timestamp:
+        """
+        Construct the filters dict for RediSearch:
+          - user_id       (exact)
+          - order_status  (COMPLETED, PROCESSING, PENDING)
+          - recorded_at   (timestamp range)
+          - order_type    (list of types)
+          - order_amount     (price range)
+          - sort          (List[{"field":"PRICE"|"DATE","direction":"ASC"|"DESC"}])
+          - _return_ids   (internal flag)
+        """
+        filters: Dict[str, Any] = {
+            "user_id":      user_id,
+            "order_status": ["COMPLETED", "PROCESSING", "PENDING"],
+            "order_amount":    app_price,
+        }
+
+        # Date range filter
+        if start_timestamp is not None and end_timestamp is not None:
             filters["recorded_at"] = (start_timestamp, end_timestamp)
+
+        # Specific order types
         if order_types:
             filters["order_type"] = order_types
-        if region:
-            filters["region"] = region
+
+        # Multi‑field sort
+        if sort_fields:
+            valid_f = {"PRICE", "DATE"}
+            valid_o = {"ASC", "DESC"}
+            sorts: List[Dict[str, str]] = []
+            for sort in sort_fields:
+                f, o = sort["field"].upper(), sort["direction"].upper()
+                if f in valid_f and o in valid_o:
+                    sorts.append({"field": f, "direction": o})
+            if sorts:
+                filters["sort"] = sorts
+
+        # Internal: return raw IDs?
+        filters["_return_ids"] = include_order_ids
         return filters
+
+class CountryFlagUpdater:
+    def __init__(self, redis_client: Redis):
+        self.redis_client = redis_client
+
+    def convert_svg_to_png_upload(self, svg_url: str) -> str:
+        result = cloudinary.uploader.upload(svg_url, resource_type="image", overwrite=True)
+        return cloudinary.CloudinaryImage(result["public_id"]).build_url(format="png")
+
+    def emoji_to_country_code(self, flag_emoji: str) -> str:
+        return ''.join(chr(ord(c) - 127397) for c in flag_emoji).lower()
+
+    async def get_country_data(self, country_id: str = None) -> dict:
+        try:
+            whole_country_data = await self.redis_client.json().get('main_data:details:country_data') or {}
+            return whole_country_data.get(country_id, {}) if country_id else whole_country_data
+        except Exception as e:
+            print(f"Error fetching country data: {e}")
+            return {}
+
+    async def update_flag_urls(self):
+        country_data = await self.get_country_data()
+        for key, val in country_data.items():
+            flag_emoji = val.get("country_code")
+            if not flag_emoji:
+                continue
+            country_code = self.emoji_to_country_code(flag_emoji)
+            svg_url = f"https://hatscripts.github.io/circle-flags/flags/{country_code}.svg"
+            try:
+                png_url = self.convert_svg_to_png_upload(svg_url)
+                val["flag_url"] = png_url
+                await self.redis_client.json().set('main_data:details:country_data', f'.{key}.flag_url', png_url)
+                print(f"Updated country {key} with flag URL: {png_url}")
+            except Exception as e:
+                print(f"Error converting flag for country {key}: {e}")
+
+    async def load_mappings(
+        self,
+        is_country_return: bool = False,
+        is_app_return: bool = False
+    ) -> Union[Dict, Tuple[Dict, Dict]]:
+        try:
+            countries_dict = app_mapping = None
+
+            # Load only what is needed
+            if is_country_return:
+                countries_dict = await self.redis_client.json().get('main_data:details:country_data')
+                if not countries_dict:
+                    with open(os.path.join(os.path.dirname(__file__), '..', '..', 'file', 'country_code.json'), 'r', encoding='utf-8') as f:
+                        countries_list = json.load(f)
+                        countries_dict = {
+                            country["record_id"]: {
+                                "country_name": country["name"],
+                                "country_code": country["code"]
+                            }
+                            for country in countries_list
+                        }
+                        await self.redis_client.json().set('main_data:details:country_data', '$', countries_dict)
+                        await self.update_flag_urls()
+
+                country_mapping = {
+                    country_data["country_name"].lower(): int(key)
+                    for key, country_data in countries_dict.items()
+                }
+            else:
+                country_mapping = {}
+
+            if is_app_return:
+                app_mapping = await self.redis_client.json().get('main_data:service:app_data')
+                if not app_mapping:
+                    with open(os.path.join(os.path.dirname(__file__), "..", "..", "..", "file", "app_code.json"), 'r', encoding='utf-8') as f:
+                        app_mapping = json.load(f)
+                        await self.redis_client.json().set('main_data:service:app_data', '$', app_mapping)
+
+                reverse_map = {}
+                for app_name, details in app_mapping.items():
+                    codes = details.get("code")
+                    if isinstance(codes, list) and codes:
+                        reverse_map[app_name.lower().replace(" ", "")] = codes[0]
+                    elif isinstance(codes, str):
+                        reverse_map[app_name.lower().replace(" ", "")] = codes
+            else:
+                reverse_map = {}
+
+            # Return according to requested params
+            if is_country_return and is_app_return:
+                return country_mapping, reverse_map
+            elif is_country_return:
+                return country_mapping
+            elif is_app_return:
+                return reverse_map
+            else:
+                return {}, {}
+
+        except Exception as e:
+            logging.error(f"Error loading mappings: {e}")
+            if is_country_return and is_app_return:
+                return {}, {}
+            elif is_country_return:
+                return {}
+            elif is_app_return:
+                return {}
+            else:
+                return {}, {}
+
+
 
 # ---------------- Initialize Managers ----------------
 deposit_mgr = DepositManagement(redis_manager)
@@ -1579,12 +2022,13 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 
 class FiveSimManagement:
     BASE_URL = (
-        f"{FIVE_SIM_URL}/stubs/handler_api.php"
+        f"http://api1.5sim.net"
     )
 
     def __init__(self, max_concurrent_requests: int = 5):
         self.session: Optional[aiohttp.ClientSession] = None
         self.semaphore = asyncio.Semaphore(max_concurrent_requests)
+        self.selected_servers: Dict[str, Any] = {}
 
     async def __aenter__(self) -> "FiveSimManagement":
         self.session = aiohttp.ClientSession()
@@ -1594,52 +2038,287 @@ class FiveSimManagement:
         if self.session:
             await self.session.close()
 
-    async def fetch_json(self, url: str, retries: int = 1) -> Optional[Dict[str, Any]]:
-        if not self.session:
-            raise RuntimeError("Session not initialized. Use 'async with' context.")
+    def fetch_json(self, url: str, retries: int = 1) -> Optional[Dict[str, Any]]:
+        import requests
+        headers = {
+            "accept": "application/json",
+            "Authorization": "Bearer eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Nzk4NTc1ODEsImlhdCI6MTc0ODMyMTU4MSwicmF5IjoiNzJiOWYxNGY4NzhjNzQ2ZDkyZTZiMWFjYjZlMDQyYTIiLCJzdWIiOjE1NjUxNzB9.AIN-uJ2d9_f_7xfsTyDXLzKFsSKCaGRQfwyV_HV7rVDwzXLwkpET1foIQU0VnCYJRzqH3T_W7RQTHbscGEBLwLPkZoMs-JDxlcBa99N5bIa75crUqRzhgReHghVscnyMeSuNtAk6xbgLLffj_hKeQO_qERB_oqO20hkIHL7YOtpk400cSJnHzgIn5ZqCkw4xXuTV5YWQe7KB_L5FVjhOzwi7Tit-N-lt1t2iphieuBAW1MdLSXMMkPrP83q1shxSyufHF_GNIdbz5GYc6AqXnsbGIGgMzE7W-cI2-YUjz30D4yBjyxuLYSkNLweat3WjDhhKQi9pwtVIkbeLXK-Ymw"
+        }
+        timeout = 10
+        session = requests.Session()
         for attempt in range(1, retries + 1):
             try:
-                async with self.session.get(url) as response:
-                    if response.status != 200:
-                        retry_after = response.headers.get("Retry-After")
-                        wait_time = int(retry_after) if retry_after and retry_after.isdigit() else 1
-                        #logging.warning(f"Rate limited when accessing {url}. Waiting {wait_time} seconds (attempt {attempt}/{retries}).")
-                        await asyncio.sleep(wait_time)
-                        continue
-                    response.raise_for_status()
-                    text = await response.text()
-                    if not text.strip():
-                        #logging.error(f"Empty response from {url}")
-                        return None
-                    if text.strip() == "NO_NUMBERS":
-                        ##logging.warning(f"Received 'NO_NUMBERS' response from {url}")
-                        return {}
-                    if text.strip() == "BAD_COUNTRY":
-                        ##logging.warning(f"Received 'BAD_COUNTRY' response from {url}")
-                        return {}
-                    return json.loads(text)
-            except (aiohttp.ClientResponseError, aiohttp.ClientError, json.JSONDecodeError) as e:
+                response = session.get(url, headers=headers, timeout=timeout)
+                if response.status_code != 200:
+                    retry_after = response.headers.get("Retry-After")
+                    wait_time = int(retry_after) if retry_after and retry_after.isdigit() else 1
+                    logging.warning(
+                        f"Rate limited when accessing {url}. Waiting {wait_time} seconds (attempt {attempt}/{retries})."
+                    )
+                    time.sleep(wait_time)
+                    continue
+                response.raise_for_status()
+                return response.json()
+            except requests.RequestException as e:
                 logging.error(f"Error fetching {url}: {e}")
             except Exception as e:
                 logging.error(f"Unexpected error fetching {url}: {e}")
             if attempt < retries:
                 backoff = 2 ** (attempt - 1)
-                #logging.info(f"Retrying {url} in {backoff} seconds (attempt {attempt}/{retries})...")
-                await asyncio.sleep(backoff)
-        #logging.error(f"Failed to fetch JSON from {url} after {retries} attempts.")
+                time.sleep(backoff)
         return None
 
-    async def get_countries(self) -> Optional[Dict[str, Any]]:
-        url = f"{self.BASE_URL}?api_key={FIVE_SIM_API_KEY}&action=getCountries"
-        return await self.fetch_json(url)
+    async def get_app_code_from_mapping(self, app_name: str, app_mapping: Dict[str, str]) -> str:
+        """Retrieve the app code given an app name from the mapping."""
+        normalized_name = app_name.lower().replace(" ", "")  # Normalize input
+        if str(normalized_name) == str("other"):
+            normalized_name = "anyother"
+        return app_mapping.get(normalized_name, app_name)  # Return code or original input
 
-    async def get_prices(self, country_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    async def transform_json_structure(
+        self,
+        data: Dict[str, Any],
+        is_service_request: bool = False,
+        is_server_request: bool = False
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        """
+        Returns a tuple (selected_service, selected_servers), each possibly empty.
+        """
+        selected_service: Dict[str, Any] = {}
+        selected_servers: Dict[str, Any] = {}
+        
+        # if neither requested, just short‐circuit
+        if not (is_service_request or is_server_request):
+            return {}, {}
+
+        try:
+            # 1) load country codes
+            updater = CountryFlagUpdater(redis_manager.redis_client)
+            country_mapping = await updater.load_mappings(is_country_return=True)
+
+            # 2) fetch and invert products → app_mapping
+            loop = asyncio.get_event_loop()
+            products = await loop.run_in_executor(
+                None, self.fetch_json, "https://5sim.net/v1/user/list/products/old"
+            )
+            if products is None:
+                logging.error("Could not fetch products list")
+                return {}, {}
+            app_mapping = {v: k for k, v in products.items()}
+
+            # 3) main loop
+            for country_name, services in data.items():
+                if not isinstance(services, dict):
+                    logging.error(
+                        f"Skipping country '{country_name}': expected dict, got {type(services).__name__}"
+                    )
+                    continue
+
+                if country_name in ['status', 'msg']:
+                    continue
+
+                # look up the two‐letter country_code (or “none”)
+                country_code = country_mapping.get(country_name.lower(), "none")
+                if is_service_request:
+                    selected_service.setdefault(country_code, {})
+
+                for service_name, servers in services.items():
+                    service_code = app_mapping.get(service_name)
+                    if not service_code:
+                        logging.error(f"Invalid service key: {service_name!r}")
+                        continue
+                    if not isinstance(servers, dict):
+                        logging.error(
+                            f"Skipping service '{service_name}' in '{country_name}': expected dict, got {type(servers).__name__}"
+                        )
+                        continue
+
+                    # collect only servers with count > -1
+                    valid = []
+                    for srv_name, details in servers.items():
+                        if not isinstance(details, dict):
+                            continue
+                        cost = float(details.get("cost", 0))
+                        count = int(details.get("count", 0))
+                        if count > -1:
+                            valid.append((cost, count, srv_name))
+
+                    if not valid:
+                        logging.error(f"No valid servers for service {service_name!r}")
+                        continue
+
+                    # pick best‐value server
+                    avg_cost = sum(c for c, _, _ in valid) / len(valid)
+                    low_cost = [s for s in valid if s[0] < avg_cost]
+                    if low_cost:
+                        avg_count = sum(cnt for _, cnt, _ in low_cost) / len(low_cost)
+                        candidates = [s for s in low_cost if s[1] > avg_count]
+                    else:
+                        candidates = []
+
+                    best = max(
+                        candidates or valid,
+                        key=lambda x: x[1] / x[0] if x[0] else float("inf")
+                    )
+                    cost, count, srv_name = best
+
+                    if is_service_request:
+                        selected_service[country_code][service_code] = {
+                            f"{cost:.2f}": str(count)
+                        }
+                    if is_server_request:
+                        selected_servers[service_code] = srv_name
+
+            # *** always return the 2-tuple ***
+            return selected_service, selected_servers
+
+        except Exception as e:
+            logging.error(f"Error in transform_json_structure: {e}")
+            # still return the 2-tuple, even on failure
+            return {}, {}
+
+    async def get_prices(
+        self,
+        country_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Fetch price data and return only the `selected_service` mapping.
+        """
         async with self.semaphore:
-            if country_id:
-                url = f"{self.BASE_URL}?api_key={FIVE_SIM_API_KEY}&action=getPrices&country={country_id}"
-            else:
-                url = f"{self.BASE_URL}?api_key={SMS_HUB_API_KEY}&action=getPrices"
-            return await self.fetch_json(url)
+            remote_url = (
+                f"{self.BASE_URL}/stubs/handler_api.php?"
+                f"country={country_id or '22'}&api_key={FIVE_SIM_API_KEY}&action=getPrices"
+            )
+            data = await self.fetch_with_retry(remote_url, retries=2)
+            if data is None:
+                logging.error("get_prices: failed to fetch data")
+                return {}
+
+            # unpack the 2-tuple; we only care about services here
+            selected_service, _ = await self.transform_json_structure(
+                data,
+                is_service_request=True,
+                is_server_request=False
+            )
+            return selected_service
+
+    async def get_servers(
+        self,
+        country_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Fetch price data and return only the `selected_servers` mapping.
+        """
+        # if we've already loaded servers earlier, just return the cache
+        if hasattr(self, 'selected_servers') and self.selected_servers:
+            return self.selected_servers
+
+        async with self.semaphore:
+            remote_url = (
+                f"{self.BASE_URL}/stubs/handler_api.php?"
+                f"country={country_id or '22'}&api_key={FIVE_SIM_API_KEY}&action=getPrices"
+            )
+            data = await self.fetch_with_retry(remote_url, retries=2)
+            if data is None:
+                logging.error("get_servers: failed to fetch data")
+                return {}
+
+            # unpack the 2-tuple; we only care about servers here
+            _, selected_servers = await self.transform_json_structure(
+                data,
+                is_service_request=False,
+                is_server_request=True
+            )
+            self.selected_servers = selected_servers
+            return selected_servers
+
+    async def fetch_with_retry(self, url: str, retries: int = 1):
+        """
+        Fetch JSON from a URL with asynchronous retry logic.
+        Implements timeout handling, rate-limit checks, and exponential backoff.
+        """
+        timeout_duration = 20
+        async with aiohttp.ClientSession() as session:
+            for attempt in range(1, retries + 1):
+                timeout = aiohttp.ClientTimeout(total=timeout_duration)
+                try:
+                    async with session.get(url, timeout=timeout) as resp:
+                        if resp.status == 500:
+                            return 'NO_NUMBER'
+                        if resp.status != 200:
+                            retry_after = resp.headers.get("Retry-After")
+                            wait_time = int(retry_after) if retry_after and retry_after.isdigit() else 1
+                            logging.warning(
+                                f"Rate limited when accessing {url}. Waiting {wait_time} seconds (attempt {attempt}/{retries})."
+                            )
+                            await asyncio.sleep(wait_time)
+                            continue
+                        resp.raise_for_status()
+                        raw_response = await resp.text()
+                        return json.loads(raw_response)
+                except (aiohttp.ClientError, asyncio.TimeoutError, json.JSONDecodeError) as e:
+                    if retries == 0:
+                        logging.error(f"Failed to fetch JSON from {url}")
+                        return None
+                    logging.error(f"Error fetching {url}: {e}")
+                    if attempt < retries:
+                        backoff = 2 ** (attempt - 1)
+                        logging.info(f"Retrying {url} in {backoff} seconds (attempt {attempt}/{retries})...")
+                        await asyncio.sleep(backoff)
+                        timeout_duration *= 1.5
+                except Exception as e:
+                    if retries == 0:
+                        logging.error(f"Failed to fetch JSON from {url}")
+                        return None
+                    logging.error(f"Unexpected error fetching {url}: {e}")
+                    if attempt < retries:
+                        backoff = 2 ** (attempt - 1)
+                        logging.info(f"Retrying {url} in {backoff} seconds (attempt {attempt}/{retries})...")
+                        await asyncio.sleep(backoff)
+                        timeout_duration *= 1.5
+
+    async def get_countries(self) -> Optional[Dict[str, Any]]:
+        countries = {"0": "russia", "1": "ukraine", "2": "kazakhstan", "4": "philippines",
+                "6": "indonesia", "7": "malaysia", "8": "kenya", "9": "tanzania",
+                "10": "vietnam", "11": "kyrgyzstan", "12": "usa", "13": "israel", "14": "hongkong",
+                "15": "poland", "16": "england", "17": "madagascar", "18": "dcongo",
+                "19": "nigeria", "20": "macao", "21": "egypt", "22": "india",
+                "23": "ireland", "24": "cambodia", "25": "laos", "26": "haiti",
+                "27": "ivory", "28": "gambia", "29": "serbia", "31": "southafrica",
+                "32": "romania", "33": "colombia", "34": "estonia", "35": "azerbaijan",
+                "36": "canada", "37": "morocco", "38": "ghana", "39": "argentina",
+                "40": "uzbekistan", "41": "cameroon", "42": "chad", "43": "germany",
+                "44": "lithuania", "45": "croatia", "46": "sweden", "48": "netherlands",
+                "49": "latvia", "50": "austria", "51": "belarus", "52": "thailand",
+                "53": "saudiarabia", "54": "mexico", "55": "taiwan", "56": "spain",
+                "58": "algeria", "59": "slovenia", "60": "bangladesh", "61": "senegal",
+                "63": "czech", "64": "srilanka", "65": "peru", "66": "pakistan",
+                "67": "newzealand", "68": "guinea", "70": "venezuela", "71": "ethiopia",
+                "72": "mongolia", "73": "brazil", "74": "afghanistan", "75": "uganda",
+                "76": "angola", "77": "cyprus", "78": "france", "79": "papua",
+                "80": "mozambique", "81": "nepal", "82": "belgium", "83": "bulgaria",
+                "84": "hungary", "85": "moldova", "86": "italy", "87": "paraguay",
+                "88": "honduras", "89": "tunisia", "90": "nicaragua", "91": "timorleste",
+                "92": "bolivia", "93": "costarica", "94": "guatemala", "97": "puertorico",
+                "99": "togo", "100": "kuwait", "101": "salvador", "103": "jamaica",
+                "104": "trinidad", "105": "ecuador", "106": "swaziland", "107": "oman",
+                "108": "bosnia", "109": "dominican", "112": "panama", "114": "mauritania",
+                "115": "sierraleone", "116": "jordan", "117": "portugal", "118": "barbados",
+                "119": "burundi", "120": "benin", "123": "botswana", "128": "georgia",
+                "129": "greece", "130": "guineabissau", "131": "guyana", "134": "saintkitts",
+                "135": "liberia", "136": "lesotho", "137": "malawi", "138": "namibia",
+                "140": "rwanda", "141": "slovakia", "142": "suriname", "143": "tajikistan",
+                "145": "bahrain", "146": "reunion", "147": "zambia", "148": "armenia",
+                "152": "burkinafaso", "154": "gabon", "155": "albania", "156": "uruguay",
+                "157": "mauritius", "158": "bhutan", "159": "maldives", "160": "guadeloupe",
+                "161": "turkmenistan", "162": "frenchguiana", "163": "finland",
+                "164": "saintlucia", "165": "luxembourg", "166": "saintvincentgrenadines",
+                "167": "equatorialguinea", "168": "djibouti", "169": "antiguabarbuda",
+                "171": "montenegro", "172": "denmark", "173": "switzerland", "174": "norway",
+                "175": "australia", "179": "aruba", "183": "northmacedonia",
+                "184": "seychelles", "185": "newcaledonia", "186": "capeverde",
+                "201": "gibraltar"}
+        return countries
 
     async def fetch_all_data(self) -> Dict[str, Any]:
         countries_data = await self.get_countries()
@@ -1648,13 +2327,18 @@ class FiveSimManagement:
             return {}
         tasks = [self.get_prices(country_id) for country_id in countries_data.keys()]
         prices_results = await asyncio.gather(*tasks)
-        combined_data = {}
-        for country_id, prices in zip(countries_data.keys(), prices_results):
-            if isinstance(prices, dict):
-                combined_data[country_id] = prices.get(country_id, {})
-            else:
-                logging.warning(f"Ignoring country '{country_id}' due to invalid response: {prices}")
-        return combined_data
+        return {
+        k: {
+            kk: {
+                sk: int(sv) if isinstance(sv, str) and sv.isdigit() else sv
+                for sk, sv in vv.items()
+            }
+            for kk, vv in v.items()
+        }
+        for d in prices_results
+        for k, v in d.items()
+    }
+
 
     @staticmethod
     def select_best_service(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -1663,11 +2347,13 @@ class FiveSimManagement:
                 if isinstance(details, dict) and details:
                     cost_str, count = next(iter(details.items()))
                     try:
-                        cost = float(cost_str)
+                        cost = float(cost_str) * float(FIVE_SIM_TAX)
                     except ValueError:
                         cost = 0.0
                     services[service] = {f"{cost:.2f}": str(count)}
         return data
+
+
 class FastSmsManagement:
     BASE_URL = "https://fastsms.su/stubs/handler_api.php"
 
@@ -1840,7 +2526,6 @@ class SmsHubManagement:
                 combined_data[country_id] = prices.get(country_id, {})
             else:
                 logging.warning(f"Ignoring country '{country_id}' due to invalid response: {prices}")
-
         return combined_data
 
     @staticmethod
@@ -1943,9 +2628,12 @@ class GrizzlySmsManagement:
         """
         Reformats each service's data to mirror the structure from class GrizzlySmsManagement.
         """
+        list = {'gr_sx': 'six'}
         for country_id, services in data.items():
             for service, details in services.items():
-                cost = details.get("cost", 0)
+                if service in list:
+                    service = list[service]
+                cost = round(float(details.get("cost", 0)) * float(GRIZZLY_SMS_TAX), 4)
                 count = details.get("count", 0)
                 services[service] = {f"{cost:.4f}": str(count)}
         return data
@@ -2027,7 +2715,7 @@ class SmsBowerManagement:
         """
         for country_id, services in data.items():
             for service, details in services.items():
-                cost = details.get("cost", 0)
+                cost = round(float(details.get("cost", 0)) * float(SMS_BOWER_TAX), 4)
                 count = details.get("count", 0)
                 services[service] = {f"{cost:.4f}": str(count)}
         return data
@@ -2205,7 +2893,6 @@ class TigerSmsManagement:
                 count = details.get("count", 0)
                 services[service] = {f"{cost:.4f}": str(count)}
         return data
-
 class SmsActivateManagement:
     SMSACTIVATE_BASE_URL = "https://api.sms-activate.ae/stubs/handler_api.php"  # Assuming similar endpoint structure
 

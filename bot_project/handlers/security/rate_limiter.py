@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import logging
 from typing import Dict, Optional, Tuple
+from utils.config import CACHE_KEY
 from redis.asyncio import Redis
 import json
 
@@ -23,7 +24,7 @@ class RateLimiter:
         """
         try:
             now = datetime.now().timestamp()
-            rate_key = f"{ratelimit}:{user_id}:{key}" if user_id else f"{ratelimit}:{key}"
+            rate_key = f"{CACHE_KEY}{ratelimit}:{user_id}:{key}" if user_id else f"{CACHE_KEY}{ratelimit}:{key}"
             
             current = await self.redis.get(rate_key)
             if not current:

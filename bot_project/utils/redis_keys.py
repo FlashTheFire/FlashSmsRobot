@@ -16,7 +16,6 @@ class RedisKeys:
     user_image_key   = '{user_data}:image:{image_type}'      # user_data:12345678:image:main
     user_refund_key  = '{user_data}:refund:{refund_type}'    # user_data:12345678:refund:main
     user_history_key = '{user_data}:history:{history_type}'  # user_data:12345678:history:main
-    user_order_key   = '{user_data}:order:{order_id}'        # user_data:12345678:order:order123
     user_payment_key = '{user_data}:payment:{payment_id}'    # user_data:12345678:payment:payment123
 
     # Order-Data keys

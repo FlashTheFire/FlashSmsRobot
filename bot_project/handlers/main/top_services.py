@@ -188,11 +188,10 @@ class TopServiceManager:
         bg_img.paste(rounded_icon, (bar_start_x - 5, current_y + 1), rounded_icon)
 
         # Draw text
-        if len(label) > 8:
-            words = label.split()
-            label = ' '.join(words[:-1]) + '.' if len(words) > 1 else words[0]
+        label = label[:7] + '.' if len(label) > 7 else label
+
         draw.text((bar_start_x - 210, current_y), label, font=font_labels, fill=(255, 255, 255))
-        draw.text((bar_start_x + bar_width + 20, current_y + 2), str(server_id), font=font_labels, fill=(255, 99, 99))
+        draw.text((bar_start_x + bar_width + 20, current_y + 2), str(f's-{server_id}'), font=font_labels, fill=(255, 99, 99))
 
     async def _create_service_keyboard(self, leaderboard_data: list, page: int = 0, items_per_page: int = 12) -> InlineKeyboardMarkup:
         """
@@ -544,7 +543,12 @@ class TopServiceManager:
             #logger.info("TopServiceManager managers initialized successfully")
             
             # Start background update task
-            self._update_task = asyncio.create_task(self._auto_update_leaderboard())
+            try:
+                self._update_task = asyncio.create_task(self._auto_update_leaderboard())
+            except asyncio.CancelledError:
+                print("Automatic leaderboard update task cancelled")
+            except Exception as e:
+                print(f"Error starting automatic leaderboard update task: {e}")
             #logger.info("Started automatic leaderboard update task")
             
             return True
@@ -604,7 +608,7 @@ class TopServiceManager:
                     "server_id": server_id,
                     "app_id": app_id,
                     "country_id": country_id,
-                    "logo_url": f"https://udayscripts.in/image/service/{service_code}.png",
+                    "logo_url": f"https://smsactivate.s3.eu-central-1.amazonaws.com/assets/ico/{service_code}0.webp",
                     "country_url": flag_url,
                     "purchased": 1
                 }

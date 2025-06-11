@@ -1,314 +1,1204 @@
-import asyncio
-import json
-import logging
+# File: api/sms_api.py
+import os
 import time
-from pathlib import Path
-from functools import wraps
-from datetime import datetime, timedelta
-from typing import Optional, Tuple, Dict
-
+import json
+import redis
+import logging
+from typing import Dict, Optional, Tuple, List, Any, Union
+from utils.redis_manager import redis_manager, RedisManager
+from redis.exceptions import RedisError
+from utils.config import COMMISSION
+from typing import Optional, Dict, Any
+from redis.exceptions import RedisError
+import logging
 from aiohttp import web
-import aiohttp
+import redis.asyncio as aioredis  # Ensure redis-py >= 4.2 is installed
+from utils.functions import create_keyboard, convert_points, get_tg_profile_photo
+from utils.redis_manager import redis_manager, RedisManager
+from handlers.manager.operation import FinancialManagement, UserManagement, OrderManagement, financial_mgr, order_mgr
+from handlers.methods.purchase.made_purchase import purchase_manager
+from utils.config import LOADING_GIF
+from telebot.async_telebot import AsyncTeleBot
+from typing import Optional, Dict, Any
+import json
+import time
 import aiofiles
-import redis.asyncio as redis
+from redis import Redis
+from redis.asyncio import Redis as AsyncRedis
+import asyncio
+from functools import partial
+from utils.redis_keys import RedisKeys
+from handlers.security import RateLimiter, InputValidator, TransactionGuard
+from handlers.methods.purchase.order_status import purchase_status
+from handlers.manager.operation import order_mgr, user_mgr
 
-from utils.redis_manager import redis_manager
-from handlers.main.inline_query import search_manager
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# ─────────────────────────────────────────────────────────────────────────────
+# Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+DEFAULT_RATE_LIMIT  = int(os.getenv("DEFAULT_RATE_LIMIT", 60))
+DEFAULT_RATE_WINDOW = int(os.getenv("DEFAULT_RATE_WINDOW", 60))
+CACHE_TTL           = int(os.getenv("CACHE_TTL", 60))
+DEBUG_MODE          = True
 
-# Redis configuration
-REDIS_URL = "redis://localhost:6379"
-RATE_LIMIT_KEY_PREFIX = "rate_limit:"
-DEFAULT_RATE_LIMIT = 100  # requests per minute
 
+# V1 base URL (legacy)
+V1_BASE_PATH        = "/stubs/handler_api.php"
+# V2 base URL prefix
+V2_PREFIX           = "/v1"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Logging Setup
+# ─────────────────────────────────────────────────────────────────────────────
+logger = logging.getLogger("combined_api")
+logger.setLevel(logging.DEBUG if DEBUG_MODE else logging.INFO)
+_stream_handler = logging.StreamHandler()
+_stream_handler.setFormatter(
+    logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+)
+logger.addHandler(_stream_handler)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Globals (set during init_app)
+# ─────────────────────────────────────────────────────────────────────────────
+redis_client: Optional[redis.Redis] = None
+rate_limiter: Optional["RateLimiter"] = None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Rate Limiter Definition
+# ─────────────────────────────────────────────────────────────────────────────
 class RateLimiter:
-    """Rate limiter using Redis."""
-    def __init__(self, redis_client: redis.Redis, limit: int = DEFAULT_RATE_LIMIT, window: int = 60):
+    """
+    Simple sliding‐window rate limiter using Redis sorted sets.
+
+    Each request is timestamped in a ZSET, and we remove entries older than
+    `window` seconds. If the count exceeds `limit`, we return (True, 0, retry_after).
+    Otherwise, we return (False, remaining_quota, 0).
+    """
+    def __init__(self, redis_client: redis.Redis):
         self.redis = redis_client
-        self.limit = limit
-        self.window = window
 
-    async def is_rate_limited(self, key: str) -> bool:
+    async def is_limited(
+        self, client_key: str, limit: int, window: int
+    ) -> Tuple[bool, int, int]:
         now = int(time.time())
-        window_start = now - self.window
-        async with self.redis.pipeline() as pipe:
-            await pipe.zremrangebyscore(key, 0, window_start)
-            await pipe.zcard(key)
-            await pipe.zadd(key, {str(now): now})
-            await pipe.expire(key, self.window)
-            result = await pipe.execute()
-            # result[1] holds the count after zcard
-            current_count = result[1]
-            return current_count > self.limit
-
-
-def setup_redis() -> redis.Redis:
-    """Setup Redis connection."""
-    return redis.from_url(REDIS_URL, decode_responses=True)
-
-def with_rate_limit(limit: int = DEFAULT_RATE_LIMIT, window: int = 60):
-    """Decorator for rate limiting."""
-    def decorator(handler):
-        @wraps(handler)
-        async def wrapper(request: web.Request) -> web.Response:
-            redis_client = request.app.get('redis')
-            if not redis_client:
-                return await handler(request)
-            # Use the remote IP as the rate limit key identifier
-            client_ip = request.remote or "anonymous"
-            key = f"{RATE_LIMIT_KEY_PREFIX}{client_ip}"
-            limiter = RateLimiter(redis_client, limit, window)
-            if await limiter.is_rate_limited(key):
-                return web.Response(status=429, text="Too Many Requests")
-            return await handler(request)
-        return wrapper
-    return decorator
-
-async def load_mappings() -> Tuple[Dict, Dict]:
-    """
-    Asynchronously load the mappings:
-      - Get the app mapping from Redis.
-      - Load the country mapping from a JSON file.
-    """
-    try:
-        redis_client = await redis_manager.get_client()
-        country_mapping = await redis_client.json().get('main_data:service:country_code')
-        app_mapping = await redis_client.json().get('main_data:service:app_data')
-
-        #logging.info("Mappings loaded successfully")
-
-        reverse_map = {}
-
-        for app_name, details in app_mapping.items():
-            codes = details.get("code")
-            if isinstance(codes, list) and codes:  # If list & not empty, use first element
-                reverse_map[app_name.lower().replace(" ", "")] = codes[0]
-            elif isinstance(codes, str):  # If single code
-                reverse_map[app_name.lower().replace(" ", "")] = codes
-
-        return country_mapping, reverse_map
-
-    except Exception as e:
-        logging.error(f"Error loading mappings: {e}")
-        return {}, {}
-
-def get_app_code_from_mapping(app_name: str, app_mapping: Dict[str, str]) -> str:
-    """Retrieve the app code given an app name from the mapping."""
-    normalized_name = app_name.lower().replace(" ", "")  # Normalize input
-    return app_mapping.get(normalized_name, app_name)  # Return code or original input
-
-
-async def transform_json_structure(data: dict):
-    """
-    Transforms the input JSON structure into the desired format.
-    For each country, maps country names to codes, processes each service,
-    and selects the best server based on cost and count.
-    """
-    transformed = {}
-    selected_servers = {}
-    unvalid_servers = []
-
-    country_mapping, app_mapping = await load_mappings()
-    for country, services in data.items():
-        if not isinstance(services, dict):
-            logging.error(f"Skipping country '{country}': expected dict but got {type(services).__name__}")
-            continue
-
+        window_start = now - window
+        redis_key = f"cache_data:rate_limit:api_key:{client_key}"
         try:
-            country_code = country_mapping.get(country.lower(), "none")
-            if country_code not in transformed:
-                transformed[country_code] = {}
-
-            for service, servers in services.items():
-                service_code = get_app_code_from_mapping(service, app_mapping)
-                if not service_code:
-                    logging.error(f"Invalid service: {service}")
-                    continue
-
-                if not isinstance(servers, dict):
-                    logging.error(f"Skipping service '{service}' in country '{country}': expected dict but got {type(servers).__name__}")
-                    continue
-
-                valid_servers = [
-                    (float(details.get("cost", 0)), int(details.get("count", 0)), server_name)
-                    for server_name, details in servers.items()
-                    if isinstance(details, dict) and int(details.get("count", 0)) > -1
-                ]
-
-                if not valid_servers:
-                    logging.error(f"No valid servers found for service: {service}")
-                    continue
-
-                avg_cost = sum(cost for cost, _, _ in valid_servers) / len(valid_servers)
-                low_cost_servers = [s for s in valid_servers if s[0] < avg_cost]
-
-                if low_cost_servers:
-                    avg_count = sum(count for _, count, _ in low_cost_servers) / len(low_cost_servers)
-                    candidates = [s for s in low_cost_servers if s[1] > avg_count]
+            async with self.redis.pipeline() as pipe:
+                pipe.zremrangebyscore(redis_key, 0, window_start)
+                pipe.zcard(redis_key)
+                pipe.zadd(redis_key, {str(now): now})
+                pipe.expire(redis_key, window)
+                result = await pipe.execute()
+            current_count = result[1]
+            if current_count > limit:
+                oldest = await self.redis.zrange(redis_key, 0, 0, withscores=True)
+                if oldest:
+                    oldest_ts = int(oldest[0][1])
+                    retry_after = max(0, window - (now - oldest_ts))
                 else:
-                    candidates = []
+                    retry_after = window
+                return True, 0, retry_after
+            remaining = limit - current_count
+            return False, remaining, 0
+        except redis.RedisError as e:
+            logger.warning(f"Redis error in RateLimiter: {e}")
+            return False, limit, 0
 
-                best = max(candidates or valid_servers, key=lambda s: s[1] / s[0] if s[0] != 0 else float('inf'))
-                cost, count, server_name = best
-                transformed[country_code][service_code] = {f"{cost:.2f}": str(count)}
-                selected_servers[service_code] = server_name
 
-        except Exception as e:
-            logging.error(f"Error processing country '{country}': {e}")
-            continue
+# ─────────────────────────────────────────────────────────────────────────────
+# CombinedAPI: holds all route handlers
+# ─────────────────────────────────────────────────────────────────────────────
+class CombinedAPI:
+    def __init__(self, redis_client: redis.Redis = None, rate_limiter: "RateLimiter" = None, bot: AsyncTeleBot = None):
+        if redis_client is not None:
+            self.redis_client = redis_client
+        if rate_limiter is not None:
+            self.rate_limiter = rate_limiter
+        self.bot: Optional[AsyncTeleBot] = None
+        self.service_index = os.getenv("SERVICE_INDEX", "service_index")
+        self.order_index = os.getenv("ORDER_INDEX", "order_index")
+        self.H_API_KEYS = "secure_data:user_data:api_keys"
+        self.H_USER_KEYS = "secure_data:user_data:user_keys"
 
-    #logging.info("Unselected Servers:")
-    #logging.info(unvalid_servers)
-    return transformed, selected_servers
+        self.user_aggregator: Optional[FinancialManagement] = financial_mgr
 
-async def fetch_with_retry(url: str, retries: int = 1):
-    """
-    Fetch JSON from a URL with asynchronous retry logic.
-    Implements timeout handling, rate-limit checks, and exponential backoff.
-    """
-    timeout_duration = 20
-    async with aiohttp.ClientSession() as session:
-        for attempt in range(1, retries + 1):
-            timeout = aiohttp.ClientTimeout(total=timeout_duration)
+    async def enrich_user(self, user_id: Dict) -> Dict:
+        """
+        Given a user dict (must include 'id'), enriches it with:
+            - total_orders_success
+            - total_orders_cancel
+            - total_orders
+            - rating_out_of_10
+        Uses RediSearch to fetch counts via FT.AGGREGATE.
+        """
+
+        async def count(user_id: str, statuses: str, amount: str = None) -> int:
             try:
-                async with session.get(url, timeout=timeout) as resp:
-                    if resp.status == 500:
-                        return 'NO_NUMBER'
-                    if resp.status != 200:
-                        retry_after = resp.headers.get("Retry-After")
-                        wait_time = int(retry_after) if retry_after and retry_after.isdigit() else 1
-                        logging.warning(
-                            f"Rate limited when accessing {url}. Waiting {wait_time} seconds (attempt {attempt}/{retries})."
-                        )
-                        await asyncio.sleep(wait_time)
-                        continue
-                    resp.raise_for_status()
-                    raw_response = await resp.text()
-                    return json.loads(raw_response)
-            except (aiohttp.ClientError, asyncio.TimeoutError, json.JSONDecodeError) as e:
-                logging.error(f"Error fetching {url}: {e}")
-                if attempt < retries:
-                    backoff = 2 ** (attempt - 1)
-                    logging.info(f"Retrying {url} in {backoff} seconds (attempt {attempt}/{retries})...")
-                    await asyncio.sleep(backoff)
-                    timeout_duration *= 1.5
+                cmd = [
+                    "FT.AGGREGATE", self.order_index,
+                    f"@user_id:{user_id} @order_status:({statuses})",
+                    "GROUPBY", "0",
+                ]
+                if amount:
+                    cmd.extend(["REDUCE", "SUM", "1", f"@{amount}", "AS", "Total"])
                 else:
-                    logging.error(f"Failed to fetch JSON from {url} after {retries} attempts.")
-                    return None
+                    cmd.extend(["REDUCE", "COUNT", "0", "AS", "count"])
+                raw = await self.redis_client.execute_command(*cmd)
+                return int(raw[1][1]) if raw and len(raw) > 1 else 0
             except Exception as e:
-                logging.error(f"Unexpected error fetching {url}: {e}")
-                if attempt < retries:
-                    backoff = 2 ** (attempt - 1)
-                    logging.info(f"Retrying {url} in {backoff} seconds (attempt {attempt}/{retries})...")
-                    await asyncio.sleep(backoff)
-                    timeout_duration *= 1.5
-                else:
-                    logging.error(f"Failed to fetch JSON from {url} after {retries} attempts.")
-                    return None
+                logger.warning(f"Redis count error for {statuses} (user {user_id}): {e}")
+                return 0
 
-@with_rate_limit()
-async def handle_api_request(request: web.Request):
-    """Handle API requests for SMS services with rate limiting and caching."""
-    try:
-        action = request.query.get('action')
-        if not action:
-            raise web.HTTPBadRequest(text=json.dumps({"error": "Missing action parameter"}))
+        uid = str(user_id)
+        total_success = await count(uid, "PROCESSING|COMPLETED")
+        total_cancel = await count(uid, "CANCELLED")
+        total_orders = await count(uid, "PENDING|PROCESSING|CANCELLED|COMPLETED")
+        total_pending = await count(uid, "PENDING", '@order_amount')
 
-        if action not in ['getPrices', 'getServer', 'getCountries']:
-            return web.json_response(
-                {"error": "Invalid action. Must be 'getPrices', 'getServer', or 'getCountries'."},
-                status=400
+        rating = round((2 * (total_success) / total_orders) * 10, 1) if total_orders > 0 else 0.0
+
+        return {
+            "total_orders_success": total_success,
+            "total_orders_cancel": total_cancel,
+            "total_orders": total_orders,
+            "total_pending": total_pending,
+            "rating_out_of_10": rating,
+        }
+
+
+    async def app_data_prices(
+        self,
+        country_id: Optional[int] = None,
+        app_id: Optional[int] = None,
+        server_id: Optional[int] = None,
+        api_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        def fld(val, id_field, name_field):
+            if not val:
+                return None
+            return (
+                f"@{id_field}:{val}"
+                if val.isnumeric()
+                else f"@{name_field}:(%%{val}%%|{val}*|{val})"
             )
 
-
-        if action == 'getCountries':
-            # Provide a simple countries list
-            countries = {"0": "russia", "1": "ukraine", "2": "kazakhstan", "4": "philippines",
-                "6": "indonesia", "7": "malaysia", "8": "kenya", "9": "tanzania",
-                "10": "vietnam", "11": "kyrgyzstan", "13": "israel", "14": "hongkong",
-                "15": "poland", "16": "england", "17": "madagascar", "18": "dcongo",
-                "19": "nigeria", "20": "macao", "21": "egypt", "22": "india",
-                "23": "ireland", "24": "cambodia", "25": "laos", "26": "haiti",
-                "27": "ivory", "28": "gambia", "29": "serbia", "31": "southafrica",
-                "32": "romania", "33": "colombia", "34": "estonia", "35": "azerbaijan",
-                "36": "canada", "37": "morocco", "38": "ghana", "39": "argentina",
-                "40": "uzbekistan", "41": "cameroon", "42": "chad", "43": "germany",
-                "44": "lithuania", "45": "croatia", "46": "sweden", "48": "netherlands",
-                "49": "latvia", "50": "austria", "51": "belarus", "52": "thailand",
-                "53": "saudiarabia", "54": "mexico", "55": "taiwan", "56": "spain",
-                "58": "algeria", "59": "slovenia", "60": "bangladesh", "61": "senegal",
-                "63": "czech", "64": "srilanka", "65": "peru", "66": "pakistan",
-                "67": "newzealand", "68": "guinea", "70": "venezuela", "71": "ethiopia",
-                "72": "mongolia", "73": "brazil", "74": "afghanistan", "75": "uganda",
-                "76": "angola", "77": "cyprus", "78": "france", "79": "papua",
-                "80": "mozambique", "81": "nepal", "82": "belgium", "83": "bulgaria",
-                "84": "hungary", "85": "moldova", "86": "italy", "87": "paraguay",
-                "88": "honduras", "89": "tunisia", "90": "nicaragua", "91": "timorleste",
-                "92": "bolivia", "93": "costarica", "94": "guatemala", "97": "puertorico",
-                "99": "togo", "100": "kuwait", "101": "salvador", "103": "jamaica",
-                "104": "trinidad", "105": "ecuador", "106": "swaziland", "107": "oman",
-                "108": "bosnia", "109": "dominican", "112": "panama", "114": "mauritania",
-                "115": "sierraleone", "116": "jordan", "117": "portugal", "118": "barbados",
-                "119": "burundi", "120": "benin", "123": "botswana", "128": "georgia",
-                "129": "greece", "130": "guineabissau", "131": "guyana", "134": "saintkitts",
-                "135": "liberia", "136": "lesotho", "137": "malawi", "138": "namibia",
-                "140": "rwanda", "141": "slovakia", "142": "suriname", "143": "tajikistan",
-                "145": "bahrain", "146": "reunion", "147": "zambia", "148": "armenia",
-                "152": "burkinafaso", "154": "gabon", "155": "albania", "156": "uruguay",
-                "157": "mauritius", "158": "bhutan", "159": "maldives", "160": "guadeloupe",
-                "161": "turkmenistan", "162": "frenchguiana", "163": "finland",
-                "164": "saintlucia", "165": "luxembourg", "166": "saintvincentgrenadines",
-                "167": "equatorialguinea", "168": "djibouti", "169": "antiguabarbuda",
-                "171": "montenegro", "172": "denmark", "173": "switzerland", "174": "norway",
-                "175": "australia", "179": "aruba", "183": "northmacedonia",
-                "184": "seychelles", "185": "newcaledonia", "186": "capeverde",
-                "201": "gibraltar"}
-            return web.json_response(countries, status=200)
-
-
-        country_param = request.query.get('country', '22')
-        remote_url = (
-            f"http://api1.5sim.net/stubs/handler_api.php?"
-            f"country={country_param}&api_key=d74c46dd007f4940bd37af35b8f39b64&action=getPrices"
+        parts = filter(
+            None,
+            [
+                fld(country_id, "country_id", "country_name"),
+                fld(app_id,     "app_id",     "app_name"),
+                f"@server_id:{server_id}" if server_id else None,
+                "@app_price:[0.01 +inf]",
+            ],
         )
+        q =  " ".join(parts) or "*"
 
-        data = await fetch_with_retry(remote_url)
-        if data is None:
-            return web.json_response({"error": "Failed to fetch data from remote API"}, status=500)
+        cmd = [
+            "FT.AGGREGATE",
+            self.service_index,
+            q,
+            "GROUPBY", "4", "@country_id", "@app_id", "@app_price", "@server_id",
+            "REDUCE", "SUM", "1", "@app_count", "AS", "total_count",
+        ]
 
-        if isinstance(data, dict) and "status" in data and "msg" in data:
-            return web.json_response({"error": data.get("msg", "Unknown error from API")}, status=500)
+        try:
+            resp = await self.redis_client.execute_command(*cmd)
+        except RedisError as e:
+            logger.exception("Aggregation failed: %s", e)
+            raise RuntimeError(f"Redis aggregation error: {e}")
+        if not isinstance(resp, list) or len(resp) < 2:
+            return {}
 
-        # Retrieve mappings from app state
-        
+        if api_id == 1:
+            raw_data_1: Dict[str, Dict[str, Dict[str, int]]] = {}
+            for row in resp[1:]:
+                if not isinstance(row, list) or len(row) % 2 != 0:
+                    raise ValueError(f"Malformed row: {row}")
+                rd = {row[i]: row[i + 1] for i in range(0, len(row), 2)}
+                cid = rd.get("country_id")
+                aid = rd.get("app_id")
+                price = rd.get("app_price")
+                count = rd.get("total_count")
+                if None in (cid, aid, price, count):
+                    continue
+                try:
+                    price_str = f"{float(price) * float(COMMISSION):.2f}"
+                    total = int(count)
+                except ValueError:
+                    continue
+                raw_data_1.setdefault(cid, {}).setdefault(aid, {})[price_str] = total
+            sorted_data_1: Dict[str, Dict[str, Dict[str, int]]] = {}
+            for cid_key in sorted(raw_data_1.keys(), key=lambda x: int(x)):
+                sorted_data_1[cid_key] = {}
+                for aid_key in sorted(raw_data_1[cid_key].keys(), key=lambda x: int(x)):
+                    sorted_data_1[cid_key][aid_key] = dict(
+                        sorted(
+                            raw_data_1[cid_key][aid_key].items(),
+                            key=lambda item: float(item[0]),
+                        )
+                    )
+            return sorted_data_1
 
-        transformed_data, selected_servers = await transform_json_structure(data)
-        if action == 'getPrices':
-            return web.json_response(transformed_data)
+        elif api_id == 2:
+            temp_data_2: Dict[str, Dict[str, Dict[str, Dict[str, Union[float, int]]]]] = {}
+            for row in resp[1:]:
+                if not isinstance(row, list) or len(row) % 2 != 0:
+                    return {}
+                rd = {row[i]: row[i + 1] for i in range(0, len(row), 2)}
+                cid = rd.get("country_id")
+                aid = rd.get("app_id")
+                price = rd.get("app_price")
+                cnt = rd.get("total_count")
+                srv = rd.get("server_id")
+                if None in (cid, aid, price, cnt, srv):
+                    continue
+                try:
+                    price_val = round(float(price) * float(COMMISSION), 2)
+                    stock_val = int(cnt)
+                    server_val = int(srv)
+                except ValueError:
+                    continue
+                temp_data_2.setdefault(str(cid), {}).setdefault(str(aid), {})[str(server_val)] = {
+                    "cost": price_val,
+                    "count": stock_val
+                }
+            if country_id is not None:
+                cid_str = str(country_id)
+                return temp_data_2.get(cid_str, {str(country_id): {}})
+            else:
+                return temp_data_2
         else:
-            return web.json_response(selected_servers)
+            return await self.app_data_prices(country_id, app_id, server_id, api_id=1)
+    async def app_data_stock(
+        self,
+        country_id: Optional[int] = None,
+        app_id: Optional[int] = None,
+        server_id: Optional[int] = None,
+        min_stock: int = 0,
+        api_id: int = None
+    ) -> Dict[str, Any]:
+        query = " ".join(
+            filter(None, [
+                f"@country_id:{country_id}" if country_id is not None else None,
+                f"@app_id:{app_id}" if app_id is not None else None,
+                f"@server_id:{server_id}" if server_id is not None else None,
+                f"@app_count:[{min_stock} +inf]"
+            ])
+        ) or "*"
 
-    except web.HTTPException:
-        raise
-    except Exception as e:
-        logging.error(f"API request error: {str(e)}")
-        return web.Response(
-            status=500,
-            text=json.dumps({"error": "Internal server error"}),
+        cmd = [
+            "FT.AGGREGATE",
+            self.service_index,
+            query,
+            "GROUPBY",
+            "3",
+            "@country_id",
+            "@app_id",
+            "@server_id",
+            "REDUCE",
+            "SUM",
+            "1",
+            "@app_count",
+            "AS",
+            "total_stock"
+        ]
+
+        try:
+            resp = await self.redis_client.execute_command(*cmd)
+        except RedisError as e:
+            logger.exception("Stock aggregation failed: %s", e)
+            raise RuntimeError(f"Redis aggregation error: {e}")
+
+        if not isinstance(resp, list) or len(resp) < 2:
+            return {}
+
+        if api_id == 1:
+            flat_result: Dict[str, int] = {}
+            for row in resp[1:]:
+                if not isinstance(row, list) or len(row) % 2 != 0:
+                    continue
+                try:
+                    rd = {row[i]: row[i + 1] for i in range(0, len(row), 2)}
+                    aid = rd.get("app_id")
+                    sid = rd.get("server_id")
+                    stock = int(rd.get("total_stock", 0))
+                    if None in (aid, sid):
+                        continue
+                    key = f"{aid}_{sid}"
+                    flat_result[key] = stock
+                except (ValueError, TypeError):
+                    continue
+            return flat_result
+
+        elif api_id == 2:
+            countries_list = []
+            temp_data: Dict[str, Dict[str, list]] = {}
+
+            for row in resp[1:]:
+                if not isinstance(row, list) or len(row) % 2 != 0:
+                    continue
+                try:
+                    rd = {row[i]: row[i + 1] for i in range(0, len(row), 2)}
+                    cid = rd.get("country_id")
+                    aid = rd.get("app_id")
+                    sid = rd.get("server_id")
+                    stock = int(rd.get("total_stock", 0))
+                    if None in (cid, aid, sid):
+                        continue
+                    cid_str = str(cid)
+                    aid_str = str(aid)
+                    sid_str = str(sid)
+                    temp_data.setdefault(cid_str, {}).setdefault(aid_str, [])
+                    temp_data[cid_str][aid_str].append({
+                        "server_id": sid_str,
+                        "stock": stock
+                    })
+                except (ValueError, TypeError):
+                    continue
+            for cid, apps in temp_data.items():
+                country_obj = {
+                    "country_id": cid,
+                    "applications": []
+                }
+                for aid, servers in apps.items():
+                    app_obj = {
+                        "app_id": aid,
+                        "servers": servers
+                    }
+                    country_obj["applications"].append(app_obj)
+                countries_list.append(country_obj)
+            return {"countries": countries_list}
+        else:
+            return await self.app_data_stock(country_id, app_id, server_id, min_stock, api_id=1)
+
+
+    async def services_data(self, api_id: int = 1):
+        try:
+            data = await self.redis_client.json().get('main_data:service:app_data')
+        except RedisError as e:
+            logger.exception("Aggregation failed: %s", e)
+            raise RuntimeError(f"Redis aggregation error: {e}")
+        
+        if data is None:
+            return {}
+
+        if api_id == 1:
+            output = {
+                "services": [
+                    {
+                        "id": int(v["app_id"]),
+                        "name": k
+                    }
+                    for k, v in data.items()
+                ],
+                "status": "success"
+            }
+            return output
+        elif api_id == 2:
+            output = {
+                "status": "success",
+                "result": {
+                    "service_list": [
+                        {
+                            "service_id": int(v.get("app_id", "")),
+                            "service_name": k
+                        }
+                        for k, v in data.items()
+                    ],
+                    "total_services": len(data)
+                }
+            }
+            return output
+        else:
+            return await self.services_data(api_id=1)
+    async def countries_data(self, api_id: int = 1):
+        try:
+            data = await self.redis_client.json().get('main_data:details:country_data')
+        except RedisError as e:
+            logger.exception("Aggregation failed: %s", e)
+            raise RuntimeError(f"Redis aggregation error: {e}")
+        
+        if data is None:
+            return {}
+
+        if api_id == 1:
+            cleaned_output = {
+                str(k): {
+                    "id": int(k),
+                    "name": v.get("country_name", "")
+                }
+                for k, v in data.items()
+            }
+            output = {
+                "countries": list(cleaned_output.values()),
+                "status": "success"
+            }
+            return output
+        elif api_id == 2:
+            original_data = data
+            formatted_countries = {
+                str(k): {
+                    "id": int(k),
+                    "name": v.get("country_name", ""),
+                    "emoji": v.get("country_code", ""),
+                    "flag_url": v.get("flag_url", "")
+                }
+                for k, v in original_data.items()
+            }
+            output = {
+                "status": "success",
+                "result": {
+                    "country_list": list(formatted_countries.values()),
+                    "total_countries": len(formatted_countries)
+                }
+            }
+            return output
+        else:
+            return await self.countries_data(api_id=1)
+
+
+    async def is_valid_api_key(self, key: str) -> bool:
+        """
+        Return True if `key` exists in H_API_KEYS (i.e. HGET(H_API_KEYS, key) != None).
+        """
+        try:
+            val = await redis_client.hget(self.H_API_KEYS, key)
+            return bool(val)
+        except Exception as e:
+            logger.warning(f"Redis error in is_valid_api_key: {e}")
+            return False
+
+
+    async def get_user_id_by_api_key(self, key: str) -> Optional[int]:
+        """
+        Return the integer user_id if `key` exists in H_API_KEYS.
+        If not found or on error, return None.
+        """
+        try:
+            raw = await redis_client.hget(self.H_API_KEYS, key)
+            if raw is None:
+                return None
+            # raw is bytes (or str if decode_responses=True)
+            raw_decoded = raw.decode() if isinstance(raw, bytes) else raw
+            return int(raw_decoded)
+        except (RuntimeError, aioredis.RedisError, ValueError) as e:
+            logger.warning(f"Redis error in get_user_id_by_api_key: {e}")
+            return None
+    async def get_api_key_by_user_id(self, user_id: int) -> Optional[str]:
+        """
+        Return the API key string if `user_id` exists in H_USER_KEYS.
+        No Python loop is used—just a direct HGET on the reverse‐lookup hash.
+        """
+        try:
+            raw = await redis_client.hget(self.H_USER_KEYS, str(user_id))
+            if raw is None:
+                return None
+            return raw.decode() if isinstance(raw, bytes) else raw
+        except (RuntimeError, aioredis.RedisError) as e:
+            logger.warning(f"Redis error in get_api_key_by_user_id: {e}")
+            return None
+    
+
+    async def get_user_data(self, user_id: int) -> Optional[float]:
+        """
+        Return the user's balance if `user_id` exists in H_USER_BALANCES.
+        No Python loop is used—just a direct HGET on the reverse‐lookup hash.
+        """
+        try:
+            data = await self.user_aggregator.get_user(user_id)
+            if not data or not data.get('response'):
+                #loggging.error("User data response indicated failure.")
+                return None
+            #loggging.debug(f"Raw user data: {data}")
+            user_profile = data.get("user_profile")
+            current_balance = data["metrics"]["current_balance"]
+            spend_balance = data["metrics"]["spend_balance"]
+            total_deposits = data["metrics"]["deposits"]["total_amount"]
+            target_currency = 'USD'
+            timestamp = data["timestamp"]
+
+            processed_data = {
+                'user_id': user_id,
+                'current_balance': current_balance,
+                'total_deposits': total_deposits,
+                'spend_balance': spend_balance,
+                'target_currency': target_currency,
+                'user_name': user_profile,
+                'timestamp': timestamp
+            }
+            return processed_data
+        except (RuntimeError, aioredis.RedisError, ValueError) as e:
+            logger.warning(f"Redis error in get_user_balance: {e}")
+            return {'user_id': user_id, 'current_balance': 0, 'total_deposits': 0, 'spend_balance': 0, 'target_currency': 'USD', 'user_name': '', 'timestamp': 0}
+    
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # Middleware: API Key + Rate Limiting
+    # ─────────────────────────────────────────────────────────────────────────
+    @staticmethod
+    @web.middleware
+    async def api_key_rate_limit_middleware(request: web.Request, handler):
+        path = request.rel_url.path
+
+        # 1) Allow /health with no API key required
+        if path == "/health":
+            return await handler(request)
+
+        query_key = request.rel_url.query.get("api_key")
+        auth_header = request.headers.get("Authorization", "")
+        header_key = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else None
+
+        api_key = query_key or header_key
+        source = 'query' if query_key else 'header' if header_key else None
+
+        if not api_key:
+            if source == 'header':
+                return web.json_response(
+                    {
+                        "errors": [
+                            {"code": "NO_KEY", "message": "API key is required in Authorization header."}
+                        ]
+                    },
+                    status=400
+                )
+            return web.Response(text="NO_KEY", status=200)
+        elif not await CombinedAPI().is_valid_api_key(api_key):
+            if source == 'header':
+                return web.json_response(
+                    {
+                        "errors": [
+                            {"code": "BAD_KEY", "message": "Invalid API key provided in Authorization header."}
+                        ]
+                    },
+                    status=401
+                )
+            return web.Response(text="BAD_KEY", status=200)
+        try:
+            is_lim, remaining, retry_after = await rate_limiter.is_limited(
+                api_key, DEFAULT_RATE_LIMIT, DEFAULT_RATE_WINDOW
+            )
+        except (RuntimeError, redis.RedisError) as e:
+            logger.warning(f"Redis error in is_limited: {e}")
+            is_lim, remaining, retry_after = False, DEFAULT_RATE_LIMIT, 0
+
+        headers = {
+            "X-RateLimit-Limit": str(DEFAULT_RATE_LIMIT),
+            "X-RateLimit-Remaining": str(max(remaining, 0)),
+            "X-RateLimit-Window": str(DEFAULT_RATE_WINDOW),
+        }
+        if is_lim:
+            headers["Retry-After"] = str(retry_after)
+            return web.Response(text="RATE_LIMIT_EXCEEDED", status=429, headers=headers)
+        request["api_key"] = api_key
+        response = await handler(request)
+        for k, v in headers.items():
+            response.headers[k] = v
+        return response
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # /health route
+    # ─────────────────────────────────────────────────────────────────────────
+    async def handle_health(self, request: web.Request) -> web.Response:
+        try:
+            pong = await redis_client.ping()
+            status = "ok" if pong else "degraded"
+            return web.json_response({"status": status})
+        except Exception:
+            return web.json_response({"status": "down"}, status=503)
+
+    async def handle_v2_user_profile(self, request: web.Request) -> web.Response:
+        api_key = request.headers.get("Authorization", "").replace("Bearer ", "")
+        if not api_key:
+            return web.Response(text="NO_KEYS", status=200)
+        # Fetch raw user data
+        user_id = await self.get_user_id_by_api_key(api_key)
+        u = await self.get_user_data(user_id)
+        s = await self.enrich_user(user_id)
+
+        final_json = {
+            "userId": u["user_id"],
+            "userName": u["user_name"],
+            "currentBalance": u["current_balance"] or 0,
+            "totalDeposits": u["total_deposits"] or 0,
+            "spentBalance": u["spend_balance"] or 0,
+            "currencyCode": u["target_currency"] or "USD",
+            "freezedBalance": s["total_pending"] or 0,
+            "userRating": s["rating_out_of_10"] or 0
+        }
+
+        return web.json_response(final_json)
+        
+    async def handle_v2_user_orders(self, request: web.Request) -> web.Response:
+        token = request.headers.get("Authorization", "").replace("Bearer ", "")
+        if not token:
+            return web.Response(text="Unauthorized", status=401)
+        # DEMO data
+        demo = {
+            "Data": [{
+                "id": 53533933,
+                "phone": "+79085895281",
+                "operator": "tele2",
+                "product": "aliexpress",
+                "price": 2,
+                "status": "BANNED",
+                "expires": "2020-06-28T16:32:43.307041Z",
+                "sms": [],
+                "created_at": "2020-06-28T16:17:43.307041Z",
+                "country": "russia"
+            }],
+            "ProductNames": [],
+            "Statuses": [],
+            "Total": 3
+        }
+        return web.json_response(demo)
+    async def handle_v2_user_payments(self, request: web.Request) -> web.Response:
+        token = request.headers.get("Authorization", "").replace("Bearer ", "")
+        if not token:
+            return web.Response(text="Unauthorized", status=401)
+        # DEMO data
+        demo = {
+            "Data": [{
+                "ID": 30011934,
+                "TypeName": "charge",
+                "ProviderName": "admin",
+                "Amount": 100,
+                "Balance": 100,
+                "CreatedAt": "2020-06-24T15:37:08.149895Z"
+            }],
+            "PaymentTypes": [{"Name": "charge"}],
+            "PaymentProviders": [{"Name": "admin"}],
+            "Total": 1
+        }
+        return web.json_response(demo)
+    async def handle_v2_user_max_prices(self, request: web.Request) -> web.Response:
+        token = request.headers.get("Authorization", "").replace("Bearer ", "")
+        if not token:
+            return web.Response(text="Unauthorized", status=401)
+
+        if request.method == "GET":
+            demo = [{
+                "id": 14,
+                "product": "telegram",
+                "price": 11,
+                "CreatedAt": "2020-06-24T15:37:08.149895Z"
+            }]
+            return web.json_response(demo)
+
+        # For POST/DELETE: parse JSON body
+        try:
+            body = await request.json()
+        except Exception:
+            return web.Response(text="Invalid JSON", status=400)
+
+        product = body.get("product_name")
+        price = body.get("price")
+        if not product:
+            return web.Response(text="product_name missing", status=400)
+        if request.method == "POST" and price is None:
+            return web.Response(text="price missing", status=400)
+        # DEMO: pretend we wrote to a DB and succeed
+        return web.Response(text="OK")
+    async def handle_v2_buy_activation(self, request: web.Request) -> web.Response:
+        token = request.headers.get("Authorization", "").replace("Bearer ", "")
+        if not token:
+            return web.Response(text="Unauthorized", status=401)
+        # DEMO data:
+        demo = {
+            "id": 11631253,
+            "phone": "+79000381454",
+            "operator": "beeline",
+            "product": "vkontakte",
+            "price": 21,
+            "status": "PENDING",
+            "expires": "2018-10-13T08:28:38.809469028Z",
+            "sms": None,
+            "created_at": "2018-10-13T08:13:38.809469028Z",
+            "forwarding": False,
+            "forwarding_number": "",
+            "country": "russia"
+        }
+        return web.json_response(demo)
+    async def handle_v2_reuse(self, request: web.Request) -> web.Response:
+        token = request.headers.get("Authorization", "").replace("Bearer ", "")
+        if not token:
+            return web.Response(text="Unauthorized", status=401)
+        demo = {"id": 11631253, "status": "OK"}
+        return web.json_response(demo)
+    async def handle_v2_check(self, request: web.Request) -> web.Response:
+        token = request.headers.get("Authorization", "").replace("Bearer ", "")
+        if not token:
+            return web.Response(text="Unauthorized", status=401)
+        order_id = request.match_info.get("order_id")
+        demo = {
+            "id": int(order_id),
+            "created_at": "2018-10-13T08:13:38.809469028Z",
+            "phone": "+79000381454",
+            "product": "vkontakte",
+            "price": 21,
+            "status": "RECEIVED",
+            "expires": "2018-10-13T08:28:38.809469028Z",
+            "sms": [{
+                "created_at": "2018-10-13T08:20:38.809469028Z",
+                "date": "2018-10-13T08:19:38Z",
+                "sender": "VKcom",
+                "text": "VK: 09363 - use this code to reclaim your suspended profile.",
+                "code": "09363"
+            }],
+            "forwarding": False,
+            "forwarding_number": "",
+            "country": "russia"
+        }
+        return web.json_response(demo)
+    async def handle_v2_finish(self, request: web.Request) -> web.Response:
+        token = request.headers.get("Authorization", "").replace("Bearer ", "")
+        if not token:
+            return web.Response(text="Unauthorized", status=401)
+        order_id = request.match_info.get("order_id")
+        demo = {
+            "id": int(order_id),
+            "created_at": "2018-10-13T08:13:38.809469028Z",
+            "phone": "+79000381454",
+            "product": "vkontakte",
+            "price": 21,
+            "status": "FINISHED",
+            "expires": "2018-10-13T08:28:38.809469028Z",
+            "sms": [{
+                "created_at": "2018-10-13T08:20:38.809469028Z",
+                "date": "2018-10-13T08:19:38Z",
+                "sender": "VKcom",
+                "text": "VK: 09363 - use this code to reclaim your suspended profile.",
+                "code": "09363"
+            }],
+            "forwarding": False,
+            "forwarding_number": "",
+            "country": "russia"
+        }
+        return web.json_response(demo)
+    async def handle_v2_cancel(self, request: web.Request) -> web.Response:
+        token = request.headers.get("Authorization", "").replace("Bearer ", "")
+        if not token:
+            return web.Response(text="Unauthorized", status=401)
+        order_id = request.match_info.get("order_id")
+        demo = {"id": int(order_id), "status": "CANCELED"}
+        return web.json_response(demo)
+    
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # V2 (5sim) Prices
+    # ─────────────────────────────────────────────────────────────────────────
+    async def handle_v2_prices(self, request: web.Request) -> web.Response:
+        country_id = request.rel_url.query.get("country")
+        app_id = request.rel_url.query.get("product")
+        server_id = request.rel_url.query.get("server")
+
+        result = await self.app_data_prices(country_id=country_id, app_id=app_id, server_id=server_id, api_id=2)
+        return web.json_response(result)
+    async def handle_v2_get_number_status(self, request: web.Request) -> web.Response:
+        country_id = request.rel_url.query.get("country")
+        app_id = request.rel_url.query.get("product")
+        server_id = request.rel_url.query.get("server")
+
+        status = await self.app_data_stock(api_id=2, country_id=country_id, app_id=app_id, server_id=server_id)
+        return web.json_response(status)
+    async def handle_v2_services(self, request: web.Request) -> web.Response:
+        app_data = await self.services_data(api_id=2)
+        return web.json_response(app_data)
+    async def handle_v2_countries(self, request: web.Request) -> web.Response:
+        country_data = await self.countries_data(api_id=2)
+        return  web.Response(
+            text=json.dumps(country_data, ensure_ascii=False),
             content_type='application/json'
         )
 
-async def setup_routes(app: web.Application):
-    """Setup routes for the API server."""
-    app.router.add_get('/stubs/handler_api.php', handle_api_request)
 
-async def init_app() -> web.Application:
-    """Initialize the aiohttp application with Redis, caching, and mappings."""
+    async def handle_get_number(self, user_id: int, server_id: int, app_id: int, country_id: int, input_price: float, ref_id: str, api_id: int) -> Dict[str, Any]:
+        print("API ID: ", api_id)
+        print("App ID: ", app_id)
+        print("Country ID: ", country_id)
+        print("Server ID: ", server_id)
+        print("Input Price: ", input_price)
+        print("Ref ID: ", ref_id)
+        price = None if input_price is None else round(float(input_price) / float(COMMISSION), 2)
+        app_data = await purchase_manager.fetch_app_data(app_id, country_id, server_id, price=price)
+        if not app_data:
+            return {"status": False, "message": F"WRONG_MAX_PRICE"}
+        print("App Data: ", json.dumps(app_data, indent=4))
+        price = round(float(app_data.get('app_price')) * float(COMMISSION), 2)
+        if not await purchase_manager._handle_user_balance(user_id, price, user_id, None):
+            return {"status": False, "message": "NO_BALANCE"}
+        
+
+        
+        phone_result = await purchase_manager.fetch_phone_number(int(app_data['server_id']), app_data['app_code'], country_id, price=price, operator=app_data['server_name'], app_name=app_data['app_name'], chat_id=user_id, app_id=app_id)
+        print(json.dumps(phone_result, indent=4))
+        if not phone_result.get("status"):
+            if phone_result.get("message"):
+                return {"status": False, "message": "NO_NUMBERS"}
+            else:
+                return {"status": False, "message": json.dumps(phone_result)}
+        full_data = {
+            "server_id": app_data['server_id'],
+            "app_code": app_data['app_code'],
+            "country_id": country_id,
+            "price": price,
+            "operator": app_data['server_name'],
+            "app_name": app_data['app_name'],
+            "country_code": app_data['country_code'],
+            "country_name": app_data['country_name'],
+            "guard": None,
+            "message_id": 0,
+            "chat_id": user_id,
+            "app_data": app_data,
+            "app_id": app_id,
+            "call_data": '',
+            "user_id": user_id,
+            "first_name": "API",
+            "chat_type": "private",
+            "call_chat_id": 0,
+        }
+        call = await purchase_manager.reconstruct_fake_call(full_data)
+        order_id =await purchase_manager._finalize_purchase(
+            call,
+            phone_result,
+            full_data,
+            full_data['price'],
+            full_data['country_id'],
+            full_data['country_code'],
+            full_data['country_name'],
+            phone_result['service'],
+            call.message,
+            is_new=True,
+            is_api=True,
+            app_id=app_id,
+            server_id=app_data['server_id']
+        )
+        #return {'status': True, 'order_id': order_id, 'number': number, 'code': code, 'service': service}
+
+        return {"status": True, "order_id": order_id, "number": phone_result['number'], "code": phone_result['code'], "service": phone_result['service'], "country": app_data['country_name'], "price": price}
+    
+    async def _processing_order(self, order_id: str) -> None:
+        """Finalize order completion with audit trail and error handling"""
+        try:
+            fields = {
+                'order_status': 'PENDING'
+            }
+            await order_mgr.update_order_fields(order_id, fields=fields)
+            print(f"Order {order_id} completed")
+            
+        except KeyError as e:
+            print(f"Missing key in order_info for {order_id}: {e}")
+        except json.JSONDecodeError as e:
+            print(f"Invalid order_history JSON for {order_id}: {e}")
+        except Exception as e:
+            print(f"Failed to complete order {order_id}: {e}")
+
+
+    async def handle_get_status(self, id: int, api_id: int = 1) -> Dict[str, Any]:
+        order_key = f"order_data:info:{id}"
+        result = await redis_client.hgetall(order_key)
+        print(json.dumps(result, indent=4))
+        if not result:
+            return {"status": False, "message": "BAD_ID"}
+        status = str(result['order_status'])
+
+
+        if status == "CANCELLED":
+            return {"status": False, "message": "STATUS_CANCEL"}
+        elif status == "TIMEOUT":
+            return {"status": True, "message": "STATUS_TIMEOUT"}
+            
+        elif status == "PENDING":
+            if result.get("last_sms") and result.get("sms_list") != "[]":
+                return {"status": True, "message": f"STATUS_OK:{result.get('last_sms')}"}
+            else:
+                return {"status": True, "message": "STATUS_WAIT_CODE"}
+
+        elif status == "COMPLETED":
+            return {"status": True, "message": F"STATUS_OK:{result.get('last_sms')}"}
+            
+        elif status == "PROCESSING":
+            return {"status": True, "message": f"STATUS_WAIT_RETRY:{result.get('last_sms')}"}
+        return status
+    async def handle_set_status(self, status_id: int, order_id: int) -> None:
+        order_key = f"order_data:info:{order_id}"
+        print(f"handle_set_status: order_id={order_id}, status_id={status_id}") 
+        result = await redis_client.hgetall(order_key)
+        print(json.dumps(result, indent=4))
+        if not result:
+            return {"status": False, "message": "BAD_ID"}
+        status = str(result['order_status'])
+        ACTIVATION_STATUS = {
+           -1: "CANCEL_ORDER",
+            1: "SMS_SENT",
+            3: "WAITING_FOR_ANOTHER_CODE",
+            6: "COMPLETE_ACTIVATION",
+            8: "CANCEL_ORDER",
+        }
+        work = ACTIVATION_STATUS.get(int(status_id), False)
+        if not work:
+            return {"status": False, "message": "BAD_STATUS"}
+
+        if status == "CANCELLED":
+            return {"status": False, "message": "BAD_STATUS"}
+        elif status == "TIMEOUT":
+            return {"status": True, "message": "BAD_STATUS"}
+        
+        if work == "CANCEL_ORDER":
+            if status == "PENDING" and not result.get("last_sms", None):
+                sms_list = json.loads(result.get('sms_list', '[]'))
+                print("SMS List: ", json.dumps(sms_list, indent=4))
+                print("SMS List Length: ", len(sms_list))
+                if len(sms_list) != 0:
+                    return {"status": False, "message": "BAD_ACTION"}
+
+                # Proceed with cancellation
+                api_result = await purchase_status.cancel_number_api(
+                    result['server_id'],
+                    result['order_id']
+                )
+                print("API Result: ", json.dumps(api_result, indent=4))
+                if not api_result.get('response', False):
+                    return {"status": False, "message": "BAD_ACTION"}
+                number_parts = json.loads(result['order_number']) if isinstance(result.get('order_number'), str) else []
+                number_part1 = number_parts[0] if len(number_parts) > 0 else ""
+                number_part2 = number_parts[1] if len(number_parts) > 1 else ""
+                details = {
+                    "status": True,
+                    "order_id": order_id,
+                    "number": number_part2,
+                    "code": number_part1,
+                    "app_id": result['app_id'],
+                    "app_name": result['app_name'],
+                    "server_id": result['server_id'],
+                    "app_price": result['order_amount'],
+                    "country_id": result['country_id'],
+                    "country_code": result['country_code'],
+                    "msg_id": result['message_id'],
+                    "country_name": result['country_name'],
+                    "user_id": result['user_id'],
+                    "valid_status": "⏱️ Oʀᴅᴇʀ Hᴀs Exᴘɪʀᴇᴅ"
+                }
+
+                await asyncio.gather(
+                    order_mgr.cancel_order(order_id, result['user_id'], 'CANCELLED'),
+                    user_mgr.send_order_report(self.bot, "edit_message_text", order_id, result['user_id'], '-1002203139746', details),
+                    user_mgr.user_metrics_report(self.bot, 'edit_message_text', result['user_id'], '-1002203139746'),
+                )
+                return {"status": True, "message": "STATUS_CANCEL"}
+            else:
+                await redis_client.hset(order_key, "order_status", "CANCELLED")
+                return {"status": True, "message": "BAD_STATUS"}
+        
+        elif work == "WAITING_FOR_ANOTHER_CODE":
+            if status == "PENDING":
+                sms_list = json.loads(result.get('sms_list', '[]'))
+                if not len(sms_list):
+                    return {"status": False, "message": "BAD_STATUS"}
+            elif status == "COMPLETED":
+                if float(result.get("recorded_at", 0)) > time.time() - 20 * 60:
+                    await redis_client.hset(order_key, "order_status", "PROCESSING")
+                    return {"status": True, "message": "ACCESS_RETRY_GET"}
+                else:
+                    return {"status": True, "message": "STATUS_TIMEOUT"}
+            elif status == "PROCESSING":
+                return {"status": True, "message": "STATUS_WAIT_RETRY"}
+
+        elif work == "COMPLETE_ACTIVATION":
+            if status == "PENDING":
+                await redis_client.hset(order_key, "order_status", "COMPLETED")
+                return {"status": True, "message": "COMPLETED"}   
+            elif status == "COMPLETED":
+                return {"status": True, "message": "COMPLETED"}
+            elif status == "PROCESSING":
+                return {"status": True, "message": "COMPLETED"}         
+        
+        elif work == "SMS_SENT":
+            if status == "PENDING":
+                sms_list = json.loads(result.get('sms_list', '[]'))
+                if not len(sms_list):
+                    await redis_client.hset(order_key, "order_status", "PROCESSING")
+                    return {"status": False, "message": "ACCESS_RETRY_GET"}
+            elif status == "COMPLETED":
+                if float(result.get("recorded_at", 0)) > time.time() - 20 * 60:
+                    await redis_client.hset(order_key, "order_status", "PROCESSING")
+                    return {"status": True, "message": "ACCESS_RETRY_GET"}
+                else:
+                    return {"status": True, "message": "STATUS_TIMEOUT"}
+            elif status == "PROCESSING":
+                return {"status": True, "message": "STATUS_WAIT_RETRY"}
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # V1 Legacy SMS API (/stubs/handler_api.php)
+    # ─────────────────────────────────────────────────────────────────────────
+    async def handle_v1_sms_api(self, request: web.Request) -> web.Response:
+        data = dict(request.rel_url.query)
+        action = data.get("action")
+        if not action:
+            return web.Response(text="BAD_ACTION", status=200)
+
+        if action == "getPrices":
+            country_id = data.get("country", None)
+            app_id = data.get("service", None)
+            server_id = data.get("operator", None)
+            from termcolor import colored
+            print(colored(f"getPrices: country_id={country_id}, app_id={app_id}, server_id={server_id}", "green"))
+
+            result = await self.app_data_prices(country_id=country_id, app_id=app_id, server_id=server_id, api_id=1)
+            print(colored(f"getPrices result: {len(result)}", "green"))
+            return web.Response(text=json.dumps(result), content_type="application/json")
+        if action == "getNumbersStatus":
+            country_id = data.get("country", None)
+            app_id = data.get("service", None)
+            server_id = data.get("server", None)
+            from termcolor import colored
+            print(colored(f"getNumbersStatus: country_id={country_id}, app_id={app_id}, server_id={server_id}", "green"))
+
+            status = await self.app_data_stock(api_id=1, country_id=country_id, app_id=app_id, server_id=server_id)
+            print(colored(f"getNumbersStatus result: {len(status)}", "green"))
+            return web.Response(text=json.dumps(status), content_type="application/json")
+
+
+        if action == "getNumber":            
+            api_key = data.get("api_key")
+            user_id = await self.get_user_id_by_api_key(api_key)
+
+            service_id = data.get("service")
+            if not service_id:
+                return web.Response(text="NO_SERVICE", status=200)
+            country_id = data.get("country", None)
+            if not country_id:
+                return web.Response(text="NO_COUNTRY", status=200)
+
+            try:
+                max_price = float(data.get("maxPrice", None)) or None
+                server_id = int(data.get("operator", None)) or None
+                ref_id = int(data.get("ref_id", None)) or None
+            except Exception as e:
+                max_price = None
+                server_id = None
+                ref_id = None
+
+            result = await self.handle_get_number(user_id, server_id, service_id, country_id, input_price=max_price, ref_id=ref_id, api_id=1)
+            message = result.get('message', '')
+
+            if result.get('status') is False and message == "NO_NUMBERS":
+                return web.Response(text="NO_NUMBERS", status=200)
+            elif result.get('status') is False:
+                return web.Response(text=result.get('message'), status=200)
+            elif result.get('status') is True:
+                '''{"status": true, "order_id": 33011823065513, "number": "387139478", "code": "+855", "service": "ds", "country": "Cambodia", "price": 1.53}'''
+                text = f"ACCESS_NUMBER:{result.get('order_id')}:{result.get('code').replace('+', '')}{result.get('number')}"
+                return web.Response(text=text)
+            
+            return web.Response(text=json.dumps(result))
+        if action == "setStatus":
+            order_id = data.get("id")
+            status_id = data.get("status")
+            print(f"setStatus: order_id={order_id}, status_id={status_id}")
+            if not order_id:
+                return web.Response(text="BAD_ACTION", status=200)
+            if not status_id:
+                return web.Response(text="BAD_STATUS", status=200)
+            try:
+                status_id = int(status_id)
+                order_id = int(order_id)
+            except ValueError:
+                print(f"ValueError: setStatus: order_id={order_id}, status_id={status_id}")
+                return web.Response(text="BAD_STATUS", status=200)
+            if status_id not in {-1, 1, 3, 6, 8}:
+                print(f"Invalid status: setStatus: order_id={order_id}, status_id={status_id}")
+                return web.Response(text="BAD_STATUS", status=200)
+            print(f"handle_set_status: order_id={order_id}, status_id={status_id}")
+            result = await self.handle_set_status(status_id, order_id)
+            return web.Response(text=result.get("message", json.dumps(result)))
+        if action == "getStatus":
+            act_id = data.get("id")
+            if not act_id:
+                return web.Response(text="NO_ID", status=200)
+            
+            status = await self.handle_get_status(act_id, api_id=1)
+            return web.Response(text=status.get("message", json.dumps(status)))
+        
+        
+        if action == "getBalance":
+            # This returns plain‐text: ACCESS_BALANCE:<balance>
+            api_key = data.get("api_key")
+            user_id = await self.get_user_id_by_api_key(api_key)
+            balance = await self.get_user_data(user_id=user_id)
+            return web.Response(text=f"ACCESS_BALANCE:{balance['current_balance']:.2f}")
+        
+
+        if action == "getServicesList":
+            services = await self.services_data(api_id=1)
+            return web.Response(text=json.dumps(services), content_type="application/json")     
+        if action == "getCountriesList":
+            countries = await self.countries_data(api_id=1)
+            return web.Response(text=json.dumps(countries), content_type="application/json")
+
+        return web.Response(text="BAD_ACTION", status=200)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Register all routes on the given `app`
+    # ─────────────────────────────────────────────────────────────────────────
+    async def setup_routes(self, app: web.Application):
+        # Attach middleware
+        app.middlewares.append(CombinedAPI.api_key_rate_limit_middleware)
+
+        # Healthcheck route
+        app.router.add_get("/health", self.handle_health, allow_head=False)
+
+        # V2 (5sim) user endpoints
+        app.router.add_get(f"{V2_PREFIX}/user/profile", self.handle_v2_user_profile, allow_head=False)
+        app.router.add_get(f"{V2_PREFIX}/user/orders", self.handle_v2_user_orders, allow_head=False)
+        app.router.add_get(f"{V2_PREFIX}/user/payments", self.handle_v2_user_payments, allow_head=False)
+        app.router.add_route("GET", f"{V2_PREFIX}/user/max-prices", self.handle_v2_user_max_prices)
+        app.router.add_route("POST", f"{V2_PREFIX}/user/max-prices", self.handle_v2_user_max_prices)
+        app.router.add_route("DELETE", f"{V2_PREFIX}/user/max-prices", self.handle_v2_user_max_prices)
+
+        # V2 (5sim) guest endpoints
+        app.router.add_get(f"{V2_PREFIX}/guest/prices", self.handle_v2_prices, allow_head=False)
+        app.router.add_get(f"{V2_PREFIX}/guest/get-number-status", self.handle_v2_get_number_status, allow_head=False)
+
+        app.router.add_get(f"{V2_PREFIX}/guest/services", self.handle_v2_services, allow_head=False)
+        app.router.add_get(f"{V2_PREFIX}/guest/countries", self.handle_v2_countries, allow_head=False)
+
+        # V2 purchase/ad-hoc endpoints
+        app.router.add_get(f"{V2_PREFIX}/user/buy/activation/{{country}}/{{operator}}/{{product}}", self.handle_v2_buy_activation, allow_head=False)
+        #app.router.add_get(f"{V2_PREFIX}/user/buy/hosting/{{country}}/{{operator}}/{{product}}", self.handle_v2_buy_hosting, allow_head=False)
+        app.router.add_get(f"{V2_PREFIX}/user/reuse/{{product}}/{{number}}", self.handle_v2_reuse, allow_head=False)
+        app.router.add_get(f"{V2_PREFIX}/user/check/{{order_id}}", self.handle_v2_check, allow_head=False)
+        app.router.add_get(f"{V2_PREFIX}/user/finish/{{order_id}}", self.handle_v2_finish, allow_head=False)
+        app.router.add_get(f"{V2_PREFIX}/user/cancel/{{order_id}}", self.handle_v2_cancel, allow_head=False)
+        #app.router.add_get(f"{V2_PREFIX}/user/ban/{{order_id}}", self.handle_v2_ban, allow_head=False)
+        #app.router.add_get(f"{V2_PREFIX}/user/sms/inbox/{{order_id}}", self.handle_v2_sms_inbox, allow_head=False)
+
+        # V1 legacy route (single handler for all actions)
+        app.router.add_route("GET", V1_BASE_PATH, self.handle_v1_sms_api)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# in api/sms_api.py: init_app() creates Redis client on this same loop,
+# registers middleware, then routes, and returns `app`.
+# ─────────────────────────────────────────────────────────────────────────────
+async def init_app(bot: AsyncTeleBot) -> web.Application:
+    global redis_client, rate_limiter
+
+    # 1) Build the aiohttp Application
     app = web.Application()
-    # Setup Redis and caching
-    app['redis'] = setup_redis()
-    # Load mappings asynchronously and store in app state
-    await setup_routes(app)
+
+    # 2) Initialize Redis ON THIS LOOP
+    redis_client = redis_manager.redis_client
+
+
+    # 3) Create RateLimiter using that same Redis client
+    rate_limiter = RateLimiter(redis_client)
+
+    # 4) Register ALL routes (V1 + V2) onto `app`
+    api = CombinedAPI(redis_client, rate_limiter, bot)
+    await api.setup_routes(app)
+
     return app
+

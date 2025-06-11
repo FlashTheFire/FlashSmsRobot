@@ -1,21 +1,34 @@
-from telebot.async_telebot import AsyncTeleBot
-from utils.redis_manager import redis_manager
-from handlers.manager.operation import FinancialManagement, UserManagement, FinancialSummaryAggregator, get_async_logger
-from telebot.types import InputMediaPhoto, Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
-from utils.config import START_PAGE
-from utils.functions import create_keyboard, serialize_data
-from handlers.security import InputValidator, TransactionGuard, RateLimiter
 import time
 import json
-from datetime import datetime
+import logging
+import asyncio
 import re
 import html
-import logging
-from typing import Optional, Dict, Any, Tuple, List
-import asyncio
+from datetime import datetime
+from typing import Optional, Dict, Any, Set, List
+
+from telebot.async_telebot import AsyncTeleBot
+from telebot import types
+from telebot.types import InputMediaPhoto, Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+
+from utils.redis_manager import redis_manager
+from utils.config import START_PAGE
+from utils.functions import create_keyboard, serialize_data
+from handlers.manager.operation import FinancialManagement, UserManagement, FinancialSummaryAggregator, get_async_logger
+from handlers.security import InputValidator, TransactionGuard, RateLimiter
+
+# Replace these with your actual bot token, numeric channel id, and invite link.
+TOKEN = '6452050983:AAHmFN6jTjkpAD28qhkQkWNm9VEwN8fVgJk'
+CHANNEL_ID = -1001886867129  # Numeric channel or supergroup id
+INVITE_LINK = "https://t.me/+HXYCt94N-OM0MjU1"
+
+# Set up logging for better traceability.
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 class UserStartManager:
-    """Manager class for handling Telegram bot start commands."""
+    """Manager class for handling Telegram bot start commands and join requests."""
     
     def __init__(self):
         self.user_manager: Optional[UserManagement] = None
@@ -84,7 +97,6 @@ class UserStartManager:
             InlineKeyboardButton("⁉️ Hᴇʟᴘ", callback_data="USER:SUPPORT"),
             InlineKeyboardButton("⚙️ Sᴇᴛᴛɪɴɢs", callback_data="USER:SETTINGS:CURRENCY")
         )
-        
         return keyboard
 
     async def _create_welcome_caption(self, first_name: str, current_balance: float, total_orders: int) -> str:
@@ -154,7 +166,7 @@ class UserStartManager:
             if not message or not hasattr(message, 'chat') or not self.input_validator.validate_user_id(chat_id):
                 return
 
-            first_name = user_data.get("user_profile")
+            first_name = user_data.get("user_profile") or user_data.get("first_name", "User")
             message_id = getattr(message, "message_id", None)
             current_balance = user_data.get("metrics", {}).get("current_balance", 0)
             total_orders = user_data.get("metrics", {}).get("orders", {}).get("count", 0)
@@ -273,6 +285,131 @@ class UserStartManager:
             await async_logger.error(f"Error in handle_start_callback: {e}")
             await self.bot.answer_callback_query(call.id, "An error occurred. Please try again later.")
 
+    # ----------------- Redis & Join Request Helper Methods -----------------
+    async def _save_message_id(self, user_id: int, message_id: int) -> None:
+        """Append a message_id to the user's list in Redis."""
+        try:
+            key = f'main_data:join_messages:{user_id}'
+            existing_messages = await redis_manager.redis_client.json().get(key)
+
+            if not isinstance(existing_messages, list):
+                existing_messages = []
+            existing_messages.append(message_id)
+            await redis_manager.redis_client.json().set(key, '$', existing_messages)
+        except Exception as e:
+            logger.error(f"Error saving message to Redis for user {user_id}: {e}")
+
+    async def _get_message_ids(self, user_id: int) -> Optional[List[int]]:
+        """Retrieve all message_ids for a user from Redis."""
+        try:
+            key = f'main_data:join_messages:{user_id}'
+            return await redis_manager.redis_client.json().get(key) or []
+        except Exception as e:
+            logger.error(f"Error retrieving messages from Redis for user {user_id}: {e}")
+            return None
+
+    async def _delete_all_messages(self, user_id: int) -> None:
+        """Delete all stored messages for a user and remove them from Redis."""
+        try:
+            key = f'main_data:join_messages:{user_id}'
+            message_ids = await self._get_message_ids(user_id)
+            if message_ids:
+                for message_id in message_ids:
+                    try:
+                        await self.bot.delete_message(user_id, message_id)
+                    except Exception as e:
+                        logger.error(f"Failed to delete message {message_id} for user {user_id}: {e}")
+                await redis_manager.redis_client.json().delete(key)
+        except Exception as e:
+            logger.error(f"Error deleting messages from Redis for user {user_id}: {e}")
+
+    # ----------------- New Handlers for Join Requests & /start Membership Check -----------------
+    async def _load_success_requests(self) -> Set[int]:
+        """Load success join requests from Redis."""
+        try:
+            data = await redis_manager.redis_client.json().get('main_data:details:success_requests') or {}
+            return set(data.get('requests', []))
+        except Exception as e:
+            logger.error(f"Error loading success requests from Redis: {e}")
+            return set()
+    async def _save_success_requests(self, requests: Set[int]) -> None:
+        """Save success join requests to Redis."""
+        try:
+            await redis_manager.redis_client.json().set(
+                'main_data:details:success_requests',
+                '$',
+                {'requests': list(requests)}
+            )
+        except Exception as e:
+            logger.error(f"Error saving success requests to Redis: {e}")
+
+    async def handle_join_request(self, join_request: types.ChatJoinRequest) -> None:
+        """
+        Triggered when a user sends a join request for the channel/supergroup.
+        Stores the user ID in Redis and runs handle_start_command.
+        """
+        user = join_request.from_user
+        chat = join_request.chat
+        logger.info(f"Received join request from user {user.id} for chat {chat.id}")
+
+        # Load current success requests, add new user, and save back to Redis
+        success_requests = await self._load_success_requests()
+        success_requests.add(user.id)
+        await self._save_success_requests(success_requests)
+        # Create a pseudo-message using a JSON dictionary and de_json
+        pseudo_message_data = {
+            "message_id": 0,  # Dummy message ID
+            "date": int(time.time()),
+            "chat": {"id": user.id, "type": "private"},
+            "from": user.to_dict(),  # Ensure your user object has a to_dict() method
+            "content_type": "text",
+            "options": {},
+            "json_string": "{}",
+            "text": ""  # Optional text field
+        }
+        pseudo_message = Message.de_json(pseudo_message_data)
+        # Call the normal start command handling using the pseudo-message
+        await asyncio.gather(
+            self.handle_start_command(pseudo_message),
+            self._delete_all_messages(user_id=user.id)
+        )
+
+
+    async def start_command_with_membership(self, message: Message) -> None:
+        """
+        Handles the /start command by checking if the user is a member of the channel.
+        If not, shows an invite button.
+        """
+        user = message.from_user
+        success_requests = await self._load_success_requests()
+
+        try:
+            member = await self.bot.get_chat_member(CHANNEL_ID, user.id)
+            if member.status in ['member', 'administrator', 'creator']:
+                await self.handle_start_command(message)
+            elif user.id in success_requests:
+                await self.handle_start_command(message)
+            else:
+                keyboard = types.InlineKeyboardMarkup()
+                join_button = types.InlineKeyboardButton(
+                    text="👑 Jᴏɪɴ Tʜᴇ Cʜᴀɴɴᴇʟ",
+                    url=INVITE_LINK
+                    )
+                keyboard.add(join_button)
+                msg = await self.bot.send_message(
+                    message.from_user.id,
+                    "🙅🏻‍♂️ <b>Yᴏᴜ Aʀᴇ Nᴏᴛ A Mᴇᴍʙᴇʀ Yᴇᴛ!\n\n🔔 Pʟᴇᴀsᴇ Jᴏɪɴ Oᴜʀ Cʜᴀɴɴᴇʟ Usɪɴɢ\nTʜᴇ Bᴜᴛᴛᴏɴ Bᴇʟᴏᴡ.</b>..",
+                    parse_mode="html",
+                    reply_markup=keyboard
+                )
+                await self._save_message_id(user_id=message.from_user.id, message_id=message.message_id)
+                await self._save_message_id(user_id=message.from_user.id, message_id=msg.message_id)
+        except Exception as e:
+            logger.error(f"Error checking membership for user {user.id}: {e}")
+            await self.bot.send_message(message.from_user.id, "There was an error checking your membership. Please try again later.")
+
+    # ----------------- Handler Registration -----------------
+
     async def register_handlers(self, bot: AsyncTeleBot) -> None:
         async_logger = await get_async_logger()
         if not self._initialized:
@@ -280,25 +417,34 @@ class UserStartManager:
             return
 
         try:
+            # Register /start command with membership check
             bot.register_message_handler(
-                self.handle_start_command,
+                self.start_command_with_membership,
                 commands=['start'],
                 pass_bot=False
             )
-            
+            # Register callback query handler for "start" data
             bot.register_callback_query_handler(
                 self.handle_start_callback,
                 func=lambda call: call.data == "start",
                 pass_bot=False
             )
+            # Register join request handler
+            bot.register_chat_join_request_handler(
+                self.handle_join_request,
+                pass_bot=False
+            )
             
-            await async_logger.info("Start command and callback handlers registered successfully")
+            await async_logger.info("Start command, callback, and join request handlers registered successfully")
         except Exception as e:
-            await async_logger.error(f"Failed to register start handlers: {e}")
+            await async_logger.error(f"Failed to register handlers: {e}")
             raise
 
+# Create the bot instance
+bot = AsyncTeleBot(TOKEN)
 start_manager = UserStartManager()
 
+# Global functions to initialize managers and register handlers.
 async def init_managers(user_manager: UserManagement, order_manager=None, bot: Optional[AsyncTeleBot] = None) -> bool:
     return await start_manager.init_managers(user_manager, bot)
 

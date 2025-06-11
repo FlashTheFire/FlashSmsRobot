@@ -83,7 +83,7 @@ class ReferManagement:
         user_id = str(call.from_user.id)
         buttons = [
             {"text": "💰 Wɪᴛʜᴅʀᴀᴡ", "callback_data": "USER:REFFERAL:WITHDRAW", "position": (0, 0)},
-            {"text": "🔍 Rᴇꜰᴇʀʀᴀʟ", "switch_inline_query_current_chat": "#Yᴏᴜʀ-Rᴇꜰᴇʀʀᴀʟ", "position": (0, 1)},
+            {"text": "⌕ Rᴇꜰᴇʀʀᴀʟ", "switch_inline_query_current_chat": "#Yᴏᴜʀ-Rᴇꜰᴇʀʀᴀʟ", "position": (0, 1)},
             {"text": "👋 Rᴇғᴇʀ Lɪɴᴋ", "callback_data": "USER:REFFERAL:LINK", "position": (0, 2)},
             {"text": "🔙 Rᴇᴛᴜʀɴ Bᴀᴄᴋ", "callback_data": "start", "position": (1, 0)},
             {"text": "↻ Rᴇғʀᴇsʜ Pᴀɢᴇ", "callback_data": call.data, "position": (1, 1)},
@@ -110,30 +110,47 @@ class ReferManagement:
         me = await bot.get_me()
         bot_username = me.username
         referral_link = f"https://t.me/{bot_username}?start={user_id}"
-        referral_text = f"Enjoy free meals with Infoy! Use my referral code to claim your reward: {referral_link}"
-        encoded_referral_text = referral_text.replace(" ", "%20").replace(":", "%3A")
-
+        top_services = (
+            "🎯 Tᴏᴘ-Rᴀᴛᴇᴅ Sᴇʀᴠɪᴄᴇs:\n"
+            "    •  Tᴇʟᴇɢʀᴀᴍ     • Wʜᴀᴛsᴀᴘᴘ [✆]\n" 
+            "    •  Gᴍᴀɪʟ        • Fᴀᴄᴇʙᴏᴏᴋ [ⓕ]\n" 
+            "    •  Iɴsᴛᴀɢʀᴀᴍ    • Tᴡɪᴛᴛᴇʀ [𝕏]\n" 
+            "    • Wɪɴᴢᴏ, Rᴜᴍᴍʏ, Sᴡɪɢɢʏ & Mᴀɴʏ-Mᴏʀᴇ...\n\n"
+            )
+        first_text = (
+            "⚡ Fʟᴀsʜ Sᴍs Oᴛᴘ Bᴏᴛ:\n\n"
+            "👉 Wᴀɴᴛ Tᴏ Rᴇᴄᴇɪᴠᴇ Oᴛᴘs Fʀᴏᴍ Aɴʏ Aᴘᴘ Oʀ Wᴇʙsɪᴛᴇ Oɴ Uɴʟɪᴍɪᴛᴇᴅ Nᴜᴍʙᴇʀs Wᴏʀʟᴅᴡɪᴅᴇ?\n"
+            f"🔗 Gᴇᴛ Sᴛᴀʀᴛᴇᴅ Wɪᴛʜ FʟᴀsʜSᴍs » {referral_link}\n\n"
+        )
+        last_text = (
+            "💼 Aᴠᴀɪʟᴀʙʟᴇ Iɴ 170+ Cᴏᴜɴᴛʀɪᴇs, Sᴜᴘᴘᴏʀᴛɪɴɢ 1500+ Aᴘᴘs"
+        )
+        second_text = (
+            " Wɪᴛʜ Pʀᴇᴍɪᴜᴍ Oᴘᴇʀᴀᴛᴏʀs\n"  
+            "🚀 Fᴀsᴛ • Sᴇᴄᴜʀᴇ • 24/7 Aᴄᴄᴇss"
+        )
+        import urllib
         if request_type == 'link':
             row_width = 4
             buttons = [
                 {
                     "text": "✆ Wʜᴀᴛs..",
-                    "url": f"https://wa.me/?text={encoded_referral_text}",
+                    "url": f"https://wa.me/?text={urllib.parse.quote(first_text + top_services + last_text + second_text)}",
                     "position": (0, 0)
                 },
                 {
                     "text": "𝕏 Tᴡɪᴛᴛ..",
-                    "url": f"https://twitter.com/intent/tweet?text={encoded_referral_text}",
+                    "url": f"https://twitter.com/intent/tweet?text={urllib.parse.quote(first_text + last_text + '.')}",
                     "position": (0, 1)
                 },
                 {
                     "text": "ⓕ Fᴀᴄᴇʙ..",
-                    "url": f"https://www.facebook.com/sharer/sharer.php?u={referral_link}&quote={encoded_referral_text}",
+                    "url": f"https://www.facebook.com/sharer/sharer.php?u={referral_link}&quote={urllib.parse.quote(first_text + top_services + last_text + second_text)}",
                     "position": (0, 2)
                 },
                 {
                     "text": "➥ Tᴇʟᴇɢ..",
-                    "switch_inline_query": referral_text,
+                    "switch_inline_query": " ",
                     "position": (0, 3)
                 },
                 {

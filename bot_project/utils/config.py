@@ -55,6 +55,7 @@ BATCH_SIZE = os.getenv("BATCH_SIZE", 100)
 
 CHANNEL_ID = get_required_env("CHANNEL_ID")
 BOT_TOKEN = get_required_env("BOT_TOKEN")
+ADMIN_ID = os.getenv("ADMIN_ID", "5716978793")
 WEBHOOK_HOST = os.getenv("WEBHOOK_HOST")
 
 # Optional configurations with sensible defaults
@@ -83,6 +84,8 @@ INLINE_CACHE_PREFIX = f"{CACHE_PREFIX}inline_cache:"
 CACHE_DURATION = int(os.getenv("CACHE_DURATION", 1800))  # 30 minutes
 CACHE_RESULTS_PER_PAGE = int(os.getenv("CACHE_RESULTS_PER_PAGE", 10))
 CACHE_EXPIRY = int(os.getenv("CACHE_EXPIRY", 300))  # 5 minutes
+CACHE_KEY = os.getenv("CACHE_KEY", "cache-data:")
+USER_IMAGE_HASH = os.getenv("USER_IMAGE_HASH", "image_data:user-profile")
 
 # Validate critical configurations
 def validate_config():

@@ -7,6 +7,7 @@ import contextlib
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import logging
+from utils.redis_manager import RedisManager, redis_manager
 import inspect
 from colorlog import ColoredFormatter
 from datetime import datetime, timedelta
@@ -17,13 +18,14 @@ import aiohttp
 from io import BytesIO
 from telebot.async_telebot import AsyncTeleBot
 from telebot.types import Message
-from utils.config import BOT_TOKEN as BotToken
+from utils.config import BOT_TOKEN as BotToken, USER_IMAGE_HASH
 import redis.asyncio as redis
 from redis.commands.search.query import Query
 import pytz
 import string
 import numpy as np
 import qrcode
+from utils.config import COMMISSION
 
 # Constants and providers
 DEPOSIT_PROVIDERS = {
@@ -141,11 +143,16 @@ async def format_currency(amount: Union[float, int], currency: str = "INR") -> s
         return f"${amount:,.2f}"
     else:
         return f"{amount:,.2f} {currency}"
-def convert_usd_to_rub(amount_usd, exchange_rate=100, tax_rate=0.10):
-    return round((amount_usd * exchange_rate) * (1 + tax_rate) + 0.005, 8)
-def convert_rub_to_usd(amount_rub, exchange_rate=100, tax_rate=0.10):
-    return round((amount_rub / (exchange_rate * (1 + tax_rate))) + 0.005, 8)
+def convert_usd_to_rub(amount_usd, exchange_rate=100, tax_rate=COMMISSION):
+    """Converts USD to RUB, applying the given exchange rate and tax rate."""
+    from handlers.manager.operation import SMS_ACTIVATE_TAX
+    return round(float(amount_usd) * exchange_rate * float(tax_rate) * float(SMS_ACTIVATE_TAX), 8)
 
+
+def convert_rub_to_usd(amount_rub, exchange_rate=100, tax_rate=COMMISSION):
+    """Converts RUB to USD, applying the given exchange rate and tax rate."""
+    from handlers.manager.operation import SMS_ACTIVATE_TAX
+    return round(float(amount_rub) / exchange_rate, 8)
 
 
 
@@ -249,58 +256,56 @@ async def setup_logger(log_file: Optional[str] = None, where_logger: Optional[st
 # --------------------------------------------------------------------------
 #  Asynchronous Profile Photo & Image Functions
 
+
+
+# Redis key for storing user profile images
+
 async def get_tg_profile_photo(user_id: int) -> Dict[str, Any]:
-    """Asynchronously retrieves the Telegram profile photo for a user."""
-    def _exists(path: str) -> bool:
-        return os.path.exists(path)
-    file_name = f"bot_project/images/profile/{user_id}.png"
-    if await asyncio.to_thread(_exists, file_name):
-        logging.debug(f"Profile image already exists for user {user_id}: {file_name}")
-        return {'response': True, 'result': file_name}
-    
+    """Asynchronously retrieves the Telegram profile photo for a user, storing and fetching from Redis."""
+    # Acquire Redis client
+    redis_client = await redis_manager.get_client()
+    # Try to fetch image bytes from Redis hash
+    img_data = await redis_client.hget(REDIS_IMAGE_HASH, str(user_id))
+    if img_data:
+        logging.debug(f"Profile image for user {user_id} loaded from Redis hash.")
+        return {'response': True, 'result': img_data}
+
+    # If not in Redis, fetch from Telegram
     try:
         url = f'https://api.telegram.org/bot{BotToken}/getUserProfilePhotos'
         async with aiohttp.ClientSession() as session:
             async with session.get(url, params={'user_id': user_id, 'limit': 1}) as response:
                 data = await response.json()
-                if data['ok'] and data['result']['total_count'] > 0:
+                if data.get('ok') and data['result']['total_count'] > 0:
                     file_id = data['result']['photos'][0][0]['file_id']
                     file_url = f'https://api.telegram.org/bot{BotToken}/getFile'
                     async with session.get(file_url, params={'file_id': file_id}) as file_response:
                         file_data = await file_response.json()
-                        if file_data['ok']:
+                        if file_data.get('ok'):
                             image_url = f"https://api.telegram.org/file/bot{BotToken}/{file_data['result']['file_path']}"
-                            result = await save_image(f'{user_id}.png', image_url, "bot_project/images/profile")
-                            if result.get('response'):
-                                logging.info(f"Profile image saved for user {user_id}: {result.get('result')}")
-                                return {'response': True, 'result': result.get('result')}
-                            return {'response': True, 'result': result.get("result")}
+                            # Download and save to Redis
+                            save_result = await save_image_to_redis(user_id, image_url, redis_client)
+                            if save_result.get('response'):
+                                logging.info(f"Profile image stored in Redis for user {user_id}.")
+                                return {'response': True, 'result': save_result.get('result')}
         return {'response': False, 'error': "No profile photo found."}
     except Exception as e:
         logging.error(f"Error getting profile image: {e}")
         return {'response': False, 'error': str(e)}
 
-async def save_image(file_name: str, image_url: str, save_directory: str) -> Dict[str, Any]:
-    """Asynchronously downloads and saves an image from a URL."""
+async def save_image_to_redis(user_id: int, image_url: str, redis_client: RedisManager) -> Dict[str, Any]:
+    """Downloads image from URL and saves binary data into Redis hash."""
     try:
-        logging.debug(f"Saving image to directory: {save_directory}, file: {file_name}")
-        if image_url:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(image_url) as response:
-                    response.raise_for_status()
-                    img_data = await response.read()
-                    img = await asyncio.to_thread(Image.open, BytesIO(img_data))
-                    if not os.path.exists(save_directory):
-                        await asyncio.to_thread(os.makedirs, save_directory)
-                    save_path = os.path.join(save_directory, file_name)
-                    await asyncio.to_thread(img.save, save_path, 'PNG')
-                    logging.info(f"Image saved at: {save_path}")
-                    return {'response': True, 'result': save_path}
-        else:
-            return {'response': False}
+        async with aiohttp.ClientSession() as session:
+            async with session.get(image_url) as response:
+                response.raise_for_status()
+                img_data = await response.read()
+                # Store binary data in Redis hash under field = user_id
+                await redis_client.hset(REDIS_IMAGE_HASH, str(user_id), img_data)
+                return {'response': True, 'result': img_data}
     except Exception as e:
-        logging.error(f"Error saving profile image: {e}")
-        return {'response': False}
+        logging.error(f"Error saving image to Redis: {e}")
+        return {'response': False, 'error': str(e)}
 
 async def convert_points(balance: Union[float, int], currency: str = "INR") -> int:
     """Asynchronously converts points (stub implementation)."""
@@ -337,21 +342,58 @@ async def large_caps() -> dict:
     )
 
 
-async def get_sms_text_by_code(order_id: str, sms: str) -> Optional[str]:
-    """Asynchronously retrieves SMS text by code from an API."""
-    from utils.api import FIVESIM  # Import FIVESIM key if necessary
-    url = f"https://5sim.net/v1/user/check/{order_id}"
-    headers = {
-        "Authorization": f"Bearer {FIVESIM}",
-        "Accept": "application/json"
-    }
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers) as response:
-            if response.status == 200:
-                data = await response.json()
-                for code in data.get('sms', []):
-                    if code.get('code') == sms:
-                        return code.get('text')
+async def get_sms_text_by_code(order_id: str, sms: str, server_id: int) -> Optional[str]:
+    """
+    Retrieves SMS text matching the given code using different providers based on server_id.
+    
+    :param order_id: The order/activation ID.
+    :param sms: The expected SMS code to match.
+    :param server_id: Provider ID (1 = 5SIM, 6 = SMS-Activate.ae).
+    :return: Matched SMS text or None if not found or on error.
+    """
+    try:
+        async with aiohttp.ClientSession() as session:
+            if server_id == 1:
+                from utils.api import FIVESIM
+                url = f"https://5sim.net/v1/user/check/{order_id}"
+                headers = {
+                    "Authorization": f"Bearer {FIVESIM}",
+                    "Accept": "application/json"
+                }
+                async with session.get(url, headers=headers, timeout=10) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        for item in data.get("sms", []):
+                            if item.get("code") == sms:
+                                return item.get("text")
+            
+            elif server_id == 6:
+                from utils.api import SMS_ACTIVATE
+                url = (
+                    f"https://api.sms-activate.ae/stubs/handler_api.php"
+                    f"?api_key={SMS_ACTIVATE}&action=getStatusV2&id={order_id}"
+                )
+                async with session.get(url, timeout=10) as resp:
+                    if resp.status == 200:
+                        content_type = resp.headers.get("Content-Type", "")
+                        if "application/json" in content_type:
+                            data = await resp.json()
+                            sms_data = data.get("sms")
+                            if sms_data and sms_data.get("code") == sms:
+                                return sms_data.get("text")
+                        else:
+                            # handle possible plain text errors
+                            text = await resp.text()
+                            print(f"[SMS-ACTIVATE ERROR] {text}")
+                            return None
+
+    except asyncio.TimeoutError:
+        print("Request timed out.")
+    except aiohttp.ClientError as e:
+        print(f"AIOHTTP client error: {e}")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+
     return None
 
 async def fetch_url_str(url: str) -> str:

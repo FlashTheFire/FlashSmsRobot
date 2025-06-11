@@ -16,24 +16,37 @@ SMS_PROVIDERS = {
 }
 SMS_PROVIDERS_ID = {
     "1": {"url": "api1.5sim.net", "api_key": os.getenv("5_SIM", None)},
-    "2": {"url": "fastsms.su", "api_key": os.getenv("FAST_SMS", None)},
+    #"2": {"url": "fastsms.su", "api_key": os.getenv("FAST_SMS", None)},
     "3": {"url": "smshub.org", "api_key": os.getenv("SMS_HUB", None)},
     "4": {"url": "api.grizzlysms.com", "api_key": os.getenv("GRIZZLY_SMS", None)},
     "5": {"url": "smsbower.com", "api_key": os.getenv("SMS_BOWER", None)},
     "6": {"url": "api.sms-activate.org", "api_key": os.getenv("SMS_ACTIVATE", None)},
-    "7": {"url": "vak-sms.com", "api_key": os.getenv("VAK_SMS", None)},
-    "8": {"url": "api.tiger-sms.com", "api_key": os.getenv("TIGER_SMS", None)},
+    #"7": {"url": "vak-sms.com", "api_key": os.getenv("VAK_SMS", None)},
+    #"8": {"url": "api.tiger-sms.com", "api_key": os.getenv("TIGER_SMS", None)},
 }
 SMS_PROVIDERS_MANAGEMENT = {
     'FiveSimManagement', '1',
-    'FastSmsManagement', '2',
+    #'FastSmsManagement', '2',
     'SmsHubManagement', '3',
     'GrizzlySmsManagement', '4',
     'SmsBowerManagement', '5',
     'SmsActivateManagement', '6',
-    'VakSmsManagement', '7',
-    'TigerSmsManagement', '8'
+    #'VakSmsManagement', '7',
+    #'TigerSmsManagement', '8'
 }
+SMS_PROVIDERS_KEY = {
+    'FiveSimManagement': '1',
+    #'FastSmsManagement': '2',
+    'SmsHubManagement': '3',
+    'GrizzlySmsManagement': '4',
+    'SmsBowerManagement': '5',
+    'SmsActivateManagement': '6',
+    #'VakSmsManagement': '7',
+    #'TigerSmsManagement': '8'
+}
+
+
+
 
 
 

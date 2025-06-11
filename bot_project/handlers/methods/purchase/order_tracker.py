@@ -10,6 +10,8 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import contextlib
 from collections import deque
 
+from termcolor import colored
+
 # Local imports
 from handlers.manager.operation import OrderManagement, UserManagement
 from handlers.security import TransactionGuard
@@ -110,6 +112,7 @@ class UserOrderTrackerManagement:
                 "server_id": order_info['server_id'],
                 "app_price": order_info['order_amount'],
                 "country_id": order_info['country_id'],
+                "msg_id": order_info['message_id'],
                 "country_code": order_info['country_code'],
                 "country_name": order_info['country_name'],
                 "user_id": order_info['user_id'],
@@ -125,13 +128,12 @@ class UserOrderTrackerManagement:
                     'PROCESSING',
                     'false'
                 ),
-                self._send_sms_notification(order_id, api_status['code']),
+                self._send_sms_notification(order_id, api_status['code'], json.loads(order_info.get('sms_list', '[]'))),
                 wallet_manager.process_wallet_update(order_info['user_id']),
                 user_manager.send_order_report(self.bot, "edit_message_text", order_id, order_info['user_id'], '-1002203139746', details),
                 user_manager.user_metrics_report(self.bot, 'edit_message_text', order_info['user_id'], '-1002203139746')
             ]
-            if not sms_list:
-                tasks.append(self._update_order_ui(order_info, is_timeout=None))
+            tasks.append(self._update_order_ui(order_info, is_timeout=None))
             await asyncio.gather(*tasks)
         except Exception as e:
             await self._log('error', f"SMS handling failed: {e}")
@@ -285,7 +287,9 @@ class UserOrderTrackerManagement:
             'ACCESS_CANCEL': 'CANCELLED',
             'STATUS_CANCEL': 'CANCELLED',
             'NO_ACTIVATION': 'CANCELLED',
+            'WRONG_ACTIVATION_ID': 'CANCELLED',
             'TIMEOUT': 'FINISHED',
+            'ACCESS_WAITING': 'PENDING',
             'BAD_KEY': 'FAILED',
             'BAD_ACTION': 'FAILED',
         }
@@ -307,7 +311,22 @@ class UserOrderTrackerManagement:
         """Robust API checker with retry logic"""
         retries = 3
         timeout = 2.0
-        
+        if str(order['order_id']).startswith('987654321'):
+            status_result = await self.order_manager.manage_number_order(
+                redis_client=self.redis_client,
+                country_id=order['country_id'],
+                server_id=order['server_id'],
+                app_id=order['app_id'],
+                operator="free",
+                order_id=order['order_id'],
+                action="status"
+            )
+            print("----------------")
+            print(f"{order['order_id']} - {order['app_name']}")
+            print(status_result)
+            return await self._parse_api_response(status_result.get('sms_waiting', 'ACCESS_DENIED'))
+
+
         for attempt in range(retries):
             try:
                 server_id = int(order['server_id'])
@@ -389,6 +408,7 @@ class UserOrderTrackerManagement:
                 "country_code": order_info['country_code'],
                 "country_name": order_info['country_name'],
                 "user_id": order_info['user_id'],
+                "msg_id": order_info['message_id'],
                 "valid_status": "✅ Oʀᴅᴇʀ Hᴀs Cᴏᴍᴘʟᴇᴛᴇᴅ",
                 "sms_list": sms_list
             }
@@ -450,6 +470,7 @@ class UserOrderTrackerManagement:
                 "app_price": order_info['order_amount'],
                 "country_id": order_info['country_id'],
                 "country_code": order_info['country_code'],
+                "msg_id": order_info['message_id'],
                 "country_name": order_info['country_name'],
                 "user_id": order_info['user_id'],
                 "valid_status": "⏱️ Oʀᴅᴇʀ Hᴀs Exᴘɪʀᴇᴅ"
@@ -463,14 +484,53 @@ class UserOrderTrackerManagement:
                 wallet_manager.process_wallet_update(order_info['user_id'])
                 
             )
+    async def _pending_order(self, order_id: str, order_info: Dict, reason: str = 'API_WAITING') -> None:
+        """Finalize order completion with audit trail and error handling"""
+        try:
+            # Validate order_info
+            if not order_info or not isinstance(order_info, dict):
+                await self._log('error', f"Invalid order_info for {order_id}")
+                return
+            fields = {
+                'order_status': 'COMPLETED'
+            }
+
+            # Atomic updates
+            await self.order_manager.update_order_fields(order_id, fields=fields)
+            await self._log('info', f"Order {order_id} completed: {reason}")
+
+        except KeyError as e:
+            await self._log('error', f"Missing key in order_info for {order_id}: {e}")
+        except json.JSONDecodeError as e:
+            await self._log('error', f"Invalid order_history JSON for {order_id}: {e}")
+        except Exception as e:
+            await self._log('error', f"Failed to complete order {order_id}: {e}")
 
 
     async def _request_sms_retry(self, order_id: str) -> None:
         """Compulsory retry request"""
         try:
             order_data = (await self.order_manager.get_order_data(order_id))['result']
+            if int(order_data['message_id']) == int(0):
+                result = await self._pending_order(order_id, order_data, 'API_WAITING')
+                return
+                
             server_name, api_key = await get_api_info(int(order_data['server_id']))
-            
+            '''if str(order_data['order_id']).startswith('0987654321'):
+                sms_code = "STATUS_WAIT_CODE"
+                add_result = await self.order_manager.manage_number_order(
+                    redis_client=self.redis_client,
+                    country_id=order_data['country_id'],
+                    server_id=order_data['server_id'],
+                    app_name=order_data['app_name'],
+                    operator="free",
+                    order_id=order_data['order_id'],
+                    action="add",
+                    sms_code=sms_code
+                )
+                print(colored(f"Add Code: {add_result}", "yellow"))
+                return'''
+
             async with aiohttp.ClientSession() as session:
                 async with session.get(
                     f"https://{server_name}/stubs/handler_api.php",
@@ -483,16 +543,20 @@ class UserOrderTrackerManagement:
                     timeout=5
                 ) as response:
                     response_text = await response.text()
+                    print(f"https://{server_name}/stubs/handler_api.php?api_key={api_key}&action=setStatus&id={order_data['order_id']}&status=3")
+                    print(f"SMS retry response: {response_text}")
                     if response_next:
                         response_text = response_next
-                    if response_text != 'ACCESS_RETRY_GET':
+                    # If response_text does not contain ACCESS_RETRY_GET and is not ACCESS_WAITING
+                    if 'ACCESS_RETRY_GET' not in response_text and response_text != 'ACCESS_WAITING':
                         await self._complete_order(order_id, order_data, 'API_COMPLETION')
-
         except Exception as e:
             logger.error(f"SMS retry request failed: {e}")
     async def _update_order_ui(self, order_info: Dict, is_timeout: bool = False, current_time: str = None) -> None:
         """Robust UI update with error handling and type checking"""
         try:
+            if int(order_info['message_id']) == int(0):
+                return
             # Change order ID extraction to handle Redis key format
             order_id = order_info["id"].split(":")[-1] if order_info["id"].startswith("order_data:info:") else ''
             order_info['order_amount'] = float(order_info.get('order_amount', 0))
@@ -553,7 +617,7 @@ class UserOrderTrackerManagement:
             if is_timeout:
                 if valid_status == 'PENDING':
                     keyboard.row(
-                        InlineKeyboardButton("↻ Cʜᴀɴɢᴇ Cᴏᴜɴᴛʀʏ", switch_inline_query_current_chat=f"#AᴘᴘIᴅ:{order_info.get('app_id', '')}"),
+                        InlineKeyboardButton("⌕ Cʜᴀɴɢᴇ Cᴏᴜɴᴛʀʏ", switch_inline_query_current_chat=f"#AᴘᴘIᴅ:{order_info.get('app_id', '')} "),
                         buy_again_btn
                     )
                 elif valid_status in {'COMPLETED', 'PROCESSING'}:
@@ -597,7 +661,7 @@ class UserOrderTrackerManagement:
         if is_timeout is True:
             text = f"{base_template}<b>⏱️ Oʀᴅᴇʀ Hᴀs Exᴘɪʀᴇᴅ [</b><code>Rᴇғᴜɴᴅᴇᴅ</code><b>]</b>"
         elif is_timeout is None or order_info.get('order_status') == 'COMPLETED':
-            text = f"{base_template}<b>✅ Oʀᴅᴇʀ Hᴀs Cᴏᴍᴘʟᴇᴛᴇᴅ.</b>"
+            text = f"{base_template}<b>✅ Oʀᴅᴇʀ Hᴀs Bᴇᴇɴ Cᴏᴍᴘʟᴇᴛᴇᴅ.</b>"
         else:
             text = f"{base_template}⏱ <b>Vᴀʟɪᴅ Uɴᴛɪʟ »</b> {order_info.get('valid_until', 'N/A')} <b>[</b>{current_time}<b>]</b>"
         
@@ -718,33 +782,46 @@ class UserOrderTrackerManagement:
         self._circuit_errors = 0
 
     
-    async def _handle_sms_reception(self, order_id: str, api_status: Dict) -> None:
+    '''async def _handle_sms_reception(self, order_id: str, api_status: Dict) -> None:
         """SMS handling pipeline with atomic updates"""
         try:
             await asyncio.gather(
                 self.order_manager.update_order_success(order_id, api_status['code'], self.extended_timeout, 'PROCESSING', 'false'),
-                self._send_sms_notification(order_id, api_status['code']),
+                self._send_sms_notification(order_id, api_status['code'], sms_list=[]),
                 self._request_sms_retry(order_id)
             )
         except Exception as e:
-            await self._log('error', f"SMS handling failed: {e}")
-    async def _send_sms_notification(self, order_id: str, code: str) -> None:
+            await self._log('error', f"SMS handling failed: {e}")'''
+
+            
+    async def _send_sms_notification(self, order_id: str, code: str, sms_list: List[str]=[]) -> None:
         """Batched SMS notifications with template reuse"""
         try:
             order_data = (await self.order_manager.get_order_data(order_id))['result']
+            server_id = order_data['server_id']
+            sms = await get_sms_text_by_code(order_id, code, server_id)
             text = (
                 f"<blockquote><b>🗨️ Nᴇᴡ Mᴇssᴀɢᴇ Rᴇᴄᴇɪᴠᴇᴅ [ "
                 f"<code>{json.loads(order_data['order_number'])[0]}</code> "
                 f"<code>{json.loads(order_data['order_number'])[1]}</code> ]</b></blockquote>"
-                f"<pre><code class=\"language-• Sᴍs ❯ \">{code}</code></pre>"
+                f"<pre><code class=\"language-• Sᴍs ❯ \">{code if not sms else sms}</code></pre>"
             )
-            
-            await self.bot.send_message(
-                chat_id=order_data['user_id'],
-                text=text,
-                reply_to_message_id=order_data['message_id'],
-                parse_mode='HTML'
-            )
+            code = code if not sms else sms
+            if code not in sms_list:
+                try:
+                    kwargs = {}
+                    if int(order_data['message_id']) != 0:
+                        kwargs['reply_to_message_id'] = order_data['message_id']
+                    await self.bot.send_message(
+                        chat_id=order_data['user_id'],
+                        text=text,
+                        parse_mode='HTML',
+                        **kwargs
+                    )
+                except Exception as e:
+                    await self._log('error', f"Failed to send SMS notification: {e}")
+            else:
+                await self._log('info', f"SMS {code} already sent")
         except Exception as e:
             await self._log('error', f"SMS notification failed: {e}")
     

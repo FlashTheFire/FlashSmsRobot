@@ -71,7 +71,7 @@ RESULT_LIMIT = 10
 
 class HistoryManager:
     """Advanced history management system with Redis integration."""
-    __slots__ = ('bot', 'order_mgr', 'deposit_mgr', 'rate_limiter', 'aggregator', 'redis_client', 'user_mgr')
+    __slots__ = ('bot', 'order_mgr', 'deposit_mgr', 'aggregator', 'redis_client', 'user_mgr')
 
     def __init__(self):
         self.bot: Optional[AsyncTeleBot] = None
@@ -80,7 +80,6 @@ class HistoryManager:
         self.aggregator: Optional[FinancialManagement] = None
         self.user_mgr: Optional[UserManagement] = None
         self.redis_client = None
-        self.rate_limiter = None
 
     async def init_managers(self, order_mgr: OrderManagement, user_mgr: UserManagement, deposit_mgr: DepositManagement, bot: AsyncTeleBot) -> bool:
         """Initialize required components for history handling asynchronously."""
@@ -92,11 +91,7 @@ class HistoryManager:
             self.aggregator = bot.aggregator
             redis_client = await redis_manager.get_client()
             self.redis_client = redis_client
-            self.rate_limiter = RateLimiter(
-                redis_client=redis_client,
-                duration=60,
-                max_requests=10
-            )
+            
             # Using asyncio.to_thread to avoid blocking the event loop for logging.
             await asyncio.to_thread(logger.info, "History managers initialized successfully")
             return True
@@ -205,7 +200,7 @@ class HistoryManager:
             if is_timeout:
                 if valid_status == 'PENDING':
                     keyboard.row(
-                        InlineKeyboardButton("↻ Cʜᴀɴɢᴇ Cᴏᴜɴᴛʀʏ", switch_inline_query_current_chat=f"#AᴘᴘIᴅ:{order_info.get('app_id', '')}"),
+                        InlineKeyboardButton("⌕ Cʜᴀɴɢᴇ Cᴏᴜɴᴛʀʏ", switch_inline_query_current_chat=f"#AᴘᴘIᴅ:{order_info.get('app_id', '')} "),
                         buy_again_btn
                     )
                 elif valid_status in {'COMPLETED', 'PROCESSING'}:
@@ -300,7 +295,7 @@ class HistoryManager:
                     keyboard = InlineKeyboardMarkup()
                     keyboard.row(
                         InlineKeyboardButton("🛒 Oʀᴅᴇʀ", switch_inline_query_current_chat='#Hɪsᴛᴏʀʏ-Oʀᴅᴇʀ'),
-                        InlineKeyboardButton("🔍 Aʟʟ Hɪsᴛᴏʀʏ", switch_inline_query_current_chat='#Hɪsᴛᴏʀʏ-Aʟʟ'),
+                        InlineKeyboardButton("⌕ Aʟʟ Hɪsᴛᴏʀʏ", switch_inline_query_current_chat='#Hɪsᴛᴏʀʏ-Aʟʟ'),
                         InlineKeyboardButton("💰 Dᴇᴘᴏsɪᴛ", switch_inline_query_current_chat='#Hɪsᴛᴏʀʏ-Dᴇᴘᴏsɪᴛ')
                     )
 
@@ -316,7 +311,7 @@ class HistoryManager:
                     keyboard = InlineKeyboardMarkup()
                     keyboard.row(
                         InlineKeyboardButton("🛒 Oʀᴅᴇʀ", switch_inline_query_current_chat='#Hɪsᴛᴏʀʏ-Oʀᴅᴇʀ'),
-                        InlineKeyboardButton("🔍 Aʟʟ Hɪsᴛᴏʀʏ", switch_inline_query_current_chat='#Hɪsᴛᴏʀʏ-Aʟʟ'),
+                        InlineKeyboardButton("⌕ Aʟʟ Hɪsᴛᴏʀʏ", switch_inline_query_current_chat='#Hɪsᴛᴏʀʏ-Aʟʟ'),
                         InlineKeyboardButton("💰 Dᴇᴘᴏsɪᴛ", switch_inline_query_current_chat='#Hɪsᴛᴏʀʏ-Dᴇᴘᴏsɪᴛ')
                     )
                     keyboard.row(
@@ -445,7 +440,8 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
                 server_id = item.get('server_id', '')
                 order_id = item["id"].split(":")[-1] if item["id"].startswith("order_data:info:") else ''
                 order_number = json.loads(item.get('order_number', '[]'))
-                sms = "Nᴏᴛ Rᴇᴄᴇɪᴠᴇᴅ" if not sms_list else ", ".join([s.strip("'") for s in sms_list[:3]] + (["..."] if len(sms_list) > 3 else []))
+                sms_list = [s.strip("'")[:10] + (",..." if len(s) > 10 else '') for s in sms_list]
+                sms = "Nᴏᴛ Rᴇᴄᴇɪᴠᴇᴅ" if not sms_list else ", ".join(sms_list[:3] + (["..."] if len(sms_list) > 3 else []))
                 thumbnail_url = link_data.get(f"{country_id}-{app_id}", "https://i.postimg.cc/13PMXbT7/Pngtree-hourglass-waiting-for-mouse-pointer-5453296.png")
                 status = "⏳" if order_status == "PENDING" else "⌛" if order_status == "PROCESSING" else "✅" if order_status == "COMPLETED" else "🛑"
                 order_status = "Aᴄᴛɪᴠᴇ" if order_status == "PENDING" else "Pʀᴏᴄᴇssɪɴɢ" if order_status == "PROCESSING" else "Cᴏᴍᴘʟᴇᴛᴇᴅ" if order_status == "COMPLETED" else "Iɴᴀᴄᴛɪᴠᴇ"
@@ -589,12 +585,18 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
         barcode_id = query_parts[1].split(':')[0].strip()
         order_id = await decode_barcode_id(barcode_id)
         number_images = {
-            "1": "https://i.postimg.cc/7ZKNpQk7/image.png",
-            "2": "https://i.postimg.cc/Hnm5JQmd/image.png",
-            "3": "https://i.postimg.cc/tgVV2rC9/image.png",
-            "4": "https://i.postimg.cc/dtHkvMhq/image.png",
-            "5": "https://i.postimg.cc/Hk8xgrG2/image.png"
+            "1": "https://i.postimg.cc/63kSFQDc/image.png",
+            "2": "https://i.postimg.cc/NFTMw5Lj/image.png",
+            "3": "https://i.postimg.cc/XqnhnPYB/image.png",
+            "4": "https://i.postimg.cc/zB2WfbJw/image.png",
+            "5": "https://i.postimg.cc/sX5XkMMD/image.png",
+            "6": "https://i.postimg.cc/4yh5kbzH/image.png",
+            "7": "https://i.postimg.cc/W4C89HZc/image.png",
+            "8": "https://i.postimg.cc/NfFyMfVb/image.png",
+            "9": "https://i.postimg.cc/gJMzF3Yp/image.png",
+            "10": "https://i.postimg.cc/52v842YT/image.png"
         }
+
         filters = {
             "user_id": user_id,
             "order_id": order_id,
@@ -624,27 +626,30 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
             logger.error(f"JSON decode error: {e}")
             order_history, sms_list, order_number = [], [], []
         order_amount = float(order_info.get("order_amount", 0))
+        order_amount_display = f"{order_amount:.2f}"
         app_name = order_info.get("app_name", "N/A")
         order_status = order_info.get("order_status", "")
         country_code = order_info.get("country_code", "")
+        country_id = order_info.get("country_id", "")
         recorded_at = float(order_info.get("recorded_at", 0))
         server_id = order_info.get("server_id", 0)
         inline_results = []
         sms_count = 0
+        country_data = await redis_manager.redis_client.json().get('main_data:details:country_data') or {}
 
         async def process_event(idx, event):
-            nonlocal sms_count, order_amount
+            nonlocal sms_count, order_amount_display
             event_timestamp = event.get("timestamp", "0")
             event_time = time_ago(event_timestamp)
             event_action = event.get("action", "")
             if "SMS_RECEIVED" in event_action:
                 if sms_count == 1:
-                    order_amount = "Fʀᴇᴇ"
+                    order_amount_display = "Fʀᴇᴇ"
                 sms_count += 1
                 event_sms = event.get("sms", "N/A")
                 suffix = "sᴛ" if sms_count == 1 else "ɴᴅ" if sms_count == 2 else "ʀᴅ" if sms_count == 3 else "ᴛʜ"
                 event_title = f"{sms_count}{suffix}. Sᴍs Rᴇᴄɪᴇᴠᴇᴅ [{event_sms}]"
-                event_desc = f"💎 Pʀɪᴄᴇ ❯ {order_amount}\n⏳ Rᴇᴄᴇɪᴠᴇᴅ Aᴛ {event_time}"
+                event_desc = f"💎 Pʀɪᴄᴇ ❯ {order_amount_display}\n⏳ Rᴇᴄɪᴇᴠᴇᴅ Aᴛ {event_time}"
                 return InlineQueryResultArticle(
                     id=str(idx),
                     title=event_title,
@@ -654,8 +659,8 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
                         message_text=(
                             f"<b>Bᴀʀ-Cᴏᴅᴇ:</b> <code>{barcode_id}</code>\n"
                             f"<b>Eᴠᴇɴᴛ:</b> {event_title}\n\n"
-                            f"<b>💎 Pʀɪᴄᴇ ❯</b> <code>{order_amount}</code>\n"
-                            f"<b>⏳ Rᴇᴄᴇɪᴠᴇᴅ Aᴛ</b> {event_time}"
+                            f"<b>💎 Pʀɪᴄᴇ ❯</b> <code>{order_amount_display}</code>\n"
+                            f"<b>⏳ Rᴇᴄɪᴠᴇᴅ Aᴛ</b> {event_time}"
                         ),
                         parse_mode="HTML"
                     ),
@@ -673,25 +678,48 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
                 f"⚡ Oʀᴅᴇʀ Bᴜʏᴇᴅ Aᴛ {time_ago(recorded_at)}\n"
                 f"💬 Tᴏᴛᴀʟ Sᴍs Rᴇᴄɪᴇᴠᴇᴅ ❯ {sms_count} Sᴍs{'s' if sms_count > 1 else ''}"
             ))
+            country_name = country_data.get(country_id, {}).get('country_name', '').translate(await small_caps())
+            order_at = time_ago(recorded_at)
+            status = "⏳" if order_status == "PENDING" else "⌛" if order_status == "PROCESSING" else "✅" if order_status == "COMPLETED" else "🛑"
+
+            if len(sms_list) > 2:
+                text = "<code>" + "</code>\n<code>          </code><b>•</b> <code>".join(sms_list) + "</code>"
+                sms_section = f"<blockquote expandable>💬 <b>Sᴍs Lɪsᴛ »</b> {text}</blockquote>\n\n"
+            elif len(sms_list) == 2:
+                sms_section = f"💬 <b>Sᴍs Lɪsᴛ »</b> <code>{sms_list[0]}</code><code>,</code> <code>{sms_list[1]}</code>\n\n"
+            elif len(sms_list) == 1:
+                sms_section = f"💬 <b>Sᴍs Lɪsᴛ »</b> <code>{sms_list[0]}</code>\n\n"
+            else:
+                sms_section = "💬 <b>Sᴍs Lɪsᴛ »</b> <code>N/A</code>\n\n"
+            message_text = (
+                    f"📜 <b>Oʀᴅᴇʀ Hɪsᴛᴏʀʏ</b> <code>[</code> <code>{app_name.translate(await small_caps())}</code> <code>]</code>\n\n"
+                    f"📦 <b>Bᴀʀ-Cᴏᴅᴇ »</b> <code>{barcode_id}</code>\n"
+                    f"{status} <b>Sᴛᴀᴛᴜs »</b> <code>{order_status}</code>\n\n"
+                    f"💎 <b>Aᴍᴏᴜɴᴛ »</b> <code>{order_amount_display}</code> <code>Pᴏɪɴᴛs</code>\n"
+                    f"🌍 <b>Rᴇɢɪᴏɴ »</b> <code>{country_name}</code> <b>[</b> <code>{country_code}</code> <b>]</b>\n\n"
+                    f"📞 <b>Nᴜᴍʙᴇʀ »</b> <code>{order_number[0]}</code> <code>{order_number[1]}</code>\n"
+                    f"{sms_section}"
+                    f"🗓️ <b>Oʀᴅᴇʀ Tɪᴍᴇ »</b> <code>{order_at}</code>"
+                )
             summary_result = InlineQueryResultArticle(
                 id="summary",
                 title=f"🛍️ Oʀᴅᴇʀ Sᴍs Hɪsᴛᴏʀʏ [{app_name.translate(await small_caps())}]",
                 description=description,
-                input_message_content=InputTextMessageContent("/Buy_"),
-                thumbnail_url="https://i.postimg.cc/JhdcD1S6/ainvoice.png"
+                input_message_content=InputTextMessageContent(message_text=message_text, parse_mode="HTML"),
+                thumbnail_url="https://i.postimg.cc/JhdcD1S6/ainvoice.png",
+                reply_markup=await history_manager._get_cached_keyboard(order_info, is_timeout=False, order_id=order_id)
             )
             inline_results.insert(0, summary_result)
 
         next_offset = str(int(inline_query.offset or 0) + 50) if len(inline_results) == 50 else ""
-        await asyncio.gather(
-            bot.answer_inline_query(
-                inline_query.id,
-                results=inline_results,
-                cache_time=0,
-                next_offset=next_offset
-            ),
-            logger.info("Inline handler for #BᴀʀCᴏᴅᴇ- registered successfully")
+        await bot.answer_inline_query(
+            inline_query.id,
+            results=inline_results,
+            cache_time=0,
+            next_offset=next_offset
         )
+
+        logger.info("Inline handler for #BᴀʀCᴏᴅᴇ- registered successfully")
 
     @bot.inline_handler(func=lambda query: query.query.startswith("#SᴛᴀᴛᴜsCᴀɴᴄᴇʟ"))
     async def handle_status_cancel_pending_inline(inline_query):
@@ -728,7 +756,7 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
                         except (IndexError, AttributeError):
                             app_code = app_code.strip('[]')
                     first_code = app_code.split(",")[0].strip().lower() if app_code and "," in app_code else app_code.lower() if app_code else ''
-                    thumbnail_url = f"https://udayscripts.in/image/service/{first_code}.png"
+                    thumbnail_url = f"https://smsactivate.s3.eu-central-1.amazonaws.com/assets/ico/{first_code}0.webp"
                     encoded_order_id = await encode_order_id(order_id)
                     title = f"{app_name} 💎 {order_amount} [{country_code}]"
                     description = f"Oʀᴅᴇʀᴇᴅ {order_at} | Bᴀʀ-Cᴏᴅᴇ : {encoded_order_id}"

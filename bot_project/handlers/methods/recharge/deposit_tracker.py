@@ -358,7 +358,7 @@ class DepositTrackerManagement:
                 )
                 keyboard_for_edit = InlineKeyboardMarkup()
                 keyboard_for_edit.row(
-                    InlineKeyboardButton("🔍 Dᴇᴘᴏsɪᴛ Hɪsᴛᴏʀʏ", switch_inline_query_current_chat='#Hɪsᴛᴏʀʏ-Dᴇᴘᴏsɪᴛ'),
+                    InlineKeyboardButton("⌕ Dᴇᴘᴏsɪᴛ Hɪsᴛᴏʀʏ", switch_inline_query_current_chat='#Hɪsᴛᴏʀʏ-Dᴇᴘᴏsɪᴛ'),
                     InlineKeyboardButton("ⓘ Hᴇʟᴘ & Sᴜᴘᴘᴏʀᴛ", callback_data="USER:HELP")
                 )
                 await self.bot.edit_message_media(
@@ -422,7 +422,7 @@ class DepositTrackerManagement:
             keyboard = InlineKeyboardMarkup()
             
             cancel_btn = InlineKeyboardButton("✘ Cᴀɴᴄᴇʟ Dᴇᴘᴏsɪᴛ", switch_inline_query_current_chat='#Hɪsᴛᴏʀʏ-Dᴇᴘᴏsɪᴛ')
-            history_btn = InlineKeyboardButton("🔍 Dᴇᴘᴏsɪᴛ Hɪsᴛᴏʀʏ", switch_inline_query_current_chat='#Hɪsᴛᴏʀʏ-Dᴇᴘᴏsɪᴛ')
+            history_btn = InlineKeyboardButton("⌕ Dᴇᴘᴏsɪᴛ Hɪsᴛᴏʀʏ", switch_inline_query_current_chat='#Hɪsᴛᴏʀʏ-Dᴇᴘᴏsɪᴛ')
             help_btn = InlineKeyboardButton("ⓘ Hᴇʟᴘ & Sᴜᴘᴘᴏʀᴛ", callback_data="USER:HELP")
             back = InlineKeyboardButton("« Bᴀᴄᴋ Tᴏ Dᴇᴘᴏsɪᴛ Pᴀɢᴇ", callback_data='USER:DEPOSIT')
 

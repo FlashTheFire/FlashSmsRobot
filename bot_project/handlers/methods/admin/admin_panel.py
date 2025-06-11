@@ -3,6 +3,7 @@ import asyncio
 import time
 import logging
 from datetime import datetime
+import secrets
 
 from redis.commands.core import AsyncBasicKeyCommands
 from telebot.async_telebot import AsyncTeleBot
@@ -84,6 +85,9 @@ class AdminPanelManager:
         self.rate_limiter: Optional[RateLimiter] = None
         self._initialized: bool = False
         self.admin_id = '5716978793'
+        self.H_API_KEYS = "secure_data:user_data:api_keys"
+        self.H_USER_KEYS = "secure_data:user_data:user_keys"
+
 
     async def init_managers(
         self, 
@@ -127,7 +131,6 @@ class AdminPanelManager:
         except Exception as e:
             logger.exception("Exception during init_managers")
             return False
-            
     async def register_handlers(self) -> bool:
         """
         Register all admin panel related handlers for the bot.
@@ -148,6 +151,11 @@ class AdminPanelManager:
                 func=lambda call: call.data.startswith("admin:")
             )
 
+            self.bot.register_message_handler(
+                self.generate_api_key,
+                func=lambda message: message.text.startswith("#Gᴇɴᴇʀᴀᴛᴇ")
+            )
+
             # Register message handler for inline query.
             self.bot.register_message_handler(
                 self.show_service_details,
@@ -159,6 +167,7 @@ class AdminPanelManager:
         except Exception as e:
             logger.exception("Failed to register admin panel handlers")
             return False
+
 
     async def show_admin_panel(self, message: Message) -> None:
         """
@@ -297,7 +306,21 @@ class AdminPanelManager:
                 "</blockquote>\n\n"
                 "<i>Sᴇʟᴇᴄᴛ A Mᴀɴᴀɢᴇᴍᴇɴᴛ Oᴘᴛɪᴏɴ...</i>"
             )
-            await self.bot.delete_message(call.message.chat.id, call.message.message_id)
+            try:
+                await self.bot.edit_message_text(
+                    chat_id=call.message.chat.id,
+                    message_id=call.message.message_id,
+                    text=caption,
+                    reply_markup=keyboard,
+                    parse_mode='HTML'
+                )
+                return
+            except Exception as e:
+                logger.exception("Failed to load admin panel")
+                await self.bot.send_message(
+                    call.message.chat.id,
+                    "Failed to load admin panel"
+                )
 
             # Send a new text message with the caption
             await self.bot.send_message(
@@ -313,7 +336,35 @@ class AdminPanelManager:
                 "Failed to load admin panel"
             )
 
+    async def generate_api_key(self, message: Message) -> None:
+        try:
+            user_id = message.from_user.id
+            chat_id = message.chat.id
+            message_id = message.message_id
+            #text = message.text.strip()
+            #_, new_user_id = text.split(maxsplit=1)
 
+            # Check if the current user is an admin
+            '''if str(user_id) != str(self.admin_id):
+                await self.bot.send_message(chat_id=chat_id, text="🚫 Access denied: Admins only.")
+                return'''
+
+            msg = await self.bot.send_message(chat_id=chat_id, text="✅ Admin access granted")
+            new_key = secrets.token_hex(16)
+            await self.store_api_key(user_id=user_id, key=new_key)
+            logger.info(f"Generated new API key: {new_key}")
+            await self.bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=msg.message_id,
+                text=f"New API key generated: {new_key}"
+            )
+        except Exception as e:
+            logger.exception("Error generating API key")
+            await self.bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=msg.message_id,
+                text="Failed to generate API key"
+            )
     async def handle_callback_query(self, call: CallbackQuery) -> None:
         """
         Handle callback queries for admin panel inline buttons.
@@ -331,7 +382,6 @@ class AdminPanelManager:
             logger.exception("Error handling callback query")
 
 
-
     async def show_service_manager(self, call: CallbackQuery) -> None:
         try:
             user_id = call.from_user.id
@@ -346,16 +396,17 @@ class AdminPanelManager:
             caption = (
                 "<b>👨🏻‍💻 Sᴇʀᴠɪᴄᴇ Mᴀɴᴀɢᴇʀ ❯</b>\n\n"
                 "<blockquote expandable>"
-                "📊 Tᴏᴛᴀʟ Sᴇʀᴠɪᴄᴇs       » <code>{}</code>\n"
-                "🌎 Tᴏᴛᴀʟ Cᴏᴜɴᴛʀʏ       » <code>{}</code>\n"
-                "💻 Pᴏᴘᴜʟᴀʀ Sᴇʀᴠɪᴄᴇs  » <code>{}</code>\n"
+                "📊 Tᴏᴛᴀʟ Sᴇʀᴠɪᴄᴇs       »  <code>{}</code>\n"
+                "🌎 Tᴏᴛᴀʟ Cᴏᴜɴᴛʀʏ       »  <code>{}</code>\n\n"
+                "👨🏻‍💻 Tᴏᴛᴀʟ Sᴇʀᴠᴇʀ          »  <code>{}</code>\n\n"
+                "💻 Pᴏᴘᴜʟᴀʀ Sᴇʀᴠɪᴄᴇs  »  <code>{}</code>\n"
                 "📈 Pᴏᴘᴜʟᴀʀ Cᴏᴜɴᴛʀʏ  »  <code>{}</code>"
                 "</blockquote>\n\n"
                 "<i>Sᴇʟᴇᴄᴛ A Sᴇʀᴠɪᴄᴇ Oᴘᴛɪᴏɴ</i><b>.</b>"
             )
             keyboard = InlineKeyboardMarkup(row_width=2)
             keyboard.add(
-                InlineKeyboardButton("🔍 Sᴇʀᴠɪᴄᴇs", switch_inline_query_current_chat="#Sᴇʀᴠɪᴄᴇ "),
+                InlineKeyboardButton("⌕ Sᴇʀᴠɪᴄᴇs", switch_inline_query_current_chat="#Sᴇʀᴠɪᴄᴇ "),
                 InlineKeyboardButton("➕ Aᴅᴅ Sᴇʀᴠɪᴄᴇ", callback_data="remove_service")
             )
             keyboard.add(InlineKeyboardButton("🔙 Bᴀᴄᴋ Tᴏ Aᴅᴍɪɴ Pᴀɴᴇʟ", callback_data="admin:edit_admin_panel"))
@@ -390,15 +441,21 @@ class AdminPanelManager:
                 "REDUCE", "COUNT_DISTINCT", "1", "@app_id", "AS", "unique_app_ids"
             ]
 
+            total_server_query = [
+                "FT.AGGREGATE", "service_index", "*",
+                "GROUPBY", "1", "@server_id",
+            ]
             tasks = [
                 self.redis_client.execute_command(*total_country_query),
                 self.redis_client.execute_command(*famous_country_query),
+                self.redis_client.execute_command(*total_server_query),
                 self.redis_client.execute_command(*total_service_query),
                 self.redis_client.execute_command(*famous_service_query)
             ]
 
             (total_country_res,
             famous_country_res,
+            total_server_res,
             total_service_res,
             famous_service_res) = await asyncio.gather(*tasks, return_exceptions=True)
             await self.bot.edit_message_text(
@@ -406,6 +463,7 @@ class AdminPanelManager:
                 text=caption.format(
                     total_service_res[0],
                     total_country_res[0],
+                    total_server_res[0],
                     famous_service_res[0],
                     famous_country_res[0]
                     ),
@@ -413,41 +471,6 @@ class AdminPanelManager:
                     message_id=message_id,
                     reply_markup=keyboard
                 )
-            '''cache_data = await top_service_manager._get_cached_leaderboard(must_return=True)
-            if cache_data:
-                file_id = cache_data.get("file_id")
-                try:
-                    if file_id:
-                        await self.bot.edit_message_media(
-                            media=InputMediaPhoto(media=file_id, caption=caption.format(
-                                total_service_res[0],
-                                famous_service_res[0],
-                                total_country_res[0],
-                                famous_country_res[0]
-                                ), parse_mode="HTML"),
-                            chat_id=chat_id,
-                            message_id=message_id,
-                            reply_markup=keyboard
-                        )
-                        return
-                    else:
-                        # Use cached file but get new file_id
-                        with open(cache_data["file_path"], 'rb') as media_file:
-                            result = await self.bot.edit_message_media(
-                                media=InputMediaPhoto(media=media_file, caption=caption, parse_mode="HTML"),
-                                chat_id=chat_id,
-                                message_id=message_id,
-                                reply_markup=keyboard
-                            )
-                            if hasattr(result, 'photo') and result.photo:
-                                # Save the new file_id
-                                new_file_id = result.photo[-1].file_id
-                                await top_service_manager._save_file_id(new_file_id)
-                            return
-                except Exception as e:
-                    print(f"Error using cached data: {e}")
-                    # Fall through to generate new data
-                    pass'''
         except Exception as e:
             logger.exception("Failed to show service manager")
             await self.bot.send_message(call.message.chat.id, "❌ Failed to show service manager")
@@ -462,7 +485,6 @@ class AdminPanelManager:
         except Exception as e:
             logger.exception("Failed to show service details")
             await self.bot.send_message(message.chat.id, "❌ Failed to show service details")
-
 
 
     async def _fetch_stats(self, time_filter: dict) -> Dict[str, Any]:
@@ -590,7 +612,6 @@ class AdminPanelManager:
             'deposit_amount': deposit_amount,
             'active_users': active_users
         }
-
     async def _get_system_stats(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
         Retrieve system statistics for today and overall (since the beginning of the year).
@@ -631,6 +652,46 @@ class AdminPanelManager:
             }
             return default_stats, default_stats
 
+
+    async def store_api_key(self, user_id: int, key: str) -> None:
+        lua = """
+        -- 1) Find & delete any existing field in H_API_KEYS whose value == user_id
+        local entries = redis.call('HGETALL', KEYS[1])
+        for i = 1, #entries, 2 do
+            local existing_key  = entries[i]
+            local existing_user = entries[i + 1]
+            if existing_user == ARGV[1] then
+                redis.call('HDEL', KEYS[1], existing_key)
+                break
+            end
+        end
+        -- 2) Insert new api_key → user_id into H_API_KEYS
+        redis.call('HSET', KEYS[1], ARGV[2], ARGV[1])
+        """
+        try:
+            # ARGV[1] = user_id as string; ARGV[2] = api_key
+            await self.redis_client.eval(
+                lua,
+                1,
+                self.H_API_KEYS,
+                str(user_id),  # ARGV[1]
+                key             # ARGV[2]
+            )
+            # Now update the reverse‐lookup hash: user_id → api_key
+            await self.redis_client.hset(self.H_USER_KEYS, str(user_id), key)
+
+        except Exception as e:
+            logger.warning(f"Redis error in store_api_key: {e}")
+    async def handle_generate_api_key(self, user_id: int) -> Dict[str, Any]:
+        try:
+            new_key = secrets.token_hex(16)
+            await self.store_api_key(user_id=user_id, key=new_key)
+            logger.info(f"Generated new API key: {new_key}")
+            return {"status": True, "api_key": new_key}
+        except Exception as e:
+            logger.exception(f"Error generating API key: {e}")
+            return {"status": False, "error": "Internal server error"}
+        
 # Instantiate a global admin panel manager.
 admin_panel_manager = AdminPanelManager()
 

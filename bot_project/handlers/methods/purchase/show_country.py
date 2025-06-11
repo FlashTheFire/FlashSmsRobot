@@ -1,5 +1,5 @@
 from telebot.async_telebot import AsyncTeleBot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, Message
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, Message, ForceReply
 from utils.functions import setup_logger, small_caps
 from utils.redis_manager import redis_manager, RedisManager
 from utils.cache_manager import cache_manager, CachePrefix
@@ -12,7 +12,9 @@ from handlers.manager.operation import OrderManagement, UserManagement
 from redis import Redis
 from functools import partial
 from utils.redis_keys import RedisKeys
+
 #import logging
+SERVICE_PREFIX = "service_data"
 
 class UserCountryManagement:
     def __init__(self) -> None:
@@ -64,10 +66,11 @@ class UserCountryManagement:
             #logging.error(f"Validation error: {e}")
             return {"valid": False, "error": "🔒 Iɴᴛᴇʀɴᴀʟ Vᴀʟɪᴅᴀᴛɪᴏɴ Eʀʀᴏʀ"}
 
-    async def country_search(self, app_id: str, country_id: Optional[str] = None, server_id: Optional[str] = None, is_admin: bool = False) -> Optional[Dict[str, Any]]:
+    async def country_search(self, app_id: str, country_id: Optional[str] = None, server_id: Optional[str] = None, is_admin: bool = False, app_count: Optional[str] = "[1 +inf]", app_price: Optional[str] = "[0.01 +inf]", sort_by: Optional[str] = "ASC", limit: Optional[int] = 500) -> Optional[Dict[str, Any]]:
         """
         Aggregates service data by country for the given app_id.
         Combines all servers per country and returns only the lowest price for each country.
+        Also returns a list of all server_ids found.
         """
         try:
             redis_client = self.redis_client
@@ -81,10 +84,10 @@ class UserCountryManagement:
 
             if country_id:
                 query_str += f' @country_id:{country_id}'
-                
-            query_str += " @app_price:[0.01 +inf] @app_count:[1 +inf]"
+
+            query_str += f" @app_price:{app_price}"
             if not is_admin:
-                query_str += " @is_show_server:(True) @is_show_country:(True) @is_show_app:(True)"
+                query_str += f"@is_show_server:(True) @is_show_country:(True) @is_show_app:(True)" #@app_count:{app_count} 
 
             groupby_fields = ["@country_id", "@country_name", "@server_id", "@app_name"]
             if is_admin:
@@ -97,18 +100,21 @@ class UserCountryManagement:
                 "FT.AGGREGATE", SERVICE_INDEX, query_str,
                 "GROUPBY", groupby_num, *groupby_fields,
                 "REDUCE", "MIN", "1", "@app_price", "AS", "MIN_PRICE",
-                "REDUCE", "SUM", "1", "@app_count", "AS", "TOTAL_STOCK"
+                "REDUCE", "SUM", "1", "@app_count", "AS", "TOTAL_STOCK",
+                "SORTBY", "2", "@MIN_PRICE", sort_by,   # or DESC for highest
+                "LIMIT", "0", limit                     # returns only the top result
+
             ]
-            #print(f"Executing aggregation query: {' '.join(aggregation_query)}")
+
             result = await redis_client.execute_command(*aggregation_query)
             if not result or len(result) < 2:
                 return None
 
-            # Retrieve full country details for decoding country information.
             whole_country_data = await redis_client.json().get('main_data:details:country_data') or {}
             docs = []
+            server_ids_set = set()
+
             for row in result[1:]:
-                # Create a dictionary for the row, decoding bytes if necessary.
                 row_dict = {
                     row[i].decode('utf-8') if isinstance(row[i], bytes) else row[i]:
                     row[i+1].decode('utf-8') if isinstance(row[i+1], bytes) else row[i+1]
@@ -124,6 +130,16 @@ class UserCountryManagement:
                 country_info = whole_country_data.get(country_id_val, {})
                 country_code = country_info.get('country_code', '')
                 country_name = country_info.get('country_name', '')
+
+                # Parse server_id and store in doc
+                raw_sid = row_dict.get("server_id", "")
+                parsed_sid = raw_sid
+                try:
+                    parsed_sid = int(raw_sid)
+                except (ValueError, TypeError):
+                    pass
+                server_ids_set.add(parsed_sid)
+
                 docs.append({
                     'country_id': country_id_val,
                     'country_name': country_name,
@@ -132,13 +148,13 @@ class UserCountryManagement:
                     'app_price': price,
                     'app_count': count,
                     'app_id': app_id,
-                    'is_show_country': row_dict.get("is_show_country", False)
+                    'is_show_country': row_dict.get("is_show_country", False),
+                    'server_id': parsed_sid
                 })
 
             if not docs:
                 return None
 
-            # Group results by country code and keep the record with the lowest price.
             grouped = {}
             for doc in docs:
                 key = doc['country_code']
@@ -148,10 +164,14 @@ class UserCountryManagement:
                 else:
                     grouped[key] = doc
 
-            aggregated_docs = list(grouped.values())
-            # Sort the aggregated results by price and country code.
-            sorted_docs = sorted(aggregated_docs, key=lambda x: (x['app_price'], x['country_code']))
-            return {'total': len(sorted_docs), 'docs': sorted_docs}
+            sorted_docs = sorted(grouped.values(), key=lambda x: (x['app_price'], x['country_code']))
+            sorted_server_ids = sorted(server_ids_set, key=lambda x: (isinstance(x, str), x))
+
+            return {
+                'total': len(sorted_docs),
+                'docs': sorted_docs,
+                'server_ids': sorted_server_ids
+            }
 
         except Exception as e:
             print(f"Aggregation query error in country_search: {e}")
@@ -220,8 +240,8 @@ class UserCountryManagement:
                     prev_buttons.append(InlineKeyboardButton("« Pʀᴇᴠɪᴏᴜs", callback_data=f"admin_country:{page - 1}:{app_id}"))
                 if end_index < total_items:
                     next_buttons.append(InlineKeyboardButton("Nᴇxᴛ »", callback_data=f"admin_country:{page + 1}:{app_id}"))
-                search_buttons.append(InlineKeyboardButton(text="⋮ Eᴅɪᴛ", callback_data=f"edit:{app_id}"))
-                search_buttons.append(InlineKeyboardButton(text="⌕ Cᴏᴜɴᴛʀɪᴇs", switch_inline_query_current_chat=f"#AᴅᴍɪɴAᴘᴘIᴅ:{app_code}"))
+                search_buttons.append(InlineKeyboardButton(text="⋮ Mᴏᴅɪғʏ", callback_data=f"#modify_data:{app_id}"))
+                search_buttons.append(InlineKeyboardButton(text="⌕ Cᴏᴜɴᴛʀɪᴇs", switch_inline_query_current_chat=f"#AᴅᴍɪɴAᴘᴘIᴅ:{app_code} "))
 
                 if (not country_id and page == 1) or (end_index >= total_items):
                     select_buttons.append(InlineKeyboardButton(text="• Sᴇʟᴇᴄᴛ [🇮🇳]", callback_data=f"admin_servers:{app_id}:{'22'}:{page} "))
@@ -234,7 +254,7 @@ class UserCountryManagement:
                     prev_buttons.append(InlineKeyboardButton("« Pʀᴇᴠɪᴏᴜs", callback_data=f"country:{page - 1}:{app_id}"))
                 if end_index < total_items:
                     next_buttons.append(InlineKeyboardButton("Nᴇxᴛ »", callback_data=f"country:{page + 1}:{app_id}"))
-                search_buttons.append(InlineKeyboardButton(text="⌕ Sᴇᴀʀᴄʜ Cᴏᴜɴᴛʀɪᴇs", switch_inline_query_current_chat=f"#AᴘᴘIᴅ:{app_code}"))
+                search_buttons.append(InlineKeyboardButton(text="⌕ Sᴇᴀʀᴄʜ Cᴏᴜɴᴛʀɪᴇs", switch_inline_query_current_chat=f"#AᴘᴘIᴅ:{app_code} "))
 
                 if (not country_id and page == 1) or (end_index >= total_items):
                     select_buttons.append(InlineKeyboardButton(text="• Sᴇʟᴇᴄᴛ [🇮🇳]", callback_data=f"servers:{app_id}:{'22'}:{page} "))
@@ -252,7 +272,7 @@ class UserCountryManagement:
                 markup.add(*prev_buttons, *next_buttons)
                 markup.add(*search_buttons)
             elif not (prev_buttons and next_buttons) and select_buttons:
-                markup.add(*select_buttons, InlineKeyboardButton(text="⌕ Cᴏᴜɴᴛʀɪᴇs", switch_inline_query_current_chat=f"#{is_admin}AᴘᴘIᴅ:{app_code}"))
+                markup.add(*search_buttons)
             return markup, [app_id, app_name]
 
         except Exception as e:
@@ -334,8 +354,6 @@ class UserCountryManagement:
             print(f"Error in process_buy_command: {e}")
             await self.bot.reply_to(message, "Error processing request.")
 
-
-
     async def process_admin_command(self, message: Message) -> None:
         """
         Process a buy command from a user message.
@@ -400,17 +418,12 @@ class UserCountryManagement:
             print(f"Error in process_buy_command: {e}")
             await self.bot.reply_to(message, "Error processing request.")
 
-
-
-
-
-
-
     async def handle_show_countries(self, call: CallbackQuery, is_admin: bool = False) -> None:
         try:
             parts = call.data.split(":")
             user_id = call.message.chat.id
             if len(parts) not in (3, 4):
+                print(f"1 Invalid callback data: {call.data}")
                 await self.bot.answer_callback_query(call.id, "⚠️ Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ", show_alert=True)
                 return
             if len(parts) == 3:
@@ -459,28 +472,45 @@ class UserCountryManagement:
             error_message = "<blockquote><b>👨🏻‍💻 Bᴀᴅ Aᴄᴛɪᴏɴ Pᴇʀғᴏʀᴍᴇᴅ, Yᴏᴜ Nᴇᴇᴅ Tᴏ Cᴏɴᴛᴀᴄᴛ Cᴜsᴛᴏᴍᴇʀ Sᴜᴘᴘᴏʀᴛ Fʀᴏᴍ Hᴇʟᴘ Dᴇsᴋ...</b></blockquote>"
             await self.bot.send_message(user_id, error_message, parse_mode='html')
     
-
-    async def is_country_save(self, app_id: str, country_id: str, is_show: bool):
+    async def is_country_save(self, app_id: str=None, country_id: str=None, is_show: bool=False, server_id: str=None, field: str=None, new_status: str=None):
         """
         Searches Redis for keys matching the pattern 'service_data:{country_id}:*:{app_id}'
         and updates each hash field ('is_show_app', 'is_show_server', 'is_show_country') to "True"
         if is_admin is True; otherwise "False".
         Returns a list of keys if found, or None.
         """
-        pattern = f"service_data:{country_id}:*:{app_id}"
+        if not server_id:
+            server_id = '*'
+        if not country_id:
+            country_id = '*'
+        if not app_id:
+            app_id = '*'
+
+        pattern = f"service_data:{country_id}:{server_id}:{app_id}"
         # If your Redis client is async, use await here; otherwise adjust accordingly.
         keys = await self.redis_client.keys(pattern)
-        if not keys:
-            return None
-        if str(is_show) == 'True':
-            new_status = 'False'
-        elif str(is_show) == 'False':
-            new_status = 'True'
+        if not new_status:
+            if not keys:
+                return None
+            if str(is_show) == 'True':
+                new_status = 'False'
+            elif str(is_show) == 'False':
+                new_status = 'True'
+
 
         for key in keys:
-            #await self.redis_client.hset(key, 'is_show_app', new_status)
-            await self.redis_client.hset(key, 'is_show_server', new_status)
-            await self.redis_client.hset(key, 'is_show_country', new_status)
+            if not field:
+                await self.redis_client.hset(key, 'is_show_app', new_status)
+                await self.redis_client.hset(key, 'is_show_server', new_status)
+                await self.redis_client.hset(key, 'is_show_country', new_status)
+            elif field:
+                if str(field) == 'is_adjustable' and await self.redis_client.hexists(key, field):
+                    await self.redis_client.hdel(key, field)
+                elif str(field) == 'app_name':
+                    await self.redis_client.hset(key, field, new_status)
+                    await self.redis_client.hset(key, 'search_tags', new_status.replace(" ", "").lower())
+                else:
+                    await self.redis_client.hset(key, field, new_status)
         return keys
 
     async def handle_is_admin_countries(self, call: CallbackQuery, is_admin: bool = False) -> None:
@@ -488,6 +518,7 @@ class UserCountryManagement:
             parts = call.data.split(":")
             user_id = call.message.chat.id
             if len(parts) not in (3, 4, 5):
+                print(f"2 Invalid callback data: {call.data}")
                 await self.bot.answer_callback_query(call.id, "⚠️ Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ", show_alert=True)
                 return
             if len(parts) == 3:
@@ -543,11 +574,6 @@ class UserCountryManagement:
             error_message = "<blockquote><b>👨🏻‍💻 Bᴀᴅ Aᴄᴛɪᴏɴ Pᴇʀғᴏʀᴍᴇᴅ, Yᴏᴜ Nᴇᴇᴅ Tᴏ Cᴏɴᴛᴀᴄᴛ Cᴜsᴛᴏᴍᴇʀ Sᴜᴘᴘᴏʀᴛ Fʀᴏᴍ Hᴇʟᴘ Dᴇsᴋ...</b></blockquote>"
             await self.bot.send_message(user_id, error_message, parse_mode='html')
     
-
-
-
-
-
     async def _acquire_transaction_lock(self, guard, transaction_key, input_data) -> bool:
         """Acquire transaction lock with error handling."""
         if not await guard.acquire_lock(transaction_key):
@@ -568,6 +594,363 @@ class UserCountryManagement:
                 print(f"Error sending message: {e}")
             return False
         return True
+
+
+
+    async def update_app_data(self, data, field, app_name, new_value):
+        if str(field) == 'app_name':
+            """Update app name."""
+            if app_name in data:
+                data[new_value] = data.pop(app_name)
+                print(f"App name changed from '{app_name}' to '{new_value}'")
+            else:
+                print(f"App '{app_name}' not found!")
+        elif str(field) == 'app_code':
+            """Update app code."""
+            app_code = new_value.replace(" ", "").split(',') if ',' in new_value else new_value
+            if app_name in data:
+                data[app_name]["code"] = app_code
+                print(f"Code for '{app_name}' updated to {new_value}")
+            else:
+                print(f"App '{app_name}' not found!")
+        else:
+            print(f"field Not Found: {field}")
+        return data
+
+
+    async def handle_modify_data(self, call: CallbackQuery, is_server: bool = False, is_update: bool = False, is_reply: bool = False, is_adjustable: bool = False) -> None:
+        try:
+            text = ''
+            country_id = None
+            app_id = None
+            server_id = None
+            if is_reply:
+                # When processing a reply, "call" is actually the message from the user.
+                message = call
+                user_id = message.chat.id
+                app_data = message.text.strip()
+                # Default to "0" if empty response.
+                if not app_data:
+                    app_data = "0"
+                try:
+                    if message.reply_to_message:
+                        await self.bot.delete_message(user_id, message.reply_to_message.message_id)
+                    await self.bot.delete_message(user_id, message.message_id)
+                except Exception as e:
+                    print("Error deleting messages:", e)
+
+                service_data = await self.redis_client.json().get('cache_data:app-edit') or {}
+                print(service_data)
+                key = f'{message.chat.id}:{message.reply_to_message.message_id}'
+                if key in service_data:
+                    stored_data = service_data[key]
+                    message_id = stored_data.get("message_id")
+                    app_id = stored_data.get("app_id")
+                    country_id = stored_data.get("country_id", None)
+                    server_id = stored_data.get("server_id", None)
+                    if country_id:
+                        text += f" @country_id:{country_id}"
+                    if server_id:
+                        text += f" @server_id:{server_id}"
+                    field = stored_data.get("field")
+                    del service_data[key]
+                    service_code = await self.redis_client.json().get('main_data:service:app_data') or {}
+                    server_query = [
+                        "FT.SEARCH", "service_index", f"@app_id:{app_id}", 
+                        "RETURN", "1", "app_name", 
+                        "LIMIT", "0", "1"
+                    ]
+                    results = await self.redis_client.execute_command(*server_query)
+                    print(results)
+                    # Check if results exist and have at least one valid entry
+                    if isinstance(results, list) and len(results) > 2 and isinstance(results[2], list):
+                        data = dict(zip(results[2][::2], results[2][1::2]))  # Convert list to dictionary
+                        app_name = data.get('app_name')  # Get app_name safely
+                    else:
+                        app_name = None  # Handle missing data case
+
+                    print(f"App Name: {app_name}")
+                    if app_name:
+                        updated = await self.update_app_data(service_code, field, app_name, app_data)
+                        if updated:
+                            await self.redis_client.json().set('main_data:service:app_data', '$', updated)
+                    await self.is_country_save(app_id=app_id, field=field, new_status=app_data, country_id=country_id, server_id=server_id)
+                    await self.redis_client.json().set('cache_data:app-edit', '$', service_data)
+                else:
+                    print("Stored service data not found for key:", key)
+
+            else:
+                parts = call.data.split(":")
+                user_id = call.message.chat.id
+
+            if is_update:
+                await self.bot.answer_callback_query(call.id)
+                if str(len(parts)) not in ['3', '5']:
+                    print(f"3 Invalid callback data: {call.data}")
+                    await self.bot.answer_callback_query(call.id, "⚠️ Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ", show_alert=True)
+                    return
+                if len(parts) == 3:
+                    _, field, app_id = parts
+                elif len(parts) == 5:
+                    _, field, app_id, country_id, server_id  = parts
+                    if country_id:
+                        text += f" @country_id:{country_id}"
+                    if server_id:
+                        text += f" @server_id:{server_id}"
+                force_reply_markup = ForceReply(selective=True)
+                human_field = field.replace('_', ' ').title().translate(await small_caps())
+                msg = await self.bot.send_message(
+                    call.message.chat.id,
+                    f"<b>❯ Pʟᴇᴀsᴇ Eɴᴛᴇʀ {human_field} Fᴏʀ AᴘᴘIᴅ »</b> <code>{app_id}</code>",
+                    reply_markup=force_reply_markup,
+                    parse_mode='HTML'
+                )
+                service_data = await self.redis_client.json().get('cache_data:app-edit') or {}
+                key = f'{call.message.chat.id}:{msg.message_id}'
+                service_data[key] = {"field": field, "app_id": app_id, "message_id": call.message.message_id}
+                if country_id:
+                    service_data[key].update({"country_id": country_id})
+                if server_id:
+                    service_data[key].update({"server_id": server_id})
+                await self.redis_client.json().set('cache_data:app-edit', '$', service_data)
+                return
+
+            elif is_server:
+                if len(parts) != 4:
+                    print(f"4 Invalid callback data: {call.data}")
+                    await self.bot.answer_callback_query(call.id, "⚠️ Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ", show_alert=True)
+                    return
+                _, app_id, server_id, is_show = parts
+                t = await self.is_country_save(app_id=app_id, is_show=is_show, server_id=server_id)
+
+            elif is_adjustable:
+                if len(parts) != 4:
+                    print(f"56 Invalid callback data: {call.data}")
+                    await self.bot.answer_callback_query(call.id, "⚠️ Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ", show_alert=True)
+                    return
+                _, app_id, country_id, server_id = parts
+                if country_id:
+                    text += f" @country_id:{country_id}"
+                if server_id:
+                    text += f" @server_id:{server_id}"
+                t = await self.is_country_save(app_id=app_id, field='is_adjustable', country_id=country_id, server_id=server_id, new_status='True')
+
+            elif not (is_server or is_reply or is_update):
+                if str(len(parts)) not in ['2', '4']:
+                    print(f"5 Invalid callback data: {call.data}")
+                    await self.bot.answer_callback_query(call.id, "⚠️ Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ", show_alert=True)
+                    return
+                if len(parts) == 2:
+                    _, app_id = parts
+                elif len(parts) == 4:
+                    _, app_id, country_id, server_id = parts
+                    if country_id:
+                        text += f" @country_id:{country_id}"
+                    if server_id:
+                        text += f" @server_id:{server_id}"
+
+                
+            total_query = [
+                "FT.AGGREGATE", "service_index", f"@app_id:{app_id}{text}",
+                "GROUPBY", "1", "@app_id",
+                "REDUCE", "FIRST_VALUE", "1", "@app_name", "AS", "app_name",
+                "REDUCE", "FIRST_VALUE", "1", "@app_code", "AS", "app_code",
+                "REDUCE", "FIRST_VALUE", "1", "@app_price", "AS", "app_price",
+                "REDUCE", "COUNT_DISTINCT", "1", "@server_id", "AS", "total_servers",
+                "REDUCE", "COUNT_DISTINCT", "1", "@country_id", "AS", "total_countries"
+            ]
+            order_query = [
+                "FT.AGGREGATE", "order_index", f"@order_status:(COMPLETED|PROCESSING) @app_id:{app_id}{text}",
+                "GROUPBY", "0",
+                "REDUCE", "SUM", "1", "@order_amount", "AS", "total_order_amount",
+                "REDUCE", "COUNT", "0", "AS", "total_orders"
+            ] 
+            cancel_query = [
+                "FT.AGGREGATE", "order_index", f"@order_status:(CANCELLED|TIMEOUT) @app_id:{app_id}{text}",
+                "GROUPBY", "0",
+                "REDUCE", "COUNT", "0", "AS", "total_cancelled_orders"
+            ]
+            server_query = None
+            if not country_id:
+                server_query = [
+                    "FT.AGGREGATE", "service_index", f"@app_id:{app_id}{text}",
+                    "LOAD", "1", "@is_show_server",
+                    "GROUPBY", "1", "@server_id",
+                    "REDUCE", "FIRST_VALUE", "1", "@is_show_server", "AS", "is_show_server"
+                ]
+
+            tasks = [
+                self.redis_client.execute_command(*total_query),
+                self.redis_client.execute_command(*order_query),
+                self.redis_client.execute_command(*cancel_query)
+            ]
+            if server_query:
+                tasks.append(self.redis_client.execute_command(*server_query))
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            total_country_res, order_res, cancel_res = results[:3]
+            if server_query:
+                server_res = results[3]
+            
+            # Check for expected structure in total_country_res
+            if not isinstance(total_country_res, list) or len(total_country_res) < 2:
+                raise ValueError("Unexpected response structure for total_query")
+            flat_list = total_country_res[1] if isinstance(total_country_res[1], list) else []
+            result_dict = {flat_list[i*2]: flat_list[i*2 + 1] for i in range(len(flat_list) // 2)}
+
+            # Extract values with defaults if missing
+            app_name = result_dict.get("app_name", "Unknown").translate(await small_caps())
+            app_code = result_dict.get("app_code", "Unknown").translate(await small_caps())
+            app_price = result_dict.get("app_price", "").translate(await small_caps())
+            country_data = await redis_manager.redis_client.json().get('main_data:details:country_data') or {}
+            country_name = country_data.get(country_id, {}).get('country_name', '').translate(await small_caps())
+            country_code = country_data.get(country_id, {}).get('country_code', '')
+            total_servers = result_dict.get("total_servers", "0").translate(await small_caps())
+            total_countries = result_dict.get("total_countries", "0").translate(await small_caps())
+
+            # Process order results with safety checks.
+            # Use defaults (0) if order_res doesn't have the expected indices.
+            try:
+                sell_price = float(order_res[1][1])
+            except (IndexError, ValueError, TypeError):
+                sell_price = 0.0
+
+            try:
+                total_success_orders = int(order_res[1][3])
+            except (IndexError, ValueError, TypeError):
+                total_success_orders = 0
+
+            try:
+                total_cancelled = int(cancel_res[1][1])
+            except (IndexError, ValueError, TypeError):
+                total_cancelled = 0
+
+            try:
+                total_orders = int(order_res[1][-1]) + total_cancelled  # If total_orders is the last element
+            except (IndexError, ValueError, TypeError):
+                total_orders = total_success_orders + total_cancelled  # Fallback
+
+
+            # Calculate product price and earned commission. If sell_price is 0, defaults remain 0.
+            product_price = sell_price / float(COMMISSION) if float(COMMISSION) != 0 else 0.0
+            earned = sell_price - product_price
+
+            # If there are no orders, default success ratio to 0.
+            success_ratio = (total_success_orders / total_orders * 100) if total_orders > 0 else 0
+            success_rate = f"{success_ratio:.2f}".replace(".00", "")
+
+            # Create Server Buttons
+            keyboard = InlineKeyboardMarkup()
+            if server_query:
+                server_buttons = []
+                if isinstance(server_res, list) and len(server_res) > 1:
+                    sorted_servers = sorted(server_res[1:], key=lambda x: int(x[1]))  # Sort by server_id
+                    for row in sorted_servers:
+                        server_id = row[1]
+                        is_show_server = row[3]
+                        text = f"{server_id}" if str(is_show_server) == 'True' else f"{server_id}⃠"
+                        server_buttons.append(
+                            InlineKeyboardButton(text.translate(await small_caps()), callback_data=f"is_server_off:{app_id}:{server_id}:{is_show_server}")
+                        )
+
+                if server_buttons:
+                    keyboard.row(*server_buttons)
+                keyboard.add(
+                    InlineKeyboardButton("Mᴏᴅɪғʏ Nᴀᴍᴇ", callback_data=f"update_data:app_name:{app_id}"),
+                    InlineKeyboardButton("Uᴘᴅᴀᴛᴇ Cᴏᴅᴇ", callback_data=f"update_data:app_code:{app_id}")
+                )
+                keyboard.add(
+                    InlineKeyboardButton("⬅️ Bᴀᴄᴋ", callback_data=f"admin_country:1:{app_id}"),
+                    InlineKeyboardButton("Sᴇᴛ Mᴏᴄᴋ", callback_data="show_country")
+                )
+
+                caption = (
+                    "<b>🛒 Sᴇʀᴠɪᴄᴇ Iɴsɪɢʜᴛs ❯</b>\n\n"
+                    "<blockquote expandable>"
+                    "🌐 Aᴘᴘ Nᴀᴍᴇ  »  <code>{}</code>\n"
+                    "📜 Aᴘᴘ Cᴏᴅᴇ   »  <code>{}</code>\n\n"
+                    "🔔 Mᴏᴄᴋ Nᴜᴍʙᴇʀ   »  <code>{}</code> <b>Pᴇʀcᴇɴᴛ</b>\n"
+                    "✅ Sᴜᴄᴄᴇss Rᴀᴛᴇ    »  <code>{}</code> <b>Pᴇʀcᴇɴᴛ</b>"
+                    "</blockquote>\n\n<blockquote expandable>"
+                    "📨 Tᴏᴛᴀʟ Sᴇʀᴠᴇʀs   »  <code>{}</code>\n"
+                    "🌎 Tᴏᴛᴀʟ Cᴏᴜɴᴛʀʏ  »  <code>{}</code>\n\n"
+                    "🛍️ Tᴏᴛᴀʟ Pᴜʀᴄʜᴀsᴇ  »  <code>{}</code> <b>Oʀᴅᴇʀs</b>\n"
+                    "💸 Tᴏᴛᴀʟ Rᴇᴠᴇɴᴜᴇ    »  <code>{}</code> <b>Rs</b>"
+                    "</blockquote>\n\n"
+                    "Sᴇʟᴇᴄᴛ A Sᴇʀᴠɪᴄᴇ Oᴘᴛɪᴏɴ Bᴇʟᴏᴡ."
+                ).format(
+                    app_name,
+                    app_code,
+                    "10".translate(await small_caps()),
+                    str(success_rate).translate(await small_caps()),
+                    total_servers,
+                    total_countries,
+                    str(total_success_orders).translate(await small_caps()),
+                    "{:.2f}".format(earned).translate(await small_caps()), 
+                )
+            else:
+                redis_key = f"{SERVICE_PREFIX}:{country_id}:{server_id}:{app_id}"
+                is_adjustable = await self.redis_client.hget(redis_key, "is_adjustable")
+                tick = "🔴" if is_adjustable else "🟢"
+                keyboard.add(
+                    InlineKeyboardButton(f"Aᴅᴊᴜsᴛᴀʙʟᴇ [{tick}]", callback_data=f"is_adjustable:{app_id}:{country_id}:{server_id}"),
+                    InlineKeyboardButton("Uᴘᴅᴀᴛᴇ Pʀɪᴄᴇ", callback_data=f"update_data:app_price:{app_id}:{country_id}:{server_id}")
+                )
+                callback_data = f"admin_servers:{app_id}:{country_id}:1"
+                keyboard.add(
+                    InlineKeyboardButton("⬅️ Bᴀᴄᴋ", callback_data=callback_data),
+                    InlineKeyboardButton("Sᴇᴛ Mᴏᴄᴋ", callback_data="show_country")
+                )
+                caption = (
+                    "<b>🛒 Sᴇʀᴠɪᴄᴇ Iɴsɪɢʜᴛs ❯</b>\n\n"
+                    "<blockquote expandable>"
+                    "🌐 Aᴘᴘ Nᴀᴍᴇ  »  <code>{}</code>\n"
+                    "💰 Aᴘᴘ Pʀɪᴄᴇ  »  <code>{}</code> <b>Pᴏɪɴᴛs</b>\n\n"
+                    "🔔 Mᴏᴄᴋ Nᴜᴍʙᴇʀ   »  <code>{}</code> <b>Pᴇʀcᴇɴᴛ</b>\n"
+                    "✅ Sᴜᴄᴄᴇss Rᴀᴛᴇ    »  <code>{}</code> <b>Pᴇʀcᴇɴᴛ</b>"
+                    "</blockquote>\n\n<blockquote expandable>"
+                    "🌎 Cᴏᴜɴᴛʀʏ      »  <code>{}</code> <b>[ <code>{}</code> ]</b>\n"
+                    "💡 Sᴇʀᴠᴇʀ Nᴀᴍᴇ  »  <code>#Sᴇʀᴠᴇʀ{}</code>\n\n"
+                    "🛍️ Tᴏᴛᴀʟ Pᴜʀᴄʜᴀsᴇ  »  <code>{}</code> <b>Oʀᴅᴇʀs</b>\n"
+                    "💸 Tᴏᴛᴀʟ Rᴇᴠᴇɴᴜᴇ    »  <code>{}</code> <b>Rs</b>"
+                    "</blockquote>\n\n"
+                    "Sᴇʟᴇᴄᴛ A Sᴇʀᴠɪᴄᴇ Oᴘᴛɪᴏɴ Bᴇʟᴏᴡ."
+                ).format(
+                    app_name,
+                    app_price,
+                    "0".translate(await small_caps()),
+                    str(success_rate).translate(await small_caps()),
+                    country_name,
+                    country_code,
+                    server_id,
+                    str(total_success_orders).translate(await small_caps()),
+                    "{:.2f}".format(earned).translate(await small_caps()), 
+                )
+            
+            if is_reply:
+                await self.bot.edit_message_text(
+                    chat_id=user_id,
+                    message_id=message_id,
+                    text=caption,
+                    parse_mode='HTML',
+                    reply_markup=keyboard
+                )
+            else:
+                await self.bot.edit_message_text(
+                    chat_id=user_id,
+                    message_id=call.message.message_id,
+                    text=caption,
+                    parse_mode='HTML',
+                    reply_markup=keyboard
+                )
+                await self.bot.answer_callback_query(call.id, "✅ Sᴜᴄᴄᴇssғᴜʟ Lᴏᴀᴅ", show_alert=False)
+
+        except Exception as e:
+            print(f"Error in handle_modify_data: {e}")
+            if is_reply:
+                await self.bot.send_message(user_id, f"🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ...\n\n{str(e)}", parse_mode='html')
+            else:
+                await self.bot.answer_callback_query(call.id, "⚠️ Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ", show_alert=True)
+
 
     async def register_handlers(self, bot: AsyncTeleBot) -> None:
         @bot.message_handler(regexp=r'^/Buy_\d+')
@@ -625,6 +1008,63 @@ class UserCountryManagement:
                 #logging.error(f"Callback error: {e}")
                 asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ", show_alert=True))
             
+        @bot.callback_query_handler(func=lambda call: call.data.startswith("#modify_data:"))
+        async def handle_modify_data_callback(call: CallbackQuery):
+            try:
+                process_task = partial(self.handle_modify_data, call)
+                asyncio.create_task(process_task())
+            except ValueError:
+                asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", show_alert=True))
+            except Exception as e:
+                #logging.error(f"Callback error: {e}")
+                asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ", show_alert=True))
+
+        @bot.callback_query_handler(func=lambda call: call.data.startswith("is_adjustable:"))
+        async def handle_is_adjustable_callback(call: CallbackQuery):
+            try:
+                process_task = partial(self.handle_modify_data, call, is_adjustable=True)
+                asyncio.create_task(process_task())
+            except ValueError:
+                asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", show_alert=True))
+            except Exception as e:
+                #logging.error(f"Callback error: {e}")
+                asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ", show_alert=True))
+
+        @bot.callback_query_handler(func=lambda call: call.data.startswith("is_server_off:"))
+        async def handle_is_server_off_callback(call: CallbackQuery):
+            try:
+                process_task = partial(self.handle_modify_data, call, is_server=True)
+                asyncio.create_task(process_task())
+            except ValueError:
+                asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", show_alert=True))
+            except Exception as e:
+                #logging.error(f"Callback error: {e}")
+                asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ", show_alert=True))
+
+        @bot.callback_query_handler(func=lambda call: call.data.startswith("update_data:"))
+        async def handle_update_data_callback(call: CallbackQuery):
+            try:
+                process_task = partial(self.handle_modify_data, call, is_update=True)
+                asyncio.create_task(process_task())
+            except ValueError:
+                asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", show_alert=True))
+            except Exception as e:
+                #logging.error(f"Callback error: {e}")
+                asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ", show_alert=True))
+            
+        @bot.message_handler(func=lambda message: message.reply_to_message and message.reply_to_message.text.startswith("❯ Pʟᴇᴀsᴇ Eɴᴛᴇʀ"))
+        async def handle_modify_data(message: Message):
+            try:
+                process_task = partial(self.handle_modify_data, message, is_reply=True)
+                asyncio.create_task(process_task())
+            except ValueError:
+                asyncio.create_task(bot.send_message(message.chat.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", parse_mode='html'))
+            except Exception as e:
+                #logging.error(f"Callback error: {e}")
+                asyncio.create_task(bot.send_message(message.chat.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ...", parse_mode='html'))
+
+
+
 country_management = UserCountryManagement()
 
 async def init_managers(user_manager: UserManagement, bot: Optional[AsyncTeleBot] = None, order_manager: Optional[OrderManagement] = None) -> bool:
