@@ -473,6 +473,9 @@ class UserStartManager:
                 commands=['start'],
                 pass_bot=False
             )
+            @bot.message_handler(content_types=['photo', 'video', 'document', 'audio', 'voice', 'animation'])
+            async def handle_file_id(message: Message) -> None:
+                await self.handle_file_id(message)
             # Register callback query handler for "start" data
             bot.register_callback_query_handler(
                 self.handle_start_callback,
