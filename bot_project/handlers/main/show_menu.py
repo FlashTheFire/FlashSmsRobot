@@ -467,33 +467,44 @@ class UserStartManager:
             return
 
         try:
-            # Register /start command with membership check
+            # /start command
             bot.register_message_handler(
                 self.start_command_with_membership,
                 commands=['start'],
                 pass_bot=False
             )
-            @bot.message_handler(content_types=['photo', 'video', 'document', 'audio', 'voice', 'animation'])
-            async def handle_file_id(message: Message) -> None:
-                await self.handle_file_id(message)
-            # Register callback query handler for "start" data
+
+            # File handler registration (without decorator)
+            async def handle_file_wrapper(message: Message) -> None:
+                try:
+                    await self.handle_file_id(message)
+                except Exception as e:
+                    await bot.send_message(message.chat.id, "⚠️ Error processing file.")
+                    await async_logger.error(f"Error in handle_file_id: {e}")
+
+            bot.register_message_handler(
+                handle_file_wrapper,
+                content_types=['photo', 'video', 'document', 'audio', 'voice', 'animation'],
+                pass_bot=False
+            )
+
+            # Callback query: "start"
             bot.register_callback_query_handler(
                 self.handle_start_callback,
                 func=lambda call: call.data == "start",
                 pass_bot=False
             )
-            # Register join request handler
+
+            # Chat join request
             bot.register_chat_join_request_handler(
                 self.handle_join_request,
                 pass_bot=False
             )
-            
-            await async_logger.info("Start command, callback, and join request handlers registered successfully")
+
+            await async_logger.info("Handlers registered successfully.")
         except Exception as e:
             await async_logger.error(f"Failed to register handlers: {e}")
             raise
-
-# Create the bot instance
 bot = AsyncTeleBot(TOKEN)
 start_manager = UserStartManager()
 

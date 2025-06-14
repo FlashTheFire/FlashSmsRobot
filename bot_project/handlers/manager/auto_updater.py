@@ -180,8 +180,6 @@ class DataTransformer:
                             "price":    price,
                             "count":    count,
                         })
-                    else:
-                        logging.warning(f"No mapping found for '{api_app_key}' on server {server_id}")
 
                 country_entry["servers"].append({
                     "server_id":   server_id,
