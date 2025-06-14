@@ -1941,7 +1941,7 @@ class CountryFlagUpdater:
             if is_country_return:
                 countries_dict = await self.redis_client.json().get('main_data:details:country_data')
                 if not countries_dict:
-                    with open(os.path.join(os.path.dirname(__file__), '..', '..', 'file', 'country_code.json'), 'r', encoding='utf-8') as f:
+                    with open(os.path.join(os.path.dirname(__file__), 'file', 'country_code.json'), 'r', encoding='utf-8') as f:
                         countries_list = json.load(f)
                         countries_dict = {
                             country["record_id"]: {
@@ -1963,7 +1963,7 @@ class CountryFlagUpdater:
             if is_app_return:
                 app_mapping = await self.redis_client.json().get('main_data:service:app_data')
                 if not app_mapping:
-                    with open(os.path.join(os.path.dirname(__file__), "..", "..", "..", "file", "app_code.json"), 'r', encoding='utf-8') as f:
+                    with open(os.path.join(os.path.dirname(__file__),  "file", "app_code.json"), 'r', encoding='utf-8') as f:
                         app_mapping = json.load(f)
                         await self.redis_client.json().set('main_data:service:app_data', '$', app_mapping)
 
