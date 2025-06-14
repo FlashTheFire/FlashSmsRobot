@@ -1006,7 +1006,6 @@ class UserManagement:
         return {"forum_id": forum_id}
     
     # -------------- User Management Async Methods --------------
-
     @handle_redis_exceptions
     async def _init_search_indexes(self):
         """Creates RediSearch indexes with the defined schemas."""
@@ -1017,8 +1016,7 @@ class UserManagement:
             try:
                 await redis_client.ft(index_name).dropindex(delete_documents=True)
             except Exception as e:
-                await self.logger.error(f"Error dropping index {index_name}: {e}")
-                pass
+                await self.logger.warning(f"Index '{index_name}' did not exist or could not be dropped: {e}")
             definition = IndexDefinition(prefix=[prefix], index_type=IndexType.HASH)
             await redis_client.ft(index_name).create_index(fields=schema, definition=definition)
 
@@ -1050,12 +1048,28 @@ class UserManagement:
             NumericField("app_price", sortable=True),
             NumericField("app_count", sortable=True)
         ]
+
         try:
-            if not await redis_client.ft(USER_INFO_INDEX).info():
-                await create_index(USER_INFO_INDEX, user_schema, USER_INFO_PREFIX)
-            if not await redis_client.ft(SERVICE_INDEX).info():
-                await create_index(SERVICE_INDEX, service_schema, SERVICE_PREFIX)
-            await self.logger.info("UserManagement and Service indexes created successfully")
+            # Try USER_INFO_INDEX
+            try:
+                await redis_client.ft(USER_INFO_INDEX).info()
+            except Exception as e:
+                if "Unknown index name" in str(e):
+                    await create_index(USER_INFO_INDEX, user_schema, USER_INFO_PREFIX)
+                else:
+                    raise
+
+            # Try SERVICE_INDEX
+            try:
+                await redis_client.ft(SERVICE_INDEX).info()
+            except Exception as e:
+                if "Unknown index name" in str(e):
+                    await create_index(SERVICE_INDEX, service_schema, SERVICE_PREFIX)
+                else:
+                    raise
+
+            await self.logger.info("UserManagement and Service indexes verified/created successfully")
+
         except RedisError as e:
             await self.logger.error(f"Redis error while creating indexes: {e}")
             raise
