@@ -813,8 +813,9 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
 
                     #    auto_updater.initialized = True
                     # ──────────────────────────────────────────────────────
-                    await auto_updater.save_data_cycle()
-                    await asyncio.sleep(1 * 30 * 60)
+                    #await auto_updater.save_data_cycle()
+                    #await asyncio.sleep(1 * 30 * 60)
+                    pass
                     # ──────────────────────────────────────────────────────
 
             # Check again in 1 minute
