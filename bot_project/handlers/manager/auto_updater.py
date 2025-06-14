@@ -488,16 +488,75 @@ class AutoUpdater:
 
         try:
             data = json.loads(text)
-            if isinstance(data, dict):
-                return data
-            # If the top‐level JSON is a list with one object, unwrap it:
+            # unwrap [ {...} ] → {...}
             if isinstance(data, list) and len(data) == 1 and isinstance(data[0], dict):
                 return data[0]
-            logging.warning(f"[AutoUpdate.load_old_data_from_url] JSON fetched from {url} was not a dict; returning None.")
+            if isinstance(data, dict):
+                return data
+            logging.warning(f"[AutoUpdate.load_old_data_from_url] JSON fetched from {url} was not a dict; returning {{}}.")
             return {}
         except json.JSONDecodeError as e:
             logging.error(f"[AutoUpdate.load_old_data_from_url] Invalid JSON at {url}: {e}")
             return {}
+    async def import_redis_dump(self, url: str) -> None:
+        """
+        Download the JSON dump from `url`, then iterate its keys
+        and re-create them in Redis with the correct type & value.
+        """
+        data = await self.load_old_data_from_url(url)
+        if not data:
+            logging.warning(f"[AutoUpdate.import_redis_dump] No data fetched from {url}. Nothing to import.")
+            return
+
+        r: redis.Redis = self.redis_client
+        for key, record in data.items():
+            t = record.get("type")
+            val = record.get("value")
+
+            try:
+                if t == "string":
+                    await r.set(key, val)
+
+                elif t == "list":
+                    # overwrite
+                    await r.delete(key)
+                    # assuming val is a list
+                    if isinstance(val, list) and val:
+                        await r.rpush(key, *val)
+
+                elif t == "set":
+                    await r.delete(key)
+                    if isinstance(val, list) and val:
+                        await r.sadd(key, *val)
+
+                elif t == "hash":
+                    # val is a dict
+                    await r.delete(key)
+                    if isinstance(val, dict) and val:
+                        await r.hset(key, mapping=val)
+
+                elif t == "zset":
+                    # val is list of [member,score] pairs
+                    await r.delete(key)
+                    if isinstance(val, list) and val:
+                        # flatten to (score, member) tuples
+                        await r.zadd(key, *{member: score for member, score in val}.items())
+
+                elif t in ("ReJSON-RL", "ReJSON"):
+                    # val already JSON-serializable
+                    payload = json.dumps(val)
+                    await r.execute_command("JSON.SET", key, "$", payload)
+
+                else:
+                    logging.warning(f"[AutoUpdate.import_redis_dump] Unsupported type '{t}' for key '{key}', skipping.")
+                    continue
+
+                logging.info(f"[AutoUpdate.import_redis_dump] Restored key '{key}' [{t}].")
+
+            except Exception as e:
+                logging.error(f"[AutoUpdate.import_redis_dump] Failed to restore '{key}': {e}")
+
+        logging.info(f"[AutoUpdate.import_redis_dump] Import completed: {len(data)} keys processed.")
 
     async def save_data_to_redis(self, data: Dict[str, Any]) -> None:
         """
@@ -634,14 +693,12 @@ class AutoUpdater:
     async def upload_from_redis_key(self) -> str:
         """
         Fetches the JSON payload stored under REDIS_DUMP_KEY (via JSON.GET),
-        re-serializes it to bytes in-memory, uploads to 0x0.st (with a custom User-Agent),
-        and returns the public URL.
-
-        Returns an empty string on any failure.
+        re-serializes it to bytes in-memory, uploads it to tmpfiles.org,
+        and returns the public URL. Returns an empty string on any failure.
         """
-        upload_url = "https://0x0.st"
+        upload_url = "https://tmpfiles.org/api/v1/upload"
         try:
-            # 1) Fetch the stored JSON from Redis (likely a Python list or dict).
+            # 1) Fetch the stored JSON from Redis
             raw = await self.redis_client.execute_command(
                 "JSON.GET",
                 self.REDIS_DUMP_KEY,
@@ -651,7 +708,7 @@ class AutoUpdater:
                 logging.error(f"[AutoUpdate.upload_from_redis_key] No data at key '{self.REDIS_DUMP_KEY}'")
                 return ""
 
-            # 2) Convert whatever aioredis returned into valid JSON bytes.
+            # 2) Normalize to JSON bytes
             try:
                 parsed = json.loads(raw) if isinstance(raw, str) else raw
             except Exception:
@@ -668,23 +725,20 @@ class AutoUpdater:
                 content_type="application/json"
             )
 
-            # 4) POST to 0x0.st with a custom User-Agent header
-            headers = {
-                "User-Agent": "curl/7.64.1"  # or any common UA string
-            }
-
+            # 4) POST to tmpfiles.org
             timeout = aiohttp.ClientTimeout(total=30)
             async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(upload_url, data=form, headers=headers) as resp:
+                async with session.post(upload_url, data=form) as resp:
                     if resp.status == 200:
-                        url = (await resp.text()).strip()
+                        data = await resp.json()
+                        # tmpfiles.org returns JSON like {"status":"ok","data":{"url":"https://..."}}
+                        url = data.get("data", {}).get("url", "")
                         logging.info(f"[AutoUpdate.upload_from_redis_key] Uploaded Redis JSON → {url}")
                         return url
                     else:
                         text = await resp.text()
                         logging.error(f"[AutoUpdate.upload_from_redis_key] Upload failed ({resp.status}): {text}")
                         return ""
-
         except Exception as e:
             logging.error(f"[AutoUpdate.upload_from_redis_key] Exception during upload: {e}")
             return ""
@@ -753,11 +807,11 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
 
                 # If `update` is True, run once on first invocation
                 elif update:
-                    if not hasattr(auto_updater, 'initialized'):
-                        await auto_updater.initialize(bot=bot)
-                        await auto_updater.update_data()
+                    #if not hasattr(auto_updater, 'initialized'):
+                    #    await auto_updater.initialize(bot=bot)
+                    #    await auto_updater.update_data()
 
-                        auto_updater.initialized = True
+                    #    auto_updater.initialized = True
                     # ──────────────────────────────────────────────────────
                     await auto_updater.save_data_cycle()
                     await asyncio.sleep(1 * 30 * 60)

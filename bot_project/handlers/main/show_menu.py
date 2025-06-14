@@ -428,7 +428,7 @@ class UserStartManager:
                 f.write(f"{key}={value}\n")
 
     async def handle_file_id(self, message: Message) -> None:
-        if message.from_user.id != ADMIN_ID:
+        if int(message.from_user.id) != int(ADMIN_ID):
             return 
 
         if not message.caption:
