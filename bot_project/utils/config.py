@@ -52,6 +52,8 @@ EXTENDED_TIMEOUT = os.getenv("EXTENDED_TIMEOUT", 20)  # minutes
 CHECK_INTERVAL = os.getenv("CHECK_INTERVAL", 5)  # seconds
 UPDATE_INTERVAL = os.getenv("UPDATE_INTERVAL", 60)  # seconds
 BATCH_SIZE = os.getenv("BATCH_SIZE", 100)
+ENV_FILE = os.getenv("ENV_FILE", ".env")
+
 
 CHANNEL_ID = get_required_env("CHANNEL_ID")
 BOT_TOKEN = get_required_env("BOT_TOKEN")
