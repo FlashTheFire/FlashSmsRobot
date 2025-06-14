@@ -1051,10 +1051,10 @@ class UserManagement:
             NumericField("app_count", sortable=True)
         ]
         try:
-            await asyncio.gather(
-                create_index(USER_INFO_INDEX, user_schema, USER_INFO_PREFIX),
-                create_index(SERVICE_INDEX, service_schema, SERVICE_PREFIX)
-            )
+            if not await redis_client.ft(USER_INFO_INDEX).info():
+                await create_index(USER_INFO_INDEX, user_schema, USER_INFO_PREFIX)
+            if not await redis_client.ft(SERVICE_INDEX).info():
+                await create_index(SERVICE_INDEX, service_schema, SERVICE_PREFIX)
             await self.logger.info("UserManagement and Service indexes created successfully")
         except RedisError as e:
             await self.logger.error(f"Redis error while creating indexes: {e}")
