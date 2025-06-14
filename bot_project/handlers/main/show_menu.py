@@ -10,9 +10,11 @@ from typing import Optional, Dict, Any, Set, List
 from telebot.async_telebot import AsyncTeleBot
 from telebot import types
 from telebot.types import InputMediaPhoto, Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+import os
+from dotenv import load_dotenv
 
 from utils.redis_manager import redis_manager
-from utils.config import START_PAGE
+from utils.config import START_PAGE, ADMIN_ID, ENV_FILE
 from utils.functions import create_keyboard, serialize_data
 from handlers.manager.operation import FinancialManagement, UserManagement, FinancialSummaryAggregator, get_async_logger
 from handlers.security import InputValidator, TransactionGuard, RateLimiter
@@ -407,6 +409,54 @@ class UserStartManager:
         except Exception as e:
             logger.error(f"Error checking membership for user {user.id}: {e}")
             await self.bot.send_message(message.from_user.id, "There was an error checking your membership. Please try again later.")
+    
+    async def update_env_file(key, value):
+        lines = []
+        if os.path.exists(ENV_FILE):
+            with open(ENV_FILE, "r") as f:
+                lines = f.readlines()
+
+        with open(ENV_FILE, "w") as f:
+            key_found = False
+            for line in lines:
+                if line.strip().startswith(f"{key}="):
+                    f.write(f"{key}={value}\n")
+                    key_found = True
+                else:
+                    f.write(line)
+            if not key_found:
+                f.write(f"{key}={value}\n")
+
+    async def handle_file_id(self, message: Message) -> None:
+        if message.from_user.id != ADMIN_ID:
+            return 
+
+        if not message.caption:
+            await self.bot.reply_to(message, "❌ Please send a caption. The caption will be used as the ENV key.")
+            return
+
+        # Get file ID depending on media type
+        file_id = None
+        if message.photo:
+            file_id = message.photo[-1].file_id  # Largest photo
+        elif message.video:
+            file_id = message.video.file_id
+        elif message.document:
+            file_id = message.document.file_id
+        elif message.audio:
+            file_id = message.audio.file_id
+        elif message.voice:
+            file_id = message.voice.file_id
+        elif message.animation:
+                file_id = message.animation.file_id
+
+        if not file_id:
+            await self.bot.reply_to(message, "⚠️ Unable to retrieve file ID.")
+            return
+
+        key = message.caption.strip()
+        await self.update_env_file(key, file_id)
+        await self.bot.reply_to(message, f"✅ Saved `{key}={file_id}` to `.env`", parse_mode="Markdown")
 
     # ----------------- Handler Registration -----------------
 

@@ -1,0 +1,200 @@
+2025-06-14 09:17:24,658 - redis_manager - ERROR - Failed to connect to Redis: Error 22 connecting to 127.0.0.1:6379. The remote computer refused the network connection.
+2025-06-14 09:17:24,658 - redis_manager - WARNING - Redis connection attempt 1 failed. Retrying in 1s...
+2025-06-14 09:17:27,690 - redis_manager - ERROR - Failed to connect to Redis: Error 22 connecting to 127.0.0.1:6379. The remote computer refused the network connection.
+2025-06-14 09:17:27,691 - redis_manager - WARNING - Redis connection attempt 2 failed. Retrying in 2s...
+2025-06-14 09:18:21,508 - redis_manager - INFO - Successfully connected to local Redis
+2025-06-14 09:18:21,512 - advanced_logger - INFO - OrderManagement indexes created successfully
+2025-06-14 09:18:21,515 - advanced_logger - INFO - DepositManagement indexes created successfully
+2025-06-14 09:18:21,515 - handlers.methods.purchase.order_tracker - INFO - Order tracker initialized successfully
+2025-06-14 09:18:21,515 - handlers.methods.purchase.order_tracker - INFO - Order tracker initialized successfully
+2025-06-14 09:18:21,516 - handlers.methods.purchase.order_tracker - INFO - Order tracker initialized successfully
+2025-06-14 09:18:21,517 - advanced_logger - INFO - Managers and security components initialized successfully
+2025-06-14 09:18:22,117 - root - ERROR - [AutoUpdate.dump_redis_data] Error during SCAN/DUMP: 'NoneType' object has no attribute 'scan'
+2025-06-14 09:18:22,119 - root - INFO - [AutoUpdate.dump_redis_data] Completed dump: 0 total keys.
+2025-06-14 09:18:22,119 - root - ERROR - [AutoUpdate.save_data_to_redis] Error saving data to Redis: 'NoneType' object has no attribute 'execute_command'
+2025-06-14 09:18:22,119 - root - ERROR - [AutoUpdate.upload_from_redis_key] Exception during upload: 'NoneType' object has no attribute 'execute_command'
+2025-06-14 09:18:22,119 - root - WARNING - [AutoUpdate.send_dump_link] Empty file_url; skipping send.
+2025-06-14 09:18:22,120 - advanced_logger - INFO - Handler Managers Initialized Successfully!
+2025-06-14 09:18:22,120 - advanced_logger - INFO - Start command, callback, and join request handlers registered successfully
+2025-06-14 09:18:22,120 - advanced_logger - INFO - Handler registered: show_menu
+2025-06-14 09:18:22,141 - advanced_logger - INFO - Handler registered: show_wallet
+2025-06-14 09:18:22,143 - advanced_logger - INFO - Handler registered: made_purchase
+2025-06-14 09:18:22,143 - advanced_logger - INFO - Handler registered: order_status
+2025-06-14 09:18:22,145 - advanced_logger - INFO - Handler registered: show_servers
+2025-06-14 09:18:22,145 - advanced_logger - INFO - Handler registered: show_country
+2025-06-14 09:18:22,147 - advanced_logger - INFO - Handler registered: show_deposit
+2025-06-14 09:18:22,148 - handlers.methods.history.show_history - INFO - History managers initialized successfully
+2025-06-14 09:18:22,149 - advanced_logger - INFO - Handler registered: show_history
+2025-06-14 09:18:22,153 - advanced_logger - INFO - Handler registered: support_management
+2025-06-14 09:18:22,905 - advanced_logger - INFO - Handler registered: top_services
+2025-06-14 09:18:22,906 - advanced_logger - INFO - Handler registered: show_refferal
+2025-06-14 09:18:22,907 - advanced_logger - INFO - Handler registered: show_support
+2025-06-14 09:18:23,012 - handlers.methods.admin.admin_panel - INFO - Admin panel managers initialized successfully.
+2025-06-14 09:18:23,013 - handlers.methods.admin.admin_panel - INFO - Admin panel handlers registered successfully.
+2025-06-14 09:18:23,013 - advanced_logger - INFO - Handler registered: admin_panel
+2025-06-14 09:18:23,017 - advanced_logger - INFO - Handler managers initialized successfully
+2025-06-14 09:18:23,017 - root - INFO - Inline query handlers registered successfully
+2025-06-14 09:18:23,017 - advanced_logger - INFO - Handler registered: inline_query
+2025-06-14 09:18:23,154 - advanced_logger - INFO - Aggregation query: @user_id:6303036838 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:18:23,168 - advanced_logger - INFO - Aggregation query: @user_id:1663772456 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:18:23,168 - advanced_logger - INFO - Aggregation query: @user_id:1972194674 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:18:23,169 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:18:23,196 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:18:23,204 - advanced_logger - INFO - Aggregation query: @user_id:5738155989 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:18:23,240 - advanced_logger - INFO - Aggregation query: @user_id:5738155989 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:18:36,570 - advanced_logger - INFO - Aggregation query: @user_id:728406891 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:18:37,063 - advanced_logger - INFO - Sending order report for order_id: 6672039910151549, user_id: 728406891
+2025-06-14 09:18:37,064 - advanced_logger - INFO - Aggregation query: @user_id:728406891 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:18:37,066 - advanced_logger - INFO - Retrieved forum_id: 16472
+2025-06-14 09:18:37,067 - advanced_logger - INFO - Sending new message to channel: -1002203139746
+2025-06-14 09:18:37,657 - advanced_logger - INFO - Storing message_id: 19998 for order: 6672039910151549
+2025-06-14 09:28:41,993 - advanced_logger - INFO - Attempting to cancel order 6672039910151549 for user 728406891
+2025-06-14 09:28:41,993 - advanced_logger - INFO - Sending order report for order_id: 6672039910151549, user_id: 728406891
+2025-06-14 09:28:41,996 - advanced_logger - INFO - Aggregation query: @user_id:728406891 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:28:41,997 - advanced_logger - INFO - Aggregation query: @user_id:728406891 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:28:41,999 - advanced_logger - INFO - Updating order status to timeout for order 6672039910151549
+2025-06-14 09:28:42,002 - advanced_logger - INFO - Retrieved forum_id: 16472
+2025-06-14 09:28:42,006 - advanced_logger - INFO - Successfully timeout order 6672039910151549 with refund
+2025-06-14 09:28:42,007 - advanced_logger - INFO - Editing message with ID: 19998
+2025-06-14 09:41:27,366 - advanced_logger - INFO - Aggregation query: @user_id:6303036838 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:41:31,154 - root - INFO - Total execution time: 0.340s
+2025-06-14 09:41:34,011 - root - INFO - Total execution time: 0.071s
+2025-06-14 09:42:46,258 - root - INFO - Total execution time: 0.059s
+2025-06-14 09:42:47,838 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:43:02,531 - root - INFO - Total execution time: 0.065s
+2025-06-14 09:43:03,988 - root - INFO - Total execution time: 0.066s
+2025-06-14 09:43:10,496 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:43:21,438 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:43:24,061 - advanced_logger - INFO - Sending order report for order_id: 5370187267705593, user_id: 5701632998
+2025-06-14 09:43:24,064 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:43:24,066 - advanced_logger - INFO - Retrieved forum_id: 17128
+2025-06-14 09:43:24,070 - advanced_logger - INFO - Sending new message to channel: -1002203139746
+2025-06-14 09:43:24,867 - advanced_logger - INFO - Storing message_id: 20000 for order: 5370187267705593
+2025-06-14 09:43:25,399 - handlers.security.transaction_guard - WARNING - Failed to release lock: lock:transaction:5701632998:purchase:5701632998
+2025-06-14 09:44:22,076 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:45:41,046 - advanced_logger - INFO - Attempting to cancel order 5370187267705593 for user 5701632998
+2025-06-14 09:45:41,049 - advanced_logger - INFO - Updating order status to cancelled for order 5370187267705593
+2025-06-14 09:45:41,051 - advanced_logger - INFO - Successfully cancelled order 5370187267705593 with refund
+2025-06-14 09:45:42,188 - advanced_logger - INFO - Sending order report for order_id: 5370187267705593, user_id: 5701632998
+2025-06-14 09:45:42,191 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:45:42,191 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:45:42,194 - advanced_logger - INFO - Retrieved forum_id: 17128
+2025-06-14 09:45:42,199 - advanced_logger - INFO - Editing message with ID: 20000
+2025-06-14 09:45:46,805 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:46:03,994 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:46:04,370 - advanced_logger - INFO - Sending order report for order_id: 7673847934161040, user_id: 5701632998
+2025-06-14 09:46:04,372 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:46:04,375 - advanced_logger - INFO - Retrieved forum_id: 17128
+2025-06-14 09:46:04,379 - advanced_logger - INFO - Sending new message to channel: -1002203139746
+2025-06-14 09:46:04,753 - advanced_logger - INFO - Storing message_id: 20002 for order: 7673847934161040
+2025-06-14 09:48:06,449 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:48:08,790 - root - INFO - Total execution time: 0.306s
+2025-06-14 09:48:11,689 - root - INFO - Total execution time: 0.119s
+2025-06-14 09:48:12,192 - root - INFO - Total execution time: 0.057s
+2025-06-14 09:48:12,726 - root - INFO - Total execution time: 0.047s
+2025-06-14 09:48:18,420 - advanced_logger - INFO - Attempting to cancel order 7673847934161040 for user 5701632998
+2025-06-14 09:48:18,423 - advanced_logger - INFO - Updating order status to cancelled for order 7673847934161040
+2025-06-14 09:48:18,426 - advanced_logger - INFO - Successfully cancelled order 7673847934161040 with refund
+2025-06-14 09:48:19,156 - advanced_logger - INFO - Sending order report for order_id: 7673847934161040, user_id: 5701632998
+2025-06-14 09:48:19,158 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:48:19,158 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:48:19,159 - advanced_logger - INFO - Retrieved forum_id: 17128
+2025-06-14 09:48:19,163 - advanced_logger - INFO - Editing message with ID: 20002
+2025-06-14 09:48:23,644 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:48:34,341 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:48:36,992 - advanced_logger - INFO - Sending order report for order_id: 7851220980451533, user_id: 5701632998
+2025-06-14 09:48:36,995 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:48:36,996 - advanced_logger - INFO - Retrieved forum_id: 17128
+2025-06-14 09:48:37,000 - advanced_logger - INFO - Sending new message to channel: -1002203139746
+2025-06-14 09:48:37,439 - advanced_logger - INFO - Storing message_id: 20004 for order: 7851220980451533
+2025-06-14 09:48:38,332 - handlers.security.transaction_guard - WARNING - Failed to release lock: lock:transaction:5701632998:purchase:5701632998
+2025-06-14 09:49:22,096 - root - ERROR - [AutoUpdate.dump_redis_data] Error during SCAN/DUMP: 'NoneType' object has no attribute 'scan'
+2025-06-14 09:49:22,096 - root - INFO - [AutoUpdate.dump_redis_data] Completed dump: 0 total keys.
+2025-06-14 09:49:22,096 - root - ERROR - [AutoUpdate.save_data_to_redis] Error saving data to Redis: 'NoneType' object has no attribute 'execute_command'
+2025-06-14 09:49:22,097 - root - ERROR - [AutoUpdate.upload_from_redis_key] Exception during upload: 'NoneType' object has no attribute 'execute_command'
+2025-06-14 09:49:22,097 - root - WARNING - [AutoUpdate.send_dump_link] Empty file_url; skipping send.
+2025-06-14 09:49:53,757 - advanced_logger - INFO - Sending order report for order_id: 7851220980451533, user_id: 5701632998
+2025-06-14 09:49:53,761 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:49:53,762 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:49:53,769 - advanced_logger - INFO - Retrieved forum_id: 17128
+2025-06-14 09:49:53,773 - advanced_logger - INFO - Editing message with ID: 20004
+2025-06-14 09:50:14,879 - advanced_logger - INFO - Aggregation query: @user_id:1972194674 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:50:46,193 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:50:47,854 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:51:33,882 - advanced_logger - INFO - Successfully retrieved deposit data for ID: 6969299555453423
+2025-06-14 09:51:33,890 - advanced_logger - INFO - Successfully retrieved deposit data for ID: 6969299555453423
+2025-06-14 09:51:33,910 - advanced_logger - INFO - Sending deposit notification for user 5701632998
+2025-06-14 09:51:33,913 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:51:33,918 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:51:35,522 - advanced_logger - INFO - Deposit notification process completed
+2025-06-14 09:51:45,791 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:51:48,067 - advanced_logger - INFO - Sending order report for order_id: 918767862886860, user_id: 5701632998
+2025-06-14 09:51:48,068 - advanced_logger - INFO - Aggregation query: @user_id:5701632998 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-14 09:51:48,069 - advanced_logger - INFO - Retrieved forum_id: 17128
+2025-06-14 09:51:48,069 - advanced_logger - INFO - Sending new message to channel: -1002203139746
+2025-06-14 09:51:48,456 - advanced_logger - INFO - Storing message_id: 20008 for order: 918767862886860
+2025-06-14 09:51:49,436 - handlers.security.transaction_guard - WARNING - Failed to release lock: lock:transaction:5701632998:purchase:5701632998
+2025-06-14 09:52:18,932 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-47' coro=<expire_old_codes() done, defined at C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\bot_project\handlers\methods\recharge\show_deposit.py:63> exception=ConnectionError('Connection closed by server.')>
+Traceback (most recent call last):
+  File "C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\bot_project\handlers\methods\recharge\show_deposit.py", line 66, in expire_old_codes
+    cursor, keys = await redis_manager.redis_client.scan(cursor=cursor, match=f"{REDEEM_CODE_PREFIX}*", count=100)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\venv\Lib\site-packages\redis\asyncio\client.py", line 678, in execute_command
+    return await conn.retry.call_with_retry(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\venv\Lib\site-packages\redis\asyncio\retry.py", line 76, in call_with_retry
+    raise error
+  File "C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\venv\Lib\site-packages\redis\asyncio\retry.py", line 71, in call_with_retry
+    return await do()
+           ^^^^^^^^^^
+  File "C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\venv\Lib\site-packages\redis\asyncio\client.py", line 653, in _send_command_parse_response
+    return await self.parse_response(conn, command_name, **options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\venv\Lib\site-packages\redis\asyncio\client.py", line 699, in parse_response
+    response = await connection.read_response()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\venv\Lib\site-packages\redis\asyncio\connection.py", line 590, in read_response
+    response = await self._parser.read_response(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\venv\Lib\site-packages\redis\_parsers\resp2.py", line 82, in read_response
+    response = await self._read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\venv\Lib\site-packages\redis\_parsers\resp2.py", line 90, in _read_response
+    raw = await self._readline()
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\venv\Lib\site-packages\redis\_parsers\base.py", line 233, in _readline
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
+2025-06-14 09:52:18,937 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-43' coro=<UserPurchaseManagement._listen_for_schedule_events() done, defined at C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\bot_project\handlers\methods\purchase\made_purchase.py:932> exception=ConnectionError('Connection closed by server.')>
+Traceback (most recent call last):
+  File "C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\bot_project\handlers\methods\purchase\made_purchase.py", line 944, in _listen_for_schedule_events
+    cursor, keys = await self.redis_client.scan(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\venv\Lib\site-packages\redis\asyncio\client.py", line 678, in execute_command
+    return await conn.retry.call_with_retry(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\venv\Lib\site-packages\redis\asyncio\retry.py", line 76, in call_with_retry
+    raise error
+  File "C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\venv\Lib\site-packages\redis\asyncio\retry.py", line 71, in call_with_retry
+    return await do()
+           ^^^^^^^^^^
+  File "C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\venv\Lib\site-packages\redis\asyncio\client.py", line 653, in _send_command_parse_response
+    return await self.parse_response(conn, command_name, **options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\venv\Lib\site-packages\redis\asyncio\client.py", line 699, in parse_response
+    response = await connection.read_response()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\venv\Lib\site-packages\redis\asyncio\connection.py", line 590, in read_response
+    response = await self._parser.read_response(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\venv\Lib\site-packages\redis\_parsers\resp2.py", line 82, in read_response
+    response = await self._read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\venv\Lib\site-packages\redis\_parsers\resp2.py", line 90, in _read_response
+    raw = await self._readline()
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LOQ\OneDrive\telegram_bot\flash_sms\venv\Lib\site-packages\redis\_parsers\base.py", line 233, in _readline
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+redis.exceptions.ConnectionError: Connection closed by server.
