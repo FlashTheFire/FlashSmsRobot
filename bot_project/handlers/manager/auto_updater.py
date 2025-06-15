@@ -675,7 +675,7 @@ class AutoUpdater:
         except Exception as e:
             logging.error(f"[AutoUpdate.send_dump_link] Telegram error: {e}")
 
-    async def save_data_cycle(self, admin_id: int) -> None:
+    async def save_data_cycle(self) -> None:
         """
         Full cycle: dump → save → upload → notify admin.
         """
@@ -683,7 +683,7 @@ class AutoUpdater:
             data = await self.dump_redis_data()
             await self.save_data_to_redis(data)
             url = await self.upload_from_redis_key()
-            await self.send_dump_link(admin_id, url)
+            await self.send_dump_link(ADMIN_ID, url)
         except Exception as e:
             logging.error(f"[AutoUpdate.save_data_cycle] Failed cycle: {e}")
 
