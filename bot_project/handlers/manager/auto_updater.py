@@ -4,6 +4,9 @@ from typing import Optional, Dict, Any, Tuple, List, Union
 import logging
 import asyncio
 import aiohttp
+import requests
+import json
+import io
 import json
 from termcolor import colored
 from colorama import Fore, Style, init as colorama_init
@@ -643,9 +646,10 @@ class AutoUpdater:
         logging.info(f"[AutoUpdate.dump_redis_data] Dumped {len(result)} keys")
         return result
 
+
     async def upload_from_redis_key(self) -> str:
         """Fetch JSON from REDIS_DUMP_KEY, upload it to 0x0.st, and return the URL."""
-        # 1) Fetch JSON from Redis
+        # Simulated Redis payload
         r = await redis_manager.get_client()
         raw = await r.json().get(self.REDIS_DUMP_KEY)
         if not raw:
@@ -654,36 +658,33 @@ class AutoUpdater:
 
         parsed = json.loads(raw) if isinstance(raw, str) else raw
         payload = json.dumps(parsed, indent=2).encode()
-        file_data = io.BytesIO(payload)
+        json_data = io.BytesIO(payload)
 
-        # 2) Upload to https://0x0.st with no User-Agent header
+        # Convert JSON to BytesIO
+        json_bytes = io.BytesIO(json.dumps(json_data, indent=2).encode('utf-8'))
+
+        # Prepare files payload
+        files = {
+            'file': ('flash-data.json', json_bytes, 'application/json')
+        }
+
+        # Create a session and remove its default User‑Agent header
+        session = requests.Session()
+        session.headers.pop('User-Agent', None)
+
+        # Upload request (no headers argument at all)
         try:
-            data = aiohttp.FormData()
-            data.add_field(
-                'file',
-                file_data,
-                filename="flash-data.json",
-                content_type="application/json"
-            )
-
-            async with aiohttp.ClientSession() as sess:
-                # Remove the default User-Agent header
-                sess._default_headers.pop("User-Agent", None)
-
-                async with sess.post("https://0x0.st", data=data) as resp:
-                    text = await resp.text()
-                    if resp.status == 200 and text.strip().startswith("https://0x0.st/"):
-                        url = text.strip()
-                        logging.info(f"[AutoUpdate] Uploaded → {url}")
-                        return url
-                    else:
-                        logging.warning(f"[0x0.st] Failed ({resp.status}): {text}")
+            response = session.post("https://0x0.st", files=files)
+            text = response.text.strip()
+            if response.status_code == 200:
+                return text
         except Exception as e:
             logging.error(f"[AutoUpdate.0x0.st] Exception: {e}")
 
-        # 3) Upload failed
         logging.error("[AutoUpdate.upload_from_redis_key] All upload methods failed")
         return ""
+
+
 
     async def send_dump_link(self, chat_id: int, file_url: str) -> None:
         """Send the dump URL to a Telegram chat."""
