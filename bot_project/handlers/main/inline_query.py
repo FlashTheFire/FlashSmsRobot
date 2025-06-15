@@ -529,7 +529,8 @@ class UserSearchManagement:
                     ])
 
                     # Result ID generation without string interpolation
-                    result_id = "_".join([app_name, str(total_stock), f"{lowest_price:.2f}"])
+                    import uuid
+                    result_id = str(uuid.uuid4())  # Generate unique result ID using UUID
                     input_text = f"#Sᴇʀᴠɪᴄᴇ|{app_id}" if is_admin else f"/Buy_{app_id}" 
                     switch_query = f"#Sᴇʀᴠɪᴄᴇ " if is_admin else ""
                     if result_id not in used_result_ids:
