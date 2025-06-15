@@ -718,27 +718,25 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
             if os.environ.get('USE_WEBHOOK', 'false').lower() == 'true':
                 current_time = datetime.datetime.now().time()
                 # Trigger at every hour and minute == 30
-                if current_time.minute == 30:
+                await auto_updater.save_data_cycle()
+                if current_time.hour in (0, 12) and current_time.minute == 0:
                     # ──────────────────────────────────────────────────────
                     # Step A: existing initialize & update_data
                     await auto_updater.initialize(bot=bot)
                     await auto_updater.update_data()
                     # ──────────────────────────────────────────────────────
-                    await auto_updater.save_data_cycle()
                     await asyncio.sleep(1 * 30 * 60)
                     # ──────────────────────────────────────────────────────
 
                 # If `update` is True, run once on first invocation
                 elif update:
-                    if not hasattr(auto_updater, 'initialized'):
+                    """if not hasattr(auto_updater, 'initialized'):
                         await auto_updater.initialize(bot=bot)
                         await auto_updater.update_data()
 
-                        auto_updater.initialized = True
+                        auto_updater.initialized = True"""
                     # ──────────────────────────────────────────────────────
-                    await auto_updater.save_data_cycle()
                     await asyncio.sleep(1 * 30 * 60)
-                    pass
                     # ──────────────────────────────────────────────────────
 
             # Check again in 1 minute
