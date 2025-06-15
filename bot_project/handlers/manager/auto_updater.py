@@ -22,6 +22,13 @@ import re
 from utils.config import ADMIN_ID
 import handlers.manager.operation as _ops
 
+import io
+import json
+import logging
+import aiohttp
+from aiohttp import FormData
+import aiobotocore
+
 
 # -------------------- logging Configuration --------------------
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -639,55 +646,57 @@ class AutoUpdater:
         return result
 
     async def upload_from_redis_key(self) -> str:
-        """
-        Fetch JSON from REDIS_DUMP_KEY, upload it to file.io, and return the URL.
-        """
-        # 1) Fetch from Redis
+        # 1) Fetch & prepare payload
         raw = await self.redis_client.execute_command("JSON.GET", self.REDIS_DUMP_KEY, "$")
         if not raw:
             logging.error("[AutoUpdate.upload_from_redis_key] No data to upload")
             return ""
-
         parsed = json.loads(raw) if isinstance(raw, str) else raw
         payload = json.dumps(parsed, indent=2).encode()
 
-        # 2) Prepare multipart form for file.io
-        form = aiohttp.FormData()
-        form.add_field(
-            name="file",
-            value=io.BytesIO(payload),
-            filename="redis_dump.json",
-            content_type="application/json",
-        )
-
-        timeout = aiohttp.ClientTimeout(total=30)
-        upload_url = "https://file.io"
-
+        # 2) Try del.dog (dogbin) → returns {"key":"xxxx"}
         try:
-            async with aiohttp.ClientSession(timeout=timeout) as sess:
-                async with sess.post(upload_url, data=form) as resp:
+            async with aiohttp.ClientSession() as sess:
+                async with sess.post(
+                    "https://del.dog/documents",
+                    data=payload,
+                    headers={"Content-Type": "application/json"},
+                ) as resp:
                     text = await resp.text()
-                    if resp.status != 200:
-                        logging.error(f"[AutoUpdate.upload_from_redis_key] file.io responded {resp.status}: {text}")
-                        return ""
-
-                    # 3) Parse JSON response
-                    try:
+                    if resp.status == 200:
                         result = json.loads(text)
-                    except json.JSONDecodeError as e:
-                        logging.error(f"[AutoUpdate.upload_from_redis_key] JSON decode error: {e} — raw response: {text!r}")
-                        return ""
-
-                    # 4) Extract link
-                    link = result.get("link") or result.get("data", {}).get("link")
-                    if result.get("success") and link:
-                        logging.info(f"[AutoUpdate.upload_from_redis_key] Uploaded → {link}")
-                        return link
-                    else:
-                        logging.error(f"[AutoUpdate.upload_from_redis_key] Unexpected file.io payload: {result}")
+                        key = result.get("key")
+                        if key:
+                            url = f"https://del.dog/{key}"
+                            logging.info(f"[AutoUpdate] Uploaded → {url}")
+                            return url
+                    logging.warning(f"[del.dog] Failed ({resp.status}): {text}")
         except Exception as e:
-            logging.error(f"[AutoUpdate.upload_from_redis_key] Exception during upload: {e}")
+            logging.error(f"[AutoUpdate.del.dog] Exception: {e}")
 
+        # 3) Fallback: Upload to your S3 via presigned URL
+        try:
+            # 3a) Generate presigned PUT URL
+            session = aiobotocore.get_session()
+            async with session.create_client('s3', region_name='us-east-1') as s3:
+                presigned = await s3.generate_presigned_url(
+                    'put_object',
+                    Params={'Bucket': 'my-bucket', 'Key': 'redis_dump.json'},
+                    ExpiresIn=300
+                )
+            # 3b) PUT the payload
+            async with aiohttp.ClientSession() as sess:
+                async with sess.put(presigned, data=payload) as resp:
+                    resp.raise_for_status()
+            url = "https://my-bucket.s3.amazonaws.com/redis_dump.json"
+            logging.info(f"[AutoUpdate] Uploaded to S3 → {url}")
+            return url
+
+        except Exception as e:
+            logging.error(f"[AutoUpdate.S3] Exception: {e}")
+
+        # 4) All methods failed
+        logging.error("[AutoUpdate.upload_from_redis_key] All upload methods failed")
         return ""
 
     async def send_dump_link(self, chat_id: int, file_url: str) -> None:
