@@ -494,7 +494,7 @@ class AutoUpdater:
             logging.warning(f"[AutoUpdate.import_redis_dump] No data from {url}")
             return
 
-        r = self.redis_client
+        r = await redis_manager.get_client()
         for key, record in data.items():
             t = record.get("type")
             val = record.get("value")
@@ -503,22 +503,18 @@ class AutoUpdater:
                     await r.set(key, val)
 
                 elif t == "list":
-                    await r.delete(key)
                     if isinstance(val, list):
                         await r.rpush(key, *val)
 
                 elif t == "set":
-                    await r.delete(key)
                     if isinstance(val, list):
                         await r.sadd(key, *val)
 
                 elif t == "hash":
-                    await r.delete(key)
                     if isinstance(val, dict):
                         await r.hset(key, mapping=val)
 
                 elif t == "zset":
-                    await r.delete(key)
                     if isinstance(val, list):
                         await r.zadd(key, *{m: s for m, s in val}.items())
 
