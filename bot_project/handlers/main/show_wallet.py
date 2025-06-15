@@ -128,8 +128,13 @@ class UserWalletManagement:
                             call, user_data, image_path, chat_id, message_id, keyboard, caption, current_info
                         )
                 except Exception as e:
-                    print(f"Error processing process_wallet_callback command: {e}")
-                    await self.bot.send_message(chat_id, "🚫 Eʀʀᴏʀ Gᴇɴᴇʀᴀᴛɪɴɢ Rᴇǫᴜᴇsᴛ.")
+                    import traceback
+                    trace = traceback.format_exc()
+                    print(f"[Wallet Error] full traceback:\n{trace}")
+                    await self.bot.send_message(
+                        call.message.chat.id,
+                        "🚫 An internal error occurred. Check logs."
+                    )
                     return
                 finally:
                     await guard.release_lock(transaction_key)
