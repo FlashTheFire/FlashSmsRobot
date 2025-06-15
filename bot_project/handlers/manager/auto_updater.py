@@ -397,7 +397,7 @@ class AutoUpdater:
             await self.save_price_mapping(self.redis_client)
             
             if batch_index < len(batches):
-                await asyncio.sleep(0.01)
+                await asyncio.sleep(0.001)
     
         print(colored("\n=== Data Insertion Complete ===", "cyan"))
 
@@ -756,11 +756,14 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
 
     # Run one-time update if requested
     if update:
-        """if not hasattr(auto_updater, 'initialized'):
-            await auto_updater.initialize(bot=bot)
-            await auto_updater.update_data()
-            auto_updater.initialized = True
-            logging.info("Ran one-time initial update")"""
+        if not hasattr(auto_updater, 'initialized'):
+            redis_client = await redis_manager.get_client()
+            keys = [key async for key in redis_client.scan_iter(match='service_data:*', count=1000)]
+            if len(keys) == 0:
+                await auto_updater.initialize(bot=bot)
+                await auto_updater.update_data()
+                auto_updater.initialized = True
+                logging.info("Ran one-time initial update")
 
     # Launch tasks in background
     asyncio.create_task(periodic_save_cycle(bot=bot))
