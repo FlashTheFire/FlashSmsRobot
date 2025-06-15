@@ -650,33 +650,30 @@ class AutoUpdater:
 
     async def upload_from_redis_key(self) -> str:
         """Fetch JSON from REDIS_DUMP_KEY, upload it to 0x0.st, and return the URL."""
-        # Simulated Redis payload
         r = await redis_manager.get_client()
         raw = await r.json().get(self.REDIS_DUMP_KEY)
+
         if not raw:
             logging.error("[AutoUpdate.upload_from_redis_key] No data to upload")
             return ""
 
-        json_data = json.dumps(raw, indent=4)
+        # Convert the raw JSON object directly into a pretty-printed JSON string
+        json_text = json.dumps(raw, indent=4)
 
-        # Convert JSON to BytesIO
-        json_bytes = io.BytesIO(json.dumps(json_data, indent=4).encode('utf-8'))
+        # Convert to BytesIO (no extra json.dumps)
+        json_bytes = io.BytesIO(json_text.encode('utf-8'))
 
-        # Prepare files payload
         files = {
             'file': ('flash-data.json', json_bytes, 'application/json')
         }
 
-        # Create a session and remove its default User‑Agent header
         session = requests.Session()
         session.headers.pop('User-Agent', None)
 
-        # Upload request (no headers argument at all)
         try:
             response = session.post("https://0x0.st", files=files)
-            text = response.text.strip()
             if response.status_code == 200:
-                return text
+                return response.text.strip()
         except Exception as e:
             logging.error(f"[AutoUpdate.0x0.st] Exception: {e}")
 
