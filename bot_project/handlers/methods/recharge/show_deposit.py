@@ -258,7 +258,7 @@ class ShowDepositManager:
                     raise Exception("Failed to create deposit ID")
 
                 deposit_id = deposit_id_resp['result']
-                position = (720, 280)  # Leaves enough room for a 380x380 QR
+                position = (730, 285)  # Leaves enough room for a 380x380 QR
                 size = 200
                 qr_image = await qr_code(deposit_id=deposit_id, size=size, position=position, radius=20)
                 print("qr_image", qr_image)
