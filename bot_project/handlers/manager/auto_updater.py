@@ -288,21 +288,22 @@ class AutoUpdater:
         await pipe.hsetnx(redis_key, "is_show_country", "True")
         await pipe.hsetnx(redis_key, "is_show_server",  "True")
         await pipe.hsetnx(redis_key, "is_show_app", "True")
-
-        if str(f"{country_id}:{server_id}:{app_id}") in matches:
-            redis_data = {
-                "country_id": self.safe_str(country_id),
-                "country_name": self.safe_str(country_name),
-                "country_code": self.safe_str(display_flag),
-                "server_name": 'free',
-                "server_id": self.safe_str(server_id),
-                "app_id": app_id,
-                "app_name": self.safe_str(app.get("app_name")),
-                "app_code": self.safe_str(code_field),
-                "app_price": 0.01,
-                "app_count": self.safe_str(app.get("count")),
-                "search_tags": self.safe_str(f"{app.get('app_name')}").replace(" ", "").lower()
-            }
+        if matches:
+            print(colored(f"Matches found: {matches}", "green"))
+            if str(f"{country_id}:{server_id}:{app_id}") in matches:
+                redis_data = {
+                    "country_id": self.safe_str(country_id),
+                    "country_name": self.safe_str(country_name),
+                    "country_code": self.safe_str(display_flag),
+                    "server_name": 'free',
+                    "server_id": self.safe_str(server_id),
+                    "app_id": app_id,
+                    "app_name": self.safe_str(app.get("app_name")),
+                    "app_code": self.safe_str(code_field),
+                    "app_price": 0.01,
+                    "app_count": self.safe_str(app.get("count")),
+                    "search_tags": self.safe_str(f"{app.get('app_name')}").replace(" ", "").lower()
+                }
         else:
             redis_data = {
                 "country_id": self.safe_str(country_id),
@@ -321,7 +322,7 @@ class AutoUpdater:
             await self.update_price_mapping(app_id, app_price, country_id)
             pipe.hset(redis_key, mapping=redis_data)
             #print("The field 'is_adjustable' exist")
-        #print(colored(f"    ✓ Added: {app.get('app_name')} {app_codes} | Price: ${app_price:<6} | Stock: {app.get('count')}", "green"))
+        print(colored(f"    ✓ Added: {app.get('app_name')} {app_codes} | Price: ${app_price:<6} | Stock: {app.get('count')}", "green"))
 
     async def process_server(
         self,
