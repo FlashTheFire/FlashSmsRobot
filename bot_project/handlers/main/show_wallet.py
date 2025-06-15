@@ -134,8 +134,13 @@ class UserWalletManagement:
                 finally:
                     await guard.release_lock(transaction_key)
         except Exception as e:
-            print(f"Wallet callback error for user {call.from_user.id}: {e}")
-            pass
+            import traceback
+            trace = traceback.format_exc()
+            print(f"[Wallet Error] full traceback:\n{trace}")
+            await self.bot.send_message(
+                call.message.chat.id,
+                "🚫 An internal error occurred. Check logs."
+            )
 
     async def process_wallet_update(self, user_id) -> None:
         """Process wallet update with full caching logic using asyncio for ultra-fast processing"""
