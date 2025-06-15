@@ -657,11 +657,10 @@ class AutoUpdater:
             logging.error("[AutoUpdate.upload_from_redis_key] No data to upload")
             return ""
 
-        parsed = json.loads(raw) if isinstance(raw, str) else raw
-        json_data = json.dumps(parsed, indent=2)
+        json_data = json.dumps(json.loads(raw), indent=4)
 
         # Convert JSON to BytesIO
-        json_bytes = io.BytesIO(json.dumps(json_data, indent=2).encode('utf-8'))
+        json_bytes = io.BytesIO(json.dumps(json_data, indent=4).encode('utf-8'))
 
         # Prepare files payload
         files = {
