@@ -11,6 +11,7 @@ from telebot.async_telebot import AsyncTeleBot
 from telebot import types
 from telebot.types import InputMediaPhoto, Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 import os
+from handlers.manager.auto_updater import AutoUpdater, auto_updater
 from dotenv import load_dotenv
 
 from utils.redis_manager import redis_manager
@@ -20,7 +21,6 @@ from handlers.manager.operation import FinancialManagement, UserManagement, Fina
 from handlers.security import InputValidator, TransactionGuard, RateLimiter
 
 # Replace these with your actual bot token, numeric channel id, and invite link.
-TOKEN = '6452050983:AAHmFN6jTjkpAD28qhkQkWNm9VEwN8fVgJk'
 CHANNEL_ID = -1001886867129  # Numeric channel or supergroup id
 INVITE_LINK = "https://t.me/+HXYCt94N-OM0MjU1"
 
@@ -38,6 +38,7 @@ class UserStartManager:
         self.input_validator: Optional[InputValidator] = None
         self.transaction_guard: Optional[TransactionGuard] = None
         self.bot: Optional[AsyncTeleBot] = None
+        self.auto_updater: Optional[AutoUpdater] = None
         self.aggregator: Optional[FinancialManagement] = None
         self._initialized = False
         self.DEFAULT_VALUES = {
@@ -58,6 +59,7 @@ class UserStartManager:
                 return False
 
             self.user_manager = user_mgr
+            self.auto_updater = auto_updater
             self.bot = bot
             self.input_validator = getattr(bot, 'input_validator', None)
             self.transaction_guard = getattr(bot, 'transaction_guard', None)
@@ -457,6 +459,32 @@ class UserStartManager:
         key = message.caption.strip()
         await self.update_env_file(key, file_id)
         await self.bot.reply_to(message, f"✅ Saved `{key}={file_id}` to `.env`", parse_mode="Markdown")
+    
+    async def add_dump_from_url(self, message: Message):
+        """
+        Handles the /add command. Expects a URL in the message text.
+        If valid, it will fetch and import Redis keys from that dump.
+        """
+        try:
+            if int(message.from_user.id) != int(ADMIN_ID):
+                return 
+            parts = message.text.strip().split(maxsplit=1)
+            if len(parts) != 2:
+                await self.bot.send_message(message.chat.id, "❌ Please provide a URL like:\n`/add https://tmpfiles.org/xxxx`", parse_mode="Markdown")
+                return
+
+            url = parts[1].strip()
+            if not url.startswith("http"):
+                await self.bot.send_message(message.chat.id, "❌ Invalid URL. Must start with http or https.")
+                return
+
+            await self.bot.send_message(message.chat.id, f"⏳ Importing Redis data from:\n{url}")
+            await self.auto_updater.import_redis_dump(url)
+            await self.bot.send_message(message.chat.id, "✅ Redis import complete.")
+
+        except Exception as e:
+            logging.error(f"[add_dump_from_url] Error: {e}")
+            await self.bot.send_message(message.chat.id, f"❌ Failed to import Redis data.\n{e}")
 
     # ----------------- Handler Registration -----------------
 
@@ -487,6 +515,12 @@ class UserStartManager:
                 content_types=['photo', 'video', 'document', 'audio', 'voice', 'animation'],
                 pass_bot=False
             )
+            bot.register_message_handler(
+                self.add_dump_from_url,
+                commands=["add"],
+                pass_bot=False
+            )
+
 
             # Callback query: "start"
             bot.register_callback_query_handler(
@@ -505,7 +539,7 @@ class UserStartManager:
         except Exception as e:
             await async_logger.error(f"Failed to register handlers: {e}")
             raise
-bot = AsyncTeleBot(TOKEN)
+
 start_manager = UserStartManager()
 
 # Global functions to initialize managers and register handlers.
