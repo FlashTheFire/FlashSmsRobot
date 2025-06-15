@@ -657,8 +657,7 @@ class AutoUpdater:
             return ""
 
         parsed = json.loads(raw) if isinstance(raw, str) else raw
-        payload = json.dumps(parsed, indent=2).encode()
-        json_data = io.BytesIO(payload)
+        json_data = json.dumps(parsed, indent=2)
 
         # Convert JSON to BytesIO
         json_bytes = io.BytesIO(json.dumps(json_data, indent=2).encode('utf-8'))
