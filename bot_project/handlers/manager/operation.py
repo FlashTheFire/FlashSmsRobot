@@ -2230,7 +2230,7 @@ class FiveSimManagement:
             )
             data = await self.fetch_with_retry(remote_url, retries=2)
             if data is None:
-                logging.error("get_servers: failed to fetch data")
+                print("get_servers: failed to fetch data")
                 return {}
 
             # unpack the 2-tuple; we only care about servers here
@@ -2267,6 +2267,7 @@ class FiveSimManagement:
                         raw_response = await resp.text()
                         return json.loads(raw_response)
                 except (aiohttp.ClientError, asyncio.TimeoutError, json.JSONDecodeError) as e:
+                    print(f"Error fetching {url}: {e}")
                     if retries == 0:
                         logging.error(f"Failed to fetch JSON from {url}")
                         return None

@@ -335,7 +335,7 @@ class AutoUpdater:
         server_id = int(server["server_id"])
         server_data = None
         
-        if server_id == 1:
+        if int(server_id) == int(1):
             five_sim = FiveSimManagement()
             server_data = await five_sim.get_servers(country_data["record_id"])
             print(colored(f"Server data: {len(server_data)}", "red"))
@@ -433,7 +433,7 @@ class AutoUpdater:
     async def update_data(self):
         """Main update function that orchestrates the entire update process."""
         try:
-            data = await self.fetch_transform_data() # await self.redis_client.json().get('main_data:service:main_data') or {} #y
+            data = await self.redis_client.json().get('main_data:service:main_data') or {} #await self.fetch_transform_data() #y
             if data:
                 await self.insert_data(data)
                 logging.info("Data update completed successfully")
