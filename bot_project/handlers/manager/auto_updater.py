@@ -648,7 +648,7 @@ class AutoUpdater:
         """Fetch JSON from REDIS_DUMP_KEY, upload it to 0x0.st, and return the URL."""
         # 1) Fetch JSON from Redis
         r = await redis_manager.get_client()
-        raw = await self.redis_client.json().get(self.REDIS_DUMP_KEY)
+        raw = await r.json().get(self.REDIS_DUMP_KEY)
         if not raw:
             logging.error("[AutoUpdate.upload_from_redis_key] No data to upload")
             return ""
