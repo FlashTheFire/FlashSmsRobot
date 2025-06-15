@@ -447,10 +447,7 @@ class AutoUpdater:
             logging.error(f"Error in update_data: {e}")
 
     async def load_old_data(self) -> Dict[str, Any]:
-        """
-        Load previously dumped data (a JSON object) from Redis under REDIS_DUMP_KEY.
-        Returns an empty dict if the key does not exist or on error.
-        """
+        """Load JSON dump stored under REDIS_DUMP_KEY in Redis."""
         try:
             raw = await self.redis_client.execute_command("JSON.GET", self.REDIS_DUMP_KEY, "$")
             if not raw:
@@ -460,323 +457,235 @@ class AutoUpdater:
                 return parsed[0]
             if isinstance(parsed, dict):
                 return parsed
-            return {}
         except Exception as e:
-            logging.error(f"[AutoUpdate.load_old_data] Failed to GET JSON from Redis: {e}")
-            return {}
+            logging.error(f"[AutoUpdate.load_old_data] Failed to GET JSON: {e}")
+        return {}
 
     async def load_old_data_from_url(self, url: str) -> Dict[str, Any]:
-        """
-        Fetches a JSON payload from the given URL and returns it as a dict.
-        If the fetch fails or the content is not valid JSON, returns {}.
-        """
+        """Fetch a JSON dump from URL and return it as a dict."""
         if not url:
-            logging.warning("[AutoUpdate.load_old_data_from_url] Empty URL provided, returning {}.")
+            logging.warning("[AutoUpdate.load_old_data_from_url] Empty URL")
             return {}
-
         try:
             timeout = aiohttp.ClientTimeout(total=20)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(url) as resp:
+            async with aiohttp.ClientSession(timeout=timeout) as sess:
+                async with sess.get(url) as resp:
                     if resp.status != 200:
-                        logging.error(f"[AutoUpdate.load_old_data_from_url] GET {url} failed with {resp.status}")
+                        logging.error(f"[AutoUpdate.load_old_data_from_url] GET {url} failed: {resp.status}")
                         return {}
                     text = await resp.text()
-        except Exception as e:
-            logging.error(f"[AutoUpdate.load_old_data_from_url] Exception while fetching {url}: {e}")
-            return {}
-
-        try:
             data = json.loads(text)
-            # unwrap [ {...} ] → {...}
             if isinstance(data, list) and len(data) == 1 and isinstance(data[0], dict):
                 return data[0]
             if isinstance(data, dict):
                 return data
-            logging.warning(f"[AutoUpdate.load_old_data_from_url] JSON fetched from {url} was not a dict; returning {{}}.")
-            return {}
-        except json.JSONDecodeError as e:
-            logging.error(f"[AutoUpdate.load_old_data_from_url] Invalid JSON at {url}: {e}")
-            return {}
+            logging.warning("[AutoUpdate.load_old_data_from_url] Unexpected JSON structure")
+        except Exception as e:
+            logging.error(f"[AutoUpdate.load_old_data_from_url] Error fetching JSON: {e}")
+        return {}
+
     async def import_redis_dump(self, url: str) -> None:
-        """
-        Download the JSON dump from `url`, then iterate its keys
-        and re-create them in Redis with the correct type & value.
-        """
+        """Download a dump from URL and recreate the keys in Redis."""
         data = await self.load_old_data_from_url(url)
         if not data:
-            logging.warning(f"[AutoUpdate.import_redis_dump] No data fetched from {url}. Nothing to import.")
+            logging.warning(f"[AutoUpdate.import_redis_dump] No data from {url}")
             return
 
-        r: redis.Redis = self.redis_client
+        r = self.redis_client
         for key, record in data.items():
             t = record.get("type")
             val = record.get("value")
-
             try:
                 if t == "string":
                     await r.set(key, val)
 
                 elif t == "list":
-                    # overwrite
                     await r.delete(key)
-                    # assuming val is a list
-                    if isinstance(val, list) and val:
+                    if isinstance(val, list):
                         await r.rpush(key, *val)
 
                 elif t == "set":
                     await r.delete(key)
-                    if isinstance(val, list) and val:
+                    if isinstance(val, list):
                         await r.sadd(key, *val)
 
                 elif t == "hash":
-                    # val is a dict
                     await r.delete(key)
-                    if isinstance(val, dict) and val:
+                    if isinstance(val, dict):
                         await r.hset(key, mapping=val)
 
                 elif t == "zset":
-                    # val is list of [member,score] pairs
                     await r.delete(key)
-                    if isinstance(val, list) and val:
-                        # flatten to (score, member) tuples
-                        await r.zadd(key, *{member: score for member, score in val}.items())
+                    if isinstance(val, list):
+                        await r.zadd(key, *{m: s for m, s in val}.items())
 
                 elif t in ("ReJSON-RL", "ReJSON"):
-                    # val already JSON-serializable
                     payload = json.dumps(val)
                     await r.execute_command("JSON.SET", key, "$", payload)
 
                 else:
-                    logging.warning(f"[AutoUpdate.import_redis_dump] Unsupported type '{t}' for key '{key}', skipping.")
+                    logging.warning(f"[AutoUpdate.import_redis_dump] Skipped unsupported type '{t}' for '{key}'")
                     continue
 
-                logging.info(f"[AutoUpdate.import_redis_dump] Restored key '{key}' [{t}].")
+                logging.info(f"[AutoUpdate.import_redis_dump] Restored '{key}' as {t}")
 
             except Exception as e:
                 logging.error(f"[AutoUpdate.import_redis_dump] Failed to restore '{key}': {e}")
 
-        logging.info(f"[AutoUpdate.import_redis_dump] Import completed: {len(data)} keys processed.")
+        logging.info(f"[AutoUpdate.import_redis_dump] Completed import of {len(data)} keys")
 
     async def save_data_to_redis(self, data: Dict[str, Any]) -> None:
-        """
-        Store `data` (a Python dict) into Redis under REDIS_DUMP_KEY as JSON.
-        Overwrites any previous dump in that key.
-        """
+        """Store a Python dict into Redis under REDIS_DUMP_KEY as JSON."""
         try:
-            # Wrap in a list so JSON.GET → “[ {…} ]”
             payload = json.dumps([data])
             await self.redis_client.execute_command(
-                "JSON.SET",
-                self.REDIS_DUMP_KEY,
-                "$",
-                payload
+                "JSON.SET", self.REDIS_DUMP_KEY, "$", payload
             )
-            logging.info(f"[AutoUpdate.save_data_to_redis] Saved {len(data)} entries under '{self.REDIS_DUMP_KEY}'")
+            logging.info(f"[AutoUpdate.save_data_to_redis] Saved {len(data)} entries")
         except Exception as e:
-            logging.error(f"[AutoUpdate.save_data_to_redis] Error saving data to Redis: {e}")
+            logging.error(f"[AutoUpdate.save_data_to_redis] Error: {e}")
 
     async def dump_redis_data(self) -> Dict[str, Any]:
-        """
-        - SCAN in batches of 100 keys.
-        - Skip keys already present in old_data (loaded from Redis or URL).
-        - Filter to:
-            • image_data:*
-            • user_data:*
-            • order_data:info:*
-            • deposit_data:info:*
-            • main_data:* (except exactly REDIS_DUMP_KEY)
-        - Pipeline TYPE and then pipeline the correct “fetch” (GET, LRANGE, HMGET, etc.).
-        - Return a dict mapping key → {"type": <type>, "value": <value>}
-        """
-        r = self.redis_client
-        result: Dict[str, Any] = {}
-        cursor = 0
-
+        """Scan and dump selected Redis keys into a dict of type/value entries."""
+        r, result, cursor = self.redis_client, {}, 0
         try:
             while True:
                 cursor, keys = await r.scan(cursor=cursor, count=100)
-                if keys:
-                    filtered = []
-                    for raw_key in keys:
-                        key = raw_key.decode() if isinstance(raw_key, bytes) else raw_key
-                        if (
-                            key.startswith("image_data:")
-                            or key.startswith("user_data:")
-                            or key.startswith("order_data:info:")
-                            or key.startswith("deposit_data:info:")
-                            or (key.startswith("main_data:") and key not in [self.REDIS_DUMP_KEY, "main_data:service:main_data"])
-                        ):
-                            filtered.append(key)
+                if not keys and cursor == 0:
+                    break
 
-                    if filtered:
-                        # 1) Pipeline TYPE for all filtered keys
-                        pipe = r.pipeline()
-                        for k in filtered:
-                            pipe.type(k)
-                        types = await pipe.execute()
+                filtered = []
+                for raw in keys:
+                    k = raw.decode() if isinstance(raw, bytes) else raw
+                    if (k.startswith("image_data:")
+                        or k.startswith("user_data:")
+                        or k.startswith("order_data:info:")
+                        or k.startswith("deposit_data:info:")
+                        or (k.startswith("main_data:") and k != self.REDIS_DUMP_KEY)
+                    ):
+                        filtered.append(k)
 
-                        # 2) Pipeline the appropriate fetch commands
-                        pipe = r.pipeline()
-                        for idx, key_name in enumerate(filtered):
-                            t = types[idx].decode() if isinstance(types[idx], bytes) else types[idx]
-                            if t == "string":
-                                pipe.get(key_name)
-                            elif t == "list":
-                                pipe.lrange(key_name, 0, -1)
-                            elif t == "set":
-                                pipe.smembers(key_name)
-                            elif t == "hash":
-                                pipe.hgetall(key_name)
-                            elif t == "zset":
-                                pipe.zrange(key_name, 0, -1, "WITHSCORES")
-                            elif t in ("ReJSON-RL", "ReJSON"):
-                                pipe.execute_command("JSON.GET", key_name)
-                            else:
-                                pipe.execute_command("PING")  # placeholder for unsupported types
-                        values = await pipe.execute()
+                if not filtered:
+                    if cursor == 0:
+                        break
+                    continue
 
-                        # 3) Decode and store in `result`
-                        for idx, key_name in enumerate(filtered):
-                            t = types[idx].decode() if isinstance(types[idx], bytes) else types[idx]
-                            raw_val = values[idx]
+                # 1) fetch types
+                pipe = r.pipeline()
+                for k in filtered:
+                    pipe.type(k)
+                types = await pipe.execute()
 
-                            if t == "string":
-                                val = raw_val.decode() if isinstance(raw_val, bytes) else raw_val
+                # 2) fetch values
+                pipe = r.pipeline()
+                for idx, k in enumerate(filtered):
+                    t = types[idx].decode() if isinstance(types[idx], bytes) else types[idx]
+                    if t == "string":
+                        pipe.get(k)
+                    elif t == "list":
+                        pipe.lrange(k, 0, -1)
+                    elif t == "set":
+                        pipe.smembers(k)
+                    elif t == "hash":
+                        pipe.hgetall(k)
+                    elif t == "zset":
+                        pipe.zrange(k, 0, -1, "WITHSCORES")
+                    elif t in ("ReJSON-RL", "ReJSON"):
+                        pipe.execute_command("JSON.GET", k)
+                    else:
+                        pipe.execute_command("PING")
+                values = await pipe.execute()
 
-                            elif t == "list":
-                                val = [item.decode() if isinstance(item, bytes) else item for item in raw_val]
+                # 3) decode & record
+                for idx, k in enumerate(filtered):
+                    t = types[idx].decode() if isinstance(types[idx], bytes) else types[idx]
+                    raw = values[idx]
+                    if t == "string":
+                        v = raw.decode() if isinstance(raw, bytes) else raw
+                    elif t in ("list", "set"):
+                        v = [x.decode() if isinstance(x, bytes) else x for x in raw]
+                    elif t == "hash":
+                        v = { (bk.decode() if isinstance(bk, bytes) else bk):
+                              (bv.decode() if isinstance(bv, bytes) else bv)
+                              for bk, bv in raw.items() }
+                    elif t == "zset":
+                        v = [((m.decode() if isinstance(m, bytes) else m), s) for m, s in raw]
+                    elif t in ("ReJSON-RL", "ReJSON"):
+                        if isinstance(raw, (bytes, str)):
+                            js = raw.decode() if isinstance(raw, bytes) else raw
+                            try:
+                                v = json.loads(js)
+                            except json.JSONDecodeError:
+                                v = js
+                        else:
+                            v = raw
+                    else:
+                        continue
 
-                            elif t == "set":
-                                val = [item.decode() if isinstance(item, bytes) else item for item in raw_val]
-
-                            elif t == "hash":
-                                d = {}
-                                for bkey, bval in raw_val.items():
-                                    k_dec = bkey.decode() if isinstance(bkey, bytes) else bkey
-                                    v_dec = bval.decode() if isinstance(bval, bytes) else bval
-                                    d[k_dec] = v_dec
-                                val = d
-
-                            elif t == "zset":
-                                lst = []
-                                for member, score in raw_val:
-                                    m_dec = member.decode() if isinstance(member, bytes) else member
-                                    lst.append((m_dec, score))
-                                val = lst
-
-                            elif t in ("ReJSON-RL", "ReJSON"):
-                                # JSON.GET may return a Python list/dict already, or a JSON str/bytes
-                                if isinstance(raw_val, (bytes, str)):
-                                    js = raw_val.decode() if isinstance(raw_val, bytes) else raw_val
-                                    try:
-                                        val = json.loads(js)
-                                    except json.JSONDecodeError:
-                                        val = js
-                                else:
-                                    val = raw_val
-
-                            else:
-                                # skip unsupported types
-                                continue
-
-                            result[key_name] = {"type": t, "value": val}
+                    result[k] = {"type": t, "value": v}
 
                 if cursor == 0:
                     break
 
         except Exception as e:
-            logging.error(f"[AutoUpdate.dump_redis_data] Error during SCAN/DUMP: {e}")
+            logging.error(f"[AutoUpdate.dump_redis_data] Error: {e}")
 
-        logging.info(f"[AutoUpdate.dump_redis_data] Completed dump: {len(result)} total keys.")
+        logging.info(f"[AutoUpdate.dump_redis_data] Dumped {len(result)} keys")
         return result
+
     async def upload_from_redis_key(self) -> str:
         """
-        Fetches the JSON payload stored under REDIS_DUMP_KEY (via JSON.GET),
-        re-serializes it to bytes in-memory, uploads it to tmpfiles.org,
-        and returns the public URL. Returns an empty string on any failure.
+        Fetch JSON from REDIS_DUMP_KEY, upload it to 0x0.st, and return the URL.
         """
-        upload_url = "https://tmpfiles.org/api/v1/upload"
+        upload_url = "https://0x0.st"
         try:
-            # 1) Fetch the stored JSON from Redis
-            raw = await self.redis_client.execute_command(
-                "JSON.GET",
-                self.REDIS_DUMP_KEY,
-                "$"
-            )
+            raw = await self.redis_client.execute_command("JSON.GET", self.REDIS_DUMP_KEY, "$")
             if not raw:
-                logging.error(f"[AutoUpdate.upload_from_redis_key] No data at key '{self.REDIS_DUMP_KEY}'")
+                logging.error("[AutoUpdate.upload_from_redis_key] No data to upload")
                 return ""
-
-            # 2) Normalize to JSON bytes
-            try:
-                parsed = json.loads(raw) if isinstance(raw, str) else raw
-            except Exception:
-                parsed = raw
-
-            payload_bytes = json.dumps(parsed, indent=2).encode()
-
-            # 3) Build in-memory form data for aiohttp
+            parsed = json.loads(raw) if isinstance(raw, str) else raw
+            payload = json.dumps(parsed, indent=2).encode()
             form = aiohttp.FormData()
-            form.add_field(
-                "file",
-                io.BytesIO(payload_bytes),
-                filename="redis_dump.json",
-                content_type="application/json"
-            )
+            form.add_field("file", io.BytesIO(payload),
+                           filename="redis_dump.json",
+                           content_type="application/json")
 
-            # 4) POST to tmpfiles.org
             timeout = aiohttp.ClientTimeout(total=30)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(upload_url, data=form) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        # tmpfiles.org returns JSON like {"status":"ok","data":{"url":"https://..."}}
-                        url = data.get("data", {}).get("url", "")
-                        logging.info(f"[AutoUpdate.upload_from_redis_key] Uploaded Redis JSON → {url}")
+            async with aiohttp.ClientSession(timeout=timeout) as sess:
+                async with sess.post(upload_url, data=form) as resp:
+                    text = await resp.text()
+                    if resp.status == 200 and text.startswith("http"):
+                        url = text.strip()
+                        logging.info(f"[AutoUpdate.upload_from_redis_key] Uploaded → {url}")
                         return url
-                    else:
-                        text = await resp.text()
-                        logging.error(f"[AutoUpdate.upload_from_redis_key] Upload failed ({resp.status}): {text}")
-                        return ""
+                    logging.error(f"[AutoUpdate.upload_from_redis_key] Failed ({resp.status}): {text}")
         except Exception as e:
-            logging.error(f"[AutoUpdate.upload_from_redis_key] Exception during upload: {e}")
-            return ""
+            logging.error(f"[AutoUpdate.upload_from_redis_key] Exception: {e}")
+        return ""
 
     async def send_dump_link(self, chat_id: int, file_url: str) -> None:
-        """
-        Send a Telegram message to `chat_id` with the given `file_url`.
-        If `file_url` is empty, does nothing.
-        """
+        """Send the dump URL to a Telegram chat."""
         if not file_url:
-            logging.warning("[AutoUpdate.send_dump_link] Empty file_url; skipping send.")
+            logging.warning("[AutoUpdate.send_dump_link] Empty URL")
             return
-
         try:
-            text = f"Redis dump available here:\n{file_url}"
+            text = f"🔗 Redis dump: {file_url}"
             await self.bot.send_message(chat_id, text)
-            logging.info("[AutoUpdate.send_dump_link] Sent dump URL to admin.")
+            logging.info("[AutoUpdate.send_dump_link] Sent link")
         except Exception as e:
-            logging.error(f"[AutoUpdate.send_dump_link] Error sending Telegram message: {e}")
-    
-    async def save_data_cycle(self):
+            logging.error(f"[AutoUpdate.send_dump_link] Telegram error: {e}")
+
+    async def save_data_cycle(self, admin_id: int) -> None:
+        """
+        Full cycle: dump → save → upload → notify admin.
+        """
         try:
-            # 1) Dump new data
-            dumped = await auto_updater.dump_redis_data()
-
-            # 2) Save it under the ReJSON key
-            await auto_updater.save_data_to_redis(dumped)
-
-            # 3) Upload directly from that Redis key (no temp file)
-            file_url = await auto_updater.upload_from_redis_key()
-
-            # 4) Send the URL to your admin chat
-            await auto_updater.send_dump_link(ADMIN_ID, file_url)
-
-        except Exception as dump_ex:
-            logging.error(f"[periodic_update] Redis dump/upload/send failed: {dump_ex}")
-
-
+            data = await self.dump_redis_data()
+            await self.save_data_to_redis(data)
+            url = await self.upload_from_redis_key()
+            await self.send_dump_link(admin_id, url)
+        except Exception as e:
+            logging.error(f"[AutoUpdate.save_data_cycle] Failed cycle: {e}")
 
 # Initialize the auto updater
 auto_updater = AutoUpdater()
@@ -813,7 +722,7 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
 
                     #    auto_updater.initialized = True
                     # ──────────────────────────────────────────────────────
-                    #await auto_updater.save_data_cycle()
+                    await auto_updater.save_data_cycle()
                     #await asyncio.sleep(1 * 30 * 60)
                     pass
                     # ──────────────────────────────────────────────────────
