@@ -27,7 +27,6 @@ import json
 import logging
 import aiohttp
 from aiohttp import FormData
-import aiobotocore
 
 
 # -------------------- logging Configuration --------------------
@@ -673,27 +672,6 @@ class AutoUpdater:
                     logging.warning(f"[del.dog] Failed ({resp.status}): {text}")
         except Exception as e:
             logging.error(f"[AutoUpdate.del.dog] Exception: {e}")
-
-        # 3) Fallback: Upload to your S3 via presigned URL
-        try:
-            # 3a) Generate presigned PUT URL
-            session = aiobotocore.get_session()
-            async with session.create_client('s3', region_name='us-east-1') as s3:
-                presigned = await s3.generate_presigned_url(
-                    'put_object',
-                    Params={'Bucket': 'my-bucket', 'Key': 'redis_dump.json'},
-                    ExpiresIn=300
-                )
-            # 3b) PUT the payload
-            async with aiohttp.ClientSession() as sess:
-                async with sess.put(presigned, data=payload) as resp:
-                    resp.raise_for_status()
-            url = "https://my-bucket.s3.amazonaws.com/redis_dump.json"
-            logging.info(f"[AutoUpdate] Uploaded to S3 → {url}")
-            return url
-
-        except Exception as e:
-            logging.error(f"[AutoUpdate.S3] Exception: {e}")
 
         # 4) All methods failed
         logging.error("[AutoUpdate.upload_from_redis_key] All upload methods failed")
