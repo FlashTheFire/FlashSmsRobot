@@ -154,8 +154,8 @@ async def qr_code(
     square_img.putalpha(mask)
 
     # Debug: Save QR image to file to check shape
-    square_img.save("/tmp/debug_qr.png")
-    print("[DEBUG] QR image saved to /tmp/debug_qr.png")
+    #square_img.save("/tmp/debug_qr.png")
+    #print("[DEBUG] QR image saved to /tmp/debug_qr.png")
 
     # Convert background image to RGBA and paste QR code
     rect_img = rect_img.convert("RGBA")
