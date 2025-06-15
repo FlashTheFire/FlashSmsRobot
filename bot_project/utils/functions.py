@@ -114,7 +114,7 @@ async def fetch_qr(order_id: str) -> BytesIO:
                     raise Exception(f"Failed to fetch QR code image, status code: {image_response.status}")
                 print('image_response')
                 print(image_response)
-                return BytesIO(await image_response.read())
+                return BytesIO(await image_response.content.read())
         except Exception as e:
             print(f"Error fetching QR code: {e}")
 
