@@ -362,7 +362,8 @@ class AutoUpdater:
         print(colored(f"Matches found: {matches}", "green"))
         # Load persistent country data (or initialize if not exists)
         print(colored(f"Loading persistent country data...", "blue"))
-        batches = [data[i:i+1] for i in range(0, len(data), 1)]
+        batches = list(self.chunker(list(data.items()), 1))
+        print(colored(f"Batches: {len(batches)}", "green"))
         
         for batch_index, batch in enumerate(batches, start=1):
             tasks = []
