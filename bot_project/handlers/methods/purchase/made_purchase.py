@@ -397,7 +397,7 @@ class UserPurchaseManagement:
                         "chat_type": call.message.chat.type if call.message else "private",
                         "call_chat_id": call.message.chat.id if call.message else chat_id,
                     }
-                    await redis_manager.redis_client.set(f"cbdata:{callback_id}", json.dumps(full_data))
+                    await redis_manager.redis_client.set(f"cache-data:callback_data:{callback_id}", json.dumps(full_data))
                     if is_user_registered is None:
                         btn = InlineKeyboardButton(
                             "🔔 Qᴜᴇᴜᴇ Bᴜʏ", callback_data=f"notify_on:{callback_id}"
@@ -925,9 +925,11 @@ class UserPurchaseManagement:
 
         # Persist callback data
         callback_id = full_data['callback_id']
-        await self.redis_client.set(f"cbdata:{callback_id}", json.dumps(full_data))
+        await self.redis_client.set(f"cache-data:callback_data:{callback_id}", json.dumps(full_data))
         # Add user to sorted set with expiry score
         await self.redis_client.zadd(redis_key, {callback_id: int(time.time()) + timeout_seconds})
+        key = redis_key
+        await self._start_schedule_loop(key)
 
     async def _listen_for_schedule_events(self) -> None:
         """
@@ -975,17 +977,13 @@ class UserPurchaseManagement:
             # Extract the actual Redis key
             _, key = channel.split('__keyspace@0__:', 1)
 
-            if key not in self._running_schedules:
-                print(colored(f"New schedule event for key: {key}", "green"))
-                self._start_schedule_loop(key)
+            print(colored(f"New schedule event for key: {key}", "green"))
+            self._start_schedule_loop(key)
 
     def _start_schedule_loop(self, key: str):
         """
         Kick off _background_check_loop for `key` if not already running.
         """
-        # Mark as running
-        self._running_schedules.add(key)
-
         async def runner():
             try:
                 await self._background_check_loop(key)
@@ -994,26 +992,33 @@ class UserPurchaseManagement:
                 self._running_schedules.discard(key)
                 print(colored(f"Schedule loop ended for {key}", "yellow"))
 
-        # Fire-and-forget
-        asyncio.create_task(runner())
+        # Mark as running
+        if key not in self._running_schedules:
+            self._running_schedules.add(key)
+
+            # Fire-and-forget
+            asyncio.create_task(runner())
 
     async def _background_check_loop(self, redis_key: str) -> None:
         """
-        Periodically checks availability and notifies users.
+        Periodically checks availability and notifies users, with batch balance check every 30 polls.
         """
         print(colored(f"Starting background check loop for {redis_key}", "green"))
 
-        # Retrieve full_data from the first member's cbdata
+        # Retrieve full_data from the first member's cache-data:callback_data
         uids = await self.redis_client.zrange(redis_key, 0, 0)
         if not uids:
             return
         first_id = uids[0]
-        full_data = json.loads(await self.redis_client.get(f"cbdata:{first_id}"))
+        full_data = json.loads(await self.redis_client.get(f"cache-data:callback_data:{first_id}"))
+
+        # Counter for batch balance checks
+        check_count = 0
 
         async def notify_and_remove(uids, message_fn, message_notify, keyboard=None):
             """Helper to send notifications and remove from sorted set."""
             for uid in uids:
-                raw_data = await self.redis_client.get(f"cbdata:{uid}")
+                raw_data = await self.redis_client.get(f"cache-data:callback_data:{uid}")
                 user_full_data = json.loads(raw_data)
                 user_id = user_full_data['user_id']
                 message_id = user_full_data['message_id']
@@ -1069,6 +1074,38 @@ class UserPurchaseManagement:
             now = int(time.time())
             print(colored(f"Polling for {full_data['app_name']} (server {full_data['server_id']})…", "green"))
 
+            # Increment our counter and perform batch balance check every 30 iterations
+            check_count += 1
+            if check_count % 30 == 0:
+                remaining = await self.redis_client.zrange(redis_key, 0, -1)
+                # Check each user's balance asynchronously in batch
+                insufficient = []
+                for uid in remaining:
+                    raw = await self.redis_client.get(f"cache-data:callback_data:{uid}")
+                    user = json.loads(raw)
+                    has_balance = await self._handle_user_balance(user['user_id'], user['price'], user['user_id'], progress_msg=None)
+                    if not has_balance:
+                        insufficient.append(uid)
+                if insufficient:
+                    # Notify all insufficient and remove them
+                    for uid in insufficient:
+                        raw_data = await self.redis_client.get(f"cache-data:callback_data:{uid}")
+                        user_full_data = json.loads(raw_data)
+                        score = await self.redis_client.zscore(redis_key, uid)
+                        score = int(score) if score is not None else None
+                        time_ago = await self.get_stylized_time_ago(score) if score is not None else None
+                        await notify_and_remove(
+                            [uid],
+                            lambda uid: (
+                                f"<blockquote expandable><b>🔔 Nᴜᴍʙᴇʀꜱ Aʀᴇ Bᴀᴄᴋ Iɴ Sᴛᴏᴄᴋ!</b></blockquote>\n\n"
+                                f"<b>✨ Gʀᴇᴀᴛ Nᴇᴡꜱ:</b> Nᴜᴍʙᴇʀꜱ Fᴏʀ “<code>{str(user_full_data['app_name'])}</code>” Hᴀᴠᴇ Jᴜꜱᴛ Bᴇᴇɴ Rᴇꜱᴛᴏᴄᴋᴇᴅ <b>{time_ago}</b>.\n\n"
+                                f"<b>⚠️ Hᴏᴡᴇᴠᴇʀ, Yᴏᴜʀ Cᴜʀʀᴇɴᴛ Bᴀʟᴀɴᴄᴇ Iꜱ Nᴏᴛ Sᴜꜰꜰɪᴄɪᴇɴᴛ Tᴏ Mᴀᴋᴇ A Pᴜʀᴄʜᴀꜱᴇ.</b>\n"
+                                f"<b>💳 Pʟᴇᴀꜱᴇ Dᴇᴘᴏꜱɪᴛ Fᴜɴᴅꜱ Nᴏᴡ Tᴏ Cʟᴀɪᴍ Yᴏᴜʀ Nᴜᴍʙᴇʀ Bᴇꜰᴏʀᴇ Sᴛᴏᴄᴋ Rᴜɴꜱ Oᴜᴛ.</b>"
+                            ),
+                            message_notify="🟢 Sᴛᴏᴄᴋ Aᴠᴀɪʟᴀʙʟᴇ – Pʀᴏᴄᴇᴇᴅ Tᴏ Bᴜʏ Nᴏᴡ!",
+                        )
+                continue
+
             # 1) Notify & remove expired
             expired = await self.redis_client.zrangebyscore(redis_key, 0, now)
             if expired:
@@ -1106,7 +1143,7 @@ class UserPurchaseManagement:
                     # 4) Process first able user
                     small_cap = await small_caps()
                     for uid in remaining:
-                        raw_data = await self.redis_client.get(f"cbdata:{uid}")
+                        raw_data = await self.redis_client.get(f"cache-data:callback_data:{uid}")
                         user_full_data = json.loads(raw_data)
                         user_id = user_full_data['user_id']
                         if await self._handle_user_balance(user_id, user_full_data['price'], user_id, progress_msg=None):
@@ -1139,7 +1176,7 @@ class UserPurchaseManagement:
                             )
                             break
                         else:
-                            raw_data = await self.redis_client.get(f"cbdata:{uid}")
+                            raw_data = await self.redis_client.get(f"cache-data:callback_data:{uid}")
                             user_full_data = json.loads(raw_data)
                             score = await self.redis_client.zscore(redis_key, uid)
                             score = int(score) if score is not None else None
@@ -1229,7 +1266,7 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
     @bot.callback_query_handler(func=lambda c: c.data.startswith("notify_on:"))
     async def handle_notify_on(call: CallbackQuery):
         callback_id = call.data.split(":", 1)[1]
-        raw_data = await redis_manager.redis_client.get(f"cbdata:{callback_id}")
+        raw_data = await redis_manager.redis_client.get(f"cache-data:callback_data:{callback_id}")
         if not raw_data:
             await bot.answer_callback_query(call.id, "⛔ Expired or invalid data.")
             return
@@ -1285,7 +1322,7 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
                 reply_markup=markup,
                 parse_mode="HTML"
             )
-            await redis_manager.redis_client.set(f"cbdata:{callback_id}", json.dumps(full_data), ex=86400)
+            await redis_manager.redis_client.set(f"cache-data:callback_data:{callback_id}", json.dumps(full_data), ex=86400)
         except Exception as e:
             print(f"Error editing message: {e}")
         full_data['callback_id'] = callback_id        
@@ -1294,7 +1331,7 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
     @bot.callback_query_handler(func=lambda c: c.data.startswith("notify_off:"))
     async def handle_notify_off(call: CallbackQuery):
         callback_id = call.data.split(":", 1)[1]
-        raw_data = await redis_manager.redis_client.get(f"cbdata:{callback_id}")
+        raw_data = await redis_manager.redis_client.get(f"cache-data:callback_data:{callback_id}")
         if not raw_data:
             await bot.answer_callback_query(call.id, "⛔ Expired data.")
             return
@@ -1599,7 +1636,7 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
         async def notify_and_remove(uids, message_fn, message_notify, keyboard=None):
             '''Helper to send notifications and remove from sorted set.'''
             for uid in uids:
-                raw_data = await redis_manager.redis_client.get(f"cbdata:{user_id}")
+                raw_data = await redis_manager.redis_client.get(f"cache-data:callback_data:{user_id}")
                 user_full_data = json.loads(raw_data)
                 user_id = user_full_data['user_id']
                 message_id = user_full_data['message_id']
@@ -1686,7 +1723,7 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
                 if phone_result.get('status'):
                     # 4) Loop through all waiting users and find the first with sufficient balance
                     for uid_bytes in remaining:
-                        raw_data = await redis_manager.redis_client.get(f"cbdata:{uid_bytes}")
+                        raw_data = await redis_manager.redis_client.get(f"cache-data:callback_data:{uid_bytes}")
                         user_full_data = json.loads(raw_data)
                         user_id = user_full_data['user_id']
                         if await self._handle_user_balance(user_id, user_full_data['price'], user_id, progress_msg=None):
