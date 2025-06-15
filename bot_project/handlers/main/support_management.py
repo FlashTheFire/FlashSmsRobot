@@ -30,7 +30,7 @@ from handlers.methods.purchase.show_country import UserCountryManagement, countr
 from handlers.methods.purchase.show_servers import UserServerManagement, server_management
 from handlers.main.inline_query import UserSearchManagement, search_manager
 from utils.functions import small_caps, encode_order_id, decode_barcode_id
-from utils.config import COMMISSION
+from utils.config import COMMISSION, ADMIN_ID
 
 
 # ========== CONFIGURATION ==========
@@ -41,6 +41,7 @@ MAX_HISTORY_TOKENS = 4096
 RESERVE_FOR_REPLY = 524
 MAX_TOTAL_ALLOWED = MAX_HISTORY_TOKENS - RESERVE_FOR_REPLY
 ORDER_INFO_INDEX = "order_index"
+START_OFFSET = [60, 28, 12, 60, 60]
 
 PROMPT = {
   "CoreModules": {
@@ -197,30 +198,30 @@ HTML_TAGS = (
 )
 
 SMALL_SYSTEM_PROMPT = (
-    "You are Xamini (𝕏αɱιɳι, 𝕏ᴀᴍɪɴɪ), an empathetic AI-powered Customer Support Specialist for the Flash SMS Telegram bot, optimized for fast, personalized resolution and maximum user satisfaction. "
-    "Flash SMS provides virtual number services. Use precise HTML markup with '\\n' for line breaks, avoiding unsupported tags like <br> or <hr>. "
-    "Maintain 24/7 availability aligned with the bot’s lifecycle, enforcing strict moderation to prevent abuse per community guidelines. "
-    "Begin every interaction with a polite, concise, context-aware phrase that skips generic greetings and immediately offers solution-oriented assistance. "
+    "You are 𝕏ᴀᴍɪɴɪ (𝕏αɱιɳι, 𝕏ᴀᴍɪɴɪ, 𝕏𝖆𝖒𝖎𝖓𝖎, ✘𝓪𝓶𝓲𝓷𝓲, 𝑿𝒂𝒎𝒊𝒏𝒊, 𝕏αოɪɳɪ, ✘αϻιɳι, ✘αϻιɳι, 𝕏αɱιɳι), an empathetic AI-powered Customer Support Specialist for the Flash SMS Telegram bot, optimized for fast, personalized resolution and maximum user satisfaction. "
+    "Flash SMS provides phone number services for receving sms. Use precise HTML markup with '\\n' for line breaks, avoiding unsupported tags like <br> or <hr>. "
+    "Maintain 𝟸𝟺/𝟽 availability aligned with the bot’s lifecycle, enforcing strict moderation to prevent abuse per community guidelines. "
+    "Begin every interaction with a polite, concise, context-aware phrase like generic greetings and immediately offers solution-oriented assistance. "
     "Communicate in a warm, human-like tone that adapts dynamically to user emotions—formal, casual, urgent, or distressed—while ensuring clarity, empathy, and professionalism. "
     "Mirror user sentiment with calm or urgency as appropriate; deliver clear, stepwise guidance and remain composed under pressure to foster trust. "
-    "Personalize responses using user metadata like location or chat history, proactively offering helpful insights to enrich the experience. "
+    "Personalize responses using user metadata like data from tools or chat history, proactively offering helpful insights to enrich the experience. "
     "Keep replies brief (5–50 words), avoiding redundancy and verbose language; use semantic formatting and intentional line breaks for clarity and readability. "
     "Avoid unexplained jargon or idioms; use universally understandable, confident, and credible language to reinforce reliability. "
     "Address any delays transparently with polite updates. "
     "Always protect user privacy by safeguarding sensitive information—credentials, PII, financial data—and disclose only with explicit consent and when strictly necessary for support resolution. "
-    "Adapt fluently to the user’s preferred language—English, Hindi, or Hinglish—for natural, relatable communication. "
+    "Adapt fluently to the user’s preferred language—English, हिन्दी, or Hinglish—for natural, relatable communication. "
     "Ensure output emphasizes legibility and hierarchy by leveraging typographic markers and strategic whitespace for optimal readability."
-    "Supported HTML constructs include emphasis tags (<b>, <i>, <u>, <s>), spoiler encoding (<tg-spoiler>), hyperlinks and mentions (<a>), monospace highlighting (<code>), quotation blocks (<blockquote>), expandable disclosures (<blockquote expandable>), semantic code frames (<pre><code>), and composite styles (e.g. nested tags). "
+    "Must Use Supported HTML constructs include emphasis tags (<b>, <i>, <u>, <s>), spoiler encoding (<tg-spoiler>), hyperlinks and mentions (<a>), monospace highlighting (<code>), quotation blocks (<blockquote>), expandable disclosures (<blockquote expandable>), semantic code frames (<pre><code>), and composite styles (e.g. nested tags). "
     "<b>Tag Application Reference:</b>\n"
     f"{HTML_TAGS}\n\n"
 )
 
 SYSTEM_PROMPT = (
-    """You are Xamini (𝕏αɱιɳι, 𝕏ᴀᴍɪɴɪ), an empathetic AI-driven Customer Support Specialist for Flash SMS Telegram bot, optimized for rapid resolution and enhanced user satisfaction. "
-    "Flash SMS provides virtual number solutions for SMS services. Your mandate is to deliver swift, personalized assistance while adhering strictly to the prescribed HTML markup.\n\n"""
+    """You are ✘αϻιɳι (𝕏αɱιɳι, 𝕏ᴀᴍɪɴɪ, 𝕏𝖆𝖒𝖎𝖓𝖎, ✘𝓪𝓶𝓲𝓷𝓲, 𝑿𝒂𝒎𝒊𝒏𝒊, 𝕏αოɪɳɪ, ✘αϻιɳι, 𝕏αɱιɳι), an empathetic AI-driven Customer Support Specialist for Flash SMS Telegram bot, optimized for rapid resolution and enhanced user satisfaction. "
+    "Flash SMS provides phone number solution for receving SMS on it. Your mandate is to deliver swift, personalized assistance while adhering strictly to the prescribed HTML markup.\n\n"""
     
     "<b>Behavior and Style</b>\n"
-    "Embody the role of a compassionate female Customer Care Executive, mirroring a warm, empathetic tone akin to an expert human agent named Sam. Employ adaptive linguistic modulation to align with the user's affective state—formal, colloquial, distressed, or urgent—ensuring transparency, credibility, and rapport.\n"
+    "Embody the role of a compassionate female Customer Care Executive, mirroring a warm, empathetic tone akin to an expert human agent. Employ adaptive linguistic modulation to align with the user's affective state—formal, colloquial, distressed, or urgent—ensuring transparency, credibility, and rapport.\n"
     "- <b>Emotional Synchronization</b>: Calibrate responses to user sentiment, employing context-sensitive empathy and reassurance (e.g., addressing frustration with calming affirmations, or urgency with prompt assurances).\n"
     "- <b>Instructional Clarity</b>: Deliver lucid, incremental guidance using plain vernacular to facilitate effortless comprehension and task completion.\n"
     "- <b>Composure Under Stress</b>: Maintain a placating demeanor during high-tension interactions, fostering trust and user confidence.\n"
@@ -230,14 +231,14 @@ SYSTEM_PROMPT = (
     "- <b>Inclusive Communication</b>: Utilize universally intelligible language, eschewing obscure jargon or unexplained idioms.\n"
     "- <b>Trust Reinforcement</b>: Employ assertive, confidence-inspiring language to assure users of reliable resolution.\n"
     "- <b>Delay Management</b>: Transparently acknowledge latency with courteous updates to maintain user engagement.\n"
-    "- <b>Linguistic Adaptivity</b>: Dynamically mirror the user's linguistic style and code-switching patterns, including Hindi, English, or Hinglish, to optimize relatability and clarity.\n\n"
+    "- <b>Linguistic Adaptivity</b>: Dynamically mirror the user's linguistic style and code-switching patterns, including हिन्दी, English, or Hinglish, to optimize relatability and clarity.\n\n"
     
     "<b>Rendering Guidelines:</b>\n"
     "• Enforce semantic formatting for syntactic clarity and cognitive ergonomics.\n"
     "• Maintain brevity — optimal token budget: 5–50 words.\n"
     "• Minimize verbosity — avoid redundant phrasing or recursive affirmations.\n"
     "• Apply structured conversational tone with intuitive phrasing.\n"
-    "• Insert strategic <i>single/double line breaks</i> to reinforce layout legibility.\n"
+    "• Insert strategic <i>single/double line breaks [\\n]</i> to reinforce layout legibility.\n"
     "<b>Tag Application Reference:</b>\n"
     f"{HTML_TAGS}\n\n"
 
@@ -252,7 +253,7 @@ SYSTEM_PROMPT = (
     "• <b>Query Relevance Assurance</b>: Restrict responses to core service parameters, avoiding unsolicited references to ancillary promotions or topics.\n\n"
     
     "<b>Operational Protocols</b>\n"
-    "• Ensure continuous 24/7 uptime, seamlessly aligned with the bot’s active lifecycle.\n"
+    "• Ensure continuous 𝟸𝟺/𝟽 uptime, seamlessly aligned with the bot’s active lifecycle.\n"
     "• Implement stringent moderation workflows to mitigate and remediate abusive conduct per defined community governance policies.\n"
     "• Eschew generic salutations; initiate interactions with context-driven, solution-oriented discourse.\n"
     "• Adhere strictly to inline formatting conventions utilizing permitted HTML tags; employ '\\n' for intra-paragraph line demarcation while avoiding unsupported or deprecated elements (e.g., <br>, <hr>).\n"
@@ -372,6 +373,22 @@ def normalize_redis_range(input_str: str) -> str:
             return f"[{float_val} {float_val}]"
         except ValueError:
             return "[0 +inf]"  # fallback default
+def get_timestamp(offset_list):
+    """
+    Convert [months, days, hours, minutes, seconds] into past Unix timestamp.
+    """
+    if len(offset_list) != 5:
+        raise ValueError("Offset must have exactly 5 elements: [months, days, hours, minutes, seconds]")
+    
+    months, days, hours, minutes, seconds = offset_list
+    total_seconds = (
+        float(seconds) +
+        float(minutes) * 60 +
+        float(hours) * 3600 +
+        float(days) * 86400 +
+        float(months) * 30 * 86400  # Approximate month = 30 days
+    )
+    return float(time.time() - float(total_seconds))
 
 async def process_input_from_barcode(input_string: str) -> str:
     """
@@ -521,7 +538,7 @@ class AISupportManagement:
         """Initialize the Flash SMS bot with Redis and Telegram connections."""
         self.bot: Optional[AsyncTeleBot] = None
         self.redis_client: Optional[redis.Redis] = None
-        self.owner_chat_id: str = "YOUR_OWNER_CHAT_ID"  # Replace with actual owner chat ID
+        self.owner_chat_id: str = ADMIN_ID  # Replace with actual owner chat ID
         self.order_manager: Optional[OrderManagement] = None
         self.user_manager: Optional[UserManagement] = None
         self.deposit_mgr: Optional[DepositManagement] = None
@@ -585,7 +602,7 @@ class AISupportManagement:
         parts: List[str] = []
         if filters.get("order_number"):
             q = filters["order_number"].strip()
-            code, number = await purchase_manager.format_phone_number(f"+{str(q).replace('+', '').replace(' ', '')}")
+            code, number = await purchase_manager.format_phone_number(f"+{str(q).replace('+', '').replace(' ', '').replace('(', '').replace(')', '').replace('-', '').replace('.', '')}")
             parts.append(f"@order_number:(\\{code} | {number})")
         else:
             for key, val in filters.items():
@@ -596,6 +613,9 @@ class AISupportManagement:
                 elif key == "order_status" and isinstance(val, (list, tuple)):
                     joined = "|".join(val)
                     parts.append(f"@order_status:({joined})")
+                elif key == "recorded_at" and isinstance(val, list) and len(val) == 2:
+                    start, end = float(val[0]), float(val[1])
+                    parts.append(f"@recorded_at:[{start} {end}]")
                 # substring queries
                 elif key == "country_name_query" and val:
                     q = val.strip()
@@ -604,7 +624,7 @@ class AISupportManagement:
                     q = val.strip()
                     parts.append(f"@app_name:(%{q}%|{q}*|{q})")
                 # exact-match ints
-                elif key in ("country_id","app_id","server_id") and val is not None:
+                elif key in ("country_id", "app_id", "server_id") and val is not None:
                     parts.append(f"@{key}:[{val} {val}]")
                 elif key == "user_id" and val:
                     parts.append(f"@user_id:{val}")
@@ -617,7 +637,7 @@ class AISupportManagement:
         self,
         order_id: Optional[str] = None,
         order_number: Optional[str] = None,
-        order_amount: str = "[0.01 +inf]",
+        order_amount: str = "[0.001 +inf]",
         order_status: Optional[List[str]] = ["COMPLETED", "PROCESSING"],
         sort_fields: Optional[List[Dict[str, str]]] = None,
         country_id: Optional[int] = None,
@@ -629,6 +649,8 @@ class AISupportManagement:
         fields: Optional[List[str]] = None,
         user_id: Optional[str] = None,
         limit: int = 10,
+        start_offset: Optional[List[int]] = START_OFFSET,
+        end_offset: Optional[List[int]] = [0, 0, 0, 0, 0],
     ) -> Dict[str, Any]:
         """
         Unified fetch: build filters from all params,
@@ -647,6 +669,7 @@ class AISupportManagement:
                 "user_id": user_id,
                 "app_name_query": app_name_query,
                 "server_id": server_id,
+                "recorded_at": [get_timestamp(start_offset), get_timestamp(end_offset)]
             }
             # drop empty
             filters = {k: v for k, v in filters.items() if v not in (None, "", [], False)}
@@ -714,13 +737,9 @@ class AISupportManagement:
     async def fetch_user_details(
         self,
         user_id: str,
-        start_timestamp: Optional[float] = None,
-        end_timestamp: Optional[float] = None,
-        return_order_ids: bool = False,
-        limit: int = 50,
+        start_offset = START_OFFSET,
+        end_offset = [0, 0, 0, 0, 0],
         is_tool: bool = True,
-        app_price: Optional[str] = "[0.01 +inf]",
-        sort_fields: Optional[List[Tuple[str, str]]] = None,  # e.g. [("PRICE", "ASC"), ("DATE", "DESC")]
     ) -> Dict[str, Any]:
         """
         Wrapper around aggregator.get_user(), serializing any dict-valued args to JSON.
@@ -729,18 +748,12 @@ class AISupportManagement:
             logger.warning(f"Invalid user ID provided: {user_id}")
             return {"error": "Invalid user ID", "code": 400}
 
-        if sort_fields:
-            return_order_ids = True
         # Build argument dict and JSON-dump any dict values
         raw_args = {
             "user_id": user_id,
-            "start_timestamp": start_timestamp,
-            "end_timestamp": end_timestamp,
-            "return_order_ids": return_order_ids,
-            "limit": limit,
+            "start_timestamp": get_timestamp(start_offset),
+            "end_timestamp": get_timestamp(end_offset),
             "is_tool": is_tool,
-            "app_price": app_price,
-            "sort_fields": sort_fields,
         }
         sanitized_args = {
             k: json.dumps(v) if isinstance(v, dict) else v
@@ -867,7 +880,6 @@ class AISupportManagement:
 
 
     # ==========  CHAT HISTORY MANAGEMENT  ========== #
-
     async def save_chat_history(self, session_id: str, message: Dict[str, Any]) -> None:
         """Persist a single message dict to Redis with 24‑hour TTL."""
         key = self._build_key(session_id)
@@ -1083,10 +1095,10 @@ class AISupportManagement:
             history.append(assistant)
             if not assistant.get("tool_calls"):
                 await self.save_chat_history(session_id, assistant)
+    
     # ------------------------------------------------------------------ #
     # 🔧  Helper methods
     # ------------------------------------------------------------------ #
-
     async def _dispatch_tool(self, func_name: str, args: Dict[str, Any]):
         """Route a tool call to its python implementation."""
         # Serialize nested dicts → JSON strings (OpenAI sometimes gives objects)
@@ -1111,16 +1123,7 @@ class AISupportManagement:
                 "type": "function",
                 "function": {
                     "name": "fetch_user_details",
-                    "description": (
-                        """
-                        Asynchronously retrieves structured user activity and metadata within an optional time window.
-                        Requires a user discriminator (“user_id”). Start and end timestamps bound the query interval.
-                        flags include “return_order_ids” to attach related order identifier ids,
-                        “limit” to cap the number of returned records, and “sort_fields” to specify ordering by PRICE and/or DATE.
-                        An “app_price” interval may be applied for cost‑based filtering. Successful execution returns
-                        { "total": int, "docs": [object], "order_ids": [int] }; invalid input triggers { "response": str, "code": int }.
-                        """
-                    ),
+                    "description": "Asynchronously retrieves structured user activity and metadata within a time window. Time is defined by two offset arrays in the format [months, days, hours, minutes, seconds], relative to the current moment.",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -1128,13 +1131,25 @@ class AISupportManagement:
                                 "type": "string",
                                 "description": "Canonical string identifier for the target user."
                             },
-                            "start_timestamp": {
-                                "type": "number",
-                                "description": "Optional lower bound (inclusive) on event timestamps (Unix epoch seconds)."
+                            "start_offset": {
+                                "type": "array",
+                                "description": "Time offset from now for the **start** of the interval: [months, days, hours, minutes, seconds]. Must contain 5 integers.",
+                                "items": {
+                                    "type": "integer"
+                                },
+                                "minItems": 5,
+                                "maxItems": 5,
+                                "default": START_OFFSET
                             },
-                            "end_timestamp": {
-                                "type": "number",
-                                "description": "Optional upper bound (inclusive) on event timestamps (Unix epoch seconds)."
+                            "end_offset": {
+                                "type": "array",
+                                "description": "Time offset from now for the **end** of the interval: [months, days, hours, minutes, seconds]. Must contain 5 integers.",
+                                "items": {
+                                    "type": "integer"
+                                },
+                                "minItems": 5,
+                                "maxItems": 5,
+                                "default": [0, 0, 0, 0, 0]
                             }
                         },
                         "required": ["user_id"],
@@ -1147,14 +1162,14 @@ class AISupportManagement:
                 "function": {
                     "name": "fetch_order_details",
                     "description": (
-                        "Fetch detailed order records, optionally filtered and sorted by any of the supported fields, and with optional history."
+                        "Fetch detailed order records, optionally filtered by order_id or by a time window defined via start_offset/end_offset; if neither offsets nor order_id are provided, returns overall data."
                     ),
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "order_id": {
                                 "type": "string",
-                                "description": "Order ID to query."
+                                "description": "Order ID/Barcode to query. If provided, offsets will be ignored."
                             },
                             "order_number": {
                                 "type": "string",
@@ -1164,18 +1179,38 @@ class AISupportManagement:
                                 "type": "string",
                                 "description": "User ID to query."
                             },
+                            "start_offset": {
+                                "type": "array",
+                                "description": "Optional time offset from now for the start of the interval: [months, days, hours, minutes, seconds]. Must contain 5 integers.",
+                                "items": {
+                                    "type": "integer"
+                                },
+                                "minItems": 5,
+                                "maxItems": 5,
+                                "default": START_OFFSET
+                            },
+                            "end_offset": {
+                                "type": "array",
+                                "description": "Optional time offset from now for the end of the interval: [months, days, hours, minutes, seconds]. Must contain 5 integers.",
+                                "items": {
+                                    "type": "integer"
+                                },
+                                "minItems": 5,
+                                "maxItems": 5,
+                                "default": [0, 0, 0, 0, 0]
+                            },
                             "order_amount": {
                                 "type": "string",
-                                "default": "[0.01 +inf]",
-                                "description": "Monetary interval specifier using RediSearch numeric-range syntax."
+                                "default": "[0.001 +inf]",
+                                "description": "Monetary interval specifier using RediSearch numeric-range syntax, like [min max]."
                             },
                             "order_status": {
                                 "type": "array",
-                                "minItems": 1,
                                 "items": {
                                     "type": "string",
-                                    "enum": ["TIMEOUT", "COMPLETED", "PENDING", "PROCESSING", "CANCELLED"],
+                                    "enum": ["TIMEOUT", "COMPLETED", "PENDING", "PROCESSING", "CANCELLED"]
                                 },
+                                "minItems": 1,
                                 "default": ["COMPLETED", "PROCESSING"],
                                 "description": "Filter by any of the listed statuses."
                             },
@@ -1200,7 +1235,7 @@ class AISupportManagement:
                                     "required": ["field", "direction"],
                                     "additionalProperties": False
                                 },
-                                "description": "List of 1–2 objects specifying sort field and direction."
+                                "description": "1–2 objects specifying sort field and direction."
                             },
                             "country_id": {
                                 "type": "integer",
@@ -1235,15 +1270,16 @@ class AISupportManagement:
                             "limit": {
                                 "type": "integer",
                                 "default": 10,
-                                "description": "Maximum number of results to return."
+                                "description": "Maximum number of results to return. Max: 10"
                             }
                         },
-                        "required": ["order_id", "limit", "user_id"],
+                        "required": ["user_id", "limit", "sort_fields"],
                         "additionalProperties": False
                     }
                 },
             },
             {
+                
                 "type": "function",
                 "function": {
                     "name": "fetch_app_details",
@@ -1283,11 +1319,13 @@ class AISupportManagement:
                             },
                             "app_count": {
                                 "type": "string",
-                                "description": "Inventory interval specifier compliant with RediSearch numeric‑range syntax."
+                                "description": "Inventory interval specifier compliant with RediSearch numeric‑range syntax.",
+                                "default": "[0 +inf]",
                             },
                             "app_price": {
                                 "type": "string",
-                                "description": "Monetary interval specifier compliant with RediSearch numeric‑range syntax."
+                                "description": "Monetary interval specifier compliant with RediSearch numeric‑range syntax.",
+                                "default": "[0.001 +inf]",
                             },
                             "sort_by": {
                                 "type": "string",
@@ -1298,10 +1336,10 @@ class AISupportManagement:
                             "limit": {
                                 "type": "integer",
                                 "default": 3,
-                                "description": "Hard ceiling on document cardinality post‑ordering."
+                                "description": "Hard ceiling on document cardinality post‑ordering. Max: 10"
                             }
                         },
-                        "required": [],
+                        "required": ["sort_by", "limit"],
                         "additionalProperties": False
                     }
                 }
