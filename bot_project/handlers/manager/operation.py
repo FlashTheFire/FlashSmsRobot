@@ -2452,15 +2452,19 @@ class FastSmsManagement:
 
         return combined_data
 class SmsHubManagement:
-    SMS_SHUB_BASE_URL = "https://smshub.org/stubs/handler_api.php"
-    FASTSMS_BASE_URL = "https://fastsms.su/stubs/handler_api.php"
+    """
+    SMSHub management without separate countries endpoint.
+    Fetches price data directly for provided country IDs.
+    """
+    BASE_URL = "https://smshub.org/stubs/handler_api.php"
 
-    def __init__(self, max_concurrent_requests: int = 5):
+    def __init__(self, max_concurrent_requests: int = 5, timeout_seconds: int = 120):
         self.session: Optional[aiohttp.ClientSession] = None
         self.semaphore = asyncio.Semaphore(max_concurrent_requests)
+        self.timeout = aiohttp.ClientTimeout(total=timeout_seconds)
 
     async def __aenter__(self) -> "SmsHubManagement":
-        self.session = aiohttp.ClientSession()
+        self.session = aiohttp.ClientSession(timeout=self.timeout)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -2476,32 +2480,16 @@ class SmsHubManagement:
                     if response.status != 200:
                         retry_after = response.headers.get("Retry-After")
                         wait_time = int(retry_after) if retry_after and retry_after.isdigit() else 1
-                        #logging.warning(f"Rate limited when accessing {url}. Waiting {wait_time} seconds (attempt {attempt}/{retries}).")
                         await asyncio.sleep(wait_time)
                         continue
                     response.raise_for_status()
                     text = await response.text()
                     if not text.strip():
-                        #logging.error(f"Empty response from {url}")
                         return None
-                    if text.strip() == "NO_NUMBERS":
-                        #logging.warning(f"Received 'NO_NUMBERS' response from {url}")
-                        return {}
-                    
                     data = json.loads(text)
-                    # Handle string response (usually error messages)
+                    # Handle common error responses
                     if isinstance(data, str):
-                        #logging.warning(f"Received string response from {url}: {data}")
                         return {}
-                    
-                    # For countries endpoint
-                    if all(str(k).isdigit() for k in data.keys()):
-                        return {str(k): v for k, v in data.items()}
-                    
-                    # For prices endpoint
-                    if isinstance(data, dict) and "0" in data:
-                        return data
-                        
                     return data
             except (aiohttp.ClientResponseError, aiohttp.ContentTypeError, json.JSONDecodeError) as e:
                 logging.error(f"Error fetching {url}: {e}")
@@ -2509,40 +2497,38 @@ class SmsHubManagement:
                 logging.error(f"Unexpected error fetching {url}: {e}")
             if attempt < retries:
                 backoff = 2 ** (attempt - 1)
-                #logging.info(f"Retrying {url} in {backoff} seconds (attempt {attempt}/{retries})...")
                 await asyncio.sleep(backoff)
-        #logging.error(f"Failed to fetch JSON from {url} after {retries} attempts.")
         return None
 
-    async def get_countries(self) -> Optional[Dict[str, Any]]:
-        url = f"{self.FASTSMS_BASE_URL}?api_key={FAST_SMS_API_KEY}&action=getCountries"
-        return await self.fetch_json(url)
-
     async def get_prices(self, country_id: str) -> Optional[Dict[str, Any]]:
-        url = f"{self.SMS_SHUB_BASE_URL}?api_key={SMS_HUB_API_KEY}&action=getPrices&country={country_id}"
-        return await self.fetch_json(url)
+        """
+        Fetch prices for a specific country ID directly.
+        """
+        async with self.semaphore:
+            url = f"{self.BASE_URL}?api_key={SMS_HUB_API_KEY}&action=getPrices&country={country_id}"
+            return await self.fetch_json(url)
 
-    async def fetch_all_data(self) -> Dict[str, Any]:
-        countries_data = await self.get_countries()
-        if not countries_data:
-            #logging.error("Failed to fetch countries.")
-            return {}
-
-        tasks = [self.get_prices(country_id) for country_id in countries_data.keys()]
-        prices_results = await asyncio.gather(*tasks)
-
-        combined_data = {}
-        for country_id, prices in zip(countries_data.keys(), prices_results):
-            if isinstance(prices, dict):
-                combined_data[country_id] = prices.get(country_id, {})
+    async def fetch_all_data(self, country_ids: list[str]) -> Dict[str, Any]:
+        """
+        Retrieves price data for all provided country IDs.
+        """
+        tasks = [self.get_prices(cid) for cid in country_ids]
+        results = await asyncio.gather(*tasks)
+        combined: Dict[str, Any] = {}
+        for cid, res in zip(country_ids, results):
+            if isinstance(res, dict):
+                combined[cid] = res.get(cid, {})
             else:
-                logging.warning(f"Ignoring country '{country_id}' due to invalid response: {prices}")
-        return combined_data
+                logging.warning(f"Ignoring country '{cid}' due to invalid response: {res}")
+        return combined
 
     @staticmethod
     def select_best_service(data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        For each country and service, select the best server based on stock/price ratio.
+        """
         for country_id, services in data.items():
-            for service, servers in services.items():
+            for service, servers in list(services.items()):
                 try:
                     server_items = [(float(price), int(stock)) for price, stock in servers.items()]
                     if not server_items:
@@ -2559,19 +2545,22 @@ class SmsHubManagement:
                         if candidates
                         else min(server_items, key=lambda x: x[0])
                     )
-                    data[country_id][service] = {f"{convert_usd_to_rub(best_server[0]):.8f}": str(best_server[1])}
+                    services[service] = {f"{convert_usd_to_rub(best_server[0]):.8f}": str(best_server[1])}
                 except Exception as e:
                     logging.error(f"Error selecting best server for country '{country_id}', service '{service}': {e}")
         return data
 class GrizzlySmsManagement:
     GRIZZLY_BASE_URL = "https://api.grizzlysms.com/stubs/handler_api.php"
 
-    def __init__(self, max_concurrent_requests: int = 5):
+    def __init__(self, max_concurrent_requests: int = 5, timeout_seconds: int = 120):
         self.session: Optional[aiohttp.ClientSession] = None
         self.semaphore = asyncio.Semaphore(max_concurrent_requests)
+        # Configure a total timeout for all requests
+        self.timeout = aiohttp.ClientTimeout(total=timeout_seconds)
 
     async def __aenter__(self) -> "GrizzlySmsManagement":
-        self.session = aiohttp.ClientSession()
+        # Initialize session with 2-minute timeout
+        self.session = aiohttp.ClientSession(timeout=self.timeout)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -2583,23 +2572,18 @@ class GrizzlySmsManagement:
             raise RuntimeError("Session not initialized. Use 'async with' context.")
         for attempt in range(1, retries + 1):
             try:
+                # Perform GET with configured timeout
                 async with self.session.get(url) as response:
                     if response.status != 200:
                         retry_after = response.headers.get("Retry-After")
                         wait_time = int(retry_after) if retry_after and retry_after.isdigit() else 1
-                        #logging.warning(f"Rate limited when accessing {url}. Waiting {wait_time} seconds (attempt {attempt}/{retries}).")
                         await asyncio.sleep(wait_time)
                         continue
                     response.raise_for_status()
                     text = await response.text()
                     if not text.strip():
-                        #logging.error(f"Empty response from {url}")
                         return None
-                    if text.strip() == "NO_NUMBERS":
-                        ##logging.warning(f"Received 'NO_NUMBERS' response from {url}")
-                        return {}
-                    if text.strip() == "BAD_COUNTRY":
-                        ##logging.warning(f"Received 'BAD_COUNTRY' response from {url}")
+                    if text.strip() in ("NO_NUMBERS", "BAD_COUNTRY"):
                         return {}
                     return json.loads(text)
             except (aiohttp.ClientResponseError, aiohttp.ClientError, json.JSONDecodeError) as e:
@@ -2608,9 +2592,7 @@ class GrizzlySmsManagement:
                 logging.error(f"Unexpected error fetching {url}: {e}")
             if attempt < retries:
                 backoff = 2 ** (attempt - 1)
-                #logging.info(f"Retrying {url} in {backoff} seconds (attempt {attempt}/{retries})...")
                 await asyncio.sleep(backoff)
-        #logging.error(f"Failed to fetch JSON from {url} after {retries} attempts.")
         return None
 
     async def get_prices(self, country_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
@@ -2629,25 +2611,27 @@ class GrizzlySmsManagement:
         Retrieves all data from the GrizzlySMS API.
         """
         data = await self.get_prices()
-        if data is None:
-            #logging.error("Failed to fetch data from GrizzlySMS API.")
-            return {}
-        return data
+        return data or {}
 
     @staticmethod
     def select_best_service(data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Reformats each service's data to mirror the structure from class GrizzlySmsManagement.
         """
-        list = {'gr_sx': 'six'}
+        formatted: Dict[str, Dict[str, Any]] = {}
         for country_id, services in data.items():
-            for service, details in services.items():
-                if service in list:
-                    service = list[service]
+            updated_services: Dict[str, Any] = {}
+            for service_key, details in services.items():
+                # Normalize service name
+                service_name = (service_key
+                                .replace("gr_", "")
+                                .replace("_", "")
+                                .replace(" ", ""))
                 cost = round(float(details.get("cost", 0)) * float(GRIZZLY_SMS_TAX), 4)
                 count = details.get("count", 0)
-                services[service] = {f"{cost:.4f}": str(count)}
-        return data
+                updated_services[service_name] = {f"{cost:.4f}": str(count)}
+            formatted[country_id] = updated_services
+        return formatted
 class SmsBowerManagement:
     SMSBOWER_BASE_URL = "https://smsbower.online/stubs/handler_api.php"
 
@@ -2715,8 +2699,9 @@ class SmsBowerManagement:
         """
         data = await self.get_prices()
         if data is None:
-            #logging.error("Failed to fetch data from SMSBower API.")
+            print("Failed to fetch data from SMSBower API.")
             return {}
+        print(f"Data fetched from SMSBower API : {len(data)}")
         return data
 
     @staticmethod
@@ -2725,10 +2710,12 @@ class SmsBowerManagement:
         Reformats each service's data to mirror the structure from GrizzlySmsManagement.
         """
         for country_id, services in data.items():
+            updated_services = {}
             for service, details in services.items():
                 cost = round(float(details.get("cost", 0)) * float(SMS_BOWER_TAX), 4)
                 count = details.get("count", 0)
-                services[service] = {f"{cost:.4f}": str(count)}
+                updated_services[service] = {f"{cost:.4f}": str(count)}
+            data[country_id] = updated_services
         return data
 class VakSmsManagement:
     VAKSMS_BASE_URL = "https://vak-sms.com/stubs/handler_api.php"
