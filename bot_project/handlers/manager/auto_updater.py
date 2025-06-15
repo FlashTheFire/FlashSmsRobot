@@ -497,7 +497,6 @@ class AutoUpdater:
             logging.error(f"[AutoUpdate.load_old_data_from_url] Error fetching JSON: {e}")
         return {}
 
-
     async def import_redis_dump(self, url: str) -> None:
         """Download a dump from URL and recreate the keys in Redis."""
         data = await self.load_old_data_from_url(url)
@@ -657,12 +656,20 @@ class AutoUpdater:
         payload = json.dumps(parsed, indent=2).encode()
         file_data = io.BytesIO(payload)
 
-        # 2) Upload to https://0x0.st without User-Agent
+        # 2) Upload to https://0x0.st with no User-Agent header
         try:
             data = aiohttp.FormData()
-            data.add_field('file', file_data, filename="flash-data.json", content_type="application/json")
+            data.add_field(
+                'file',
+                file_data,
+                filename="flash-data.json",
+                content_type="application/json"
+            )
 
-            async with aiohttp.ClientSession(headers={"User-Agent": None}) as sess:
+            async with aiohttp.ClientSession() as sess:
+                # Remove the default User-Agent header
+                sess._default_headers.pop("User-Agent", None)
+
                 async with sess.post("https://0x0.st", data=data) as resp:
                     text = await resp.text()
                     if resp.status == 200 and text.strip().startswith("https://0x0.st/"):
