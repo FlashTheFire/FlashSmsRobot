@@ -283,8 +283,6 @@ class AutoUpdater:
         country_id = country_data["record_id"]
         country_name = country_data["name"]
         display_flag = country_data["code"]
-        if int(server_id) == 1:
-            print(f"Country ({country_id}): {country_name} [{display_flag}]")
         app_codes = app.get("code")
         app_id = self.safe_str(app.get("app_id"))
         app_price = self.safe_str(app.get("price"))
