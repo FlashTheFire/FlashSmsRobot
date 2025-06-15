@@ -439,11 +439,11 @@ class AutoUpdater:
     async def update_data(self):
         """Main update function that orchestrates the entire update process."""
         try:
-            data = await self.redis_client.json().get('main_data:service:main_data') or {} #await self.fetch_transform_data() #
-            server_ids = [sn for _, sn in self.services]
+            data = await self.fetch_transform_data() #await self.redis_client.json().get('main_data:service:main_data') or {} #
+            '''server_ids = [sn for _, sn in self.services]
             transformer = DataTransformer(server_ids, self.sms_providers, self.redis_client)
             await transformer.initialize()  # Initialize Redis client and load mappings
-            data = transformer.transform_data(data)
+            data = transformer.transform_data(data)'''
             print(colored(f"Data: {len(data)}", "blue"))
             if data:
                 await self.insert_data(data)
@@ -645,35 +645,35 @@ class AutoUpdater:
         return result
 
     async def upload_from_redis_key(self) -> str:
-        # 1) Fetch & prepare payload
+        """Fetch JSON from REDIS_DUMP_KEY, upload it to 0x0.st, and return the URL."""
+        # 1) Fetch JSON from Redis
         raw = await self.redis_client.execute_command("JSON.GET", self.REDIS_DUMP_KEY, "$")
         if not raw:
             logging.error("[AutoUpdate.upload_from_redis_key] No data to upload")
             return ""
+
         parsed = json.loads(raw) if isinstance(raw, str) else raw
         payload = json.dumps(parsed, indent=2).encode()
+        file_data = io.BytesIO(payload)
 
-        # 2) Try del.dog (dogbin) → returns {"key":"xxxx"}
+        # 2) Upload to https://0x0.st without User-Agent
         try:
-            async with aiohttp.ClientSession() as sess:
-                async with sess.post(
-                    "https://del.dog/documents",
-                    data=payload,
-                    headers={"Content-Type": "application/json"},
-                ) as resp:
-                    text = await resp.text()
-                    if resp.status == 200:
-                        result = json.loads(text)
-                        key = result.get("key")
-                        if key:
-                            url = f"https://del.dog/{key}"
-                            logging.info(f"[AutoUpdate] Uploaded → {url}")
-                            return url
-                    logging.warning(f"[del.dog] Failed ({resp.status}): {text}")
-        except Exception as e:
-            logging.error(f"[AutoUpdate.del.dog] Exception: {e}")
+            data = aiohttp.FormData()
+            data.add_field('file', file_data, filename="flash-data.json", content_type="application/json")
 
-        # 4) All methods failed
+            async with aiohttp.ClientSession(headers={"User-Agent": None}) as sess:
+                async with sess.post("https://0x0.st", data=data) as resp:
+                    text = await resp.text()
+                    if resp.status == 200 and text.strip().startswith("https://0x0.st/"):
+                        url = text.strip()
+                        logging.info(f"[AutoUpdate] Uploaded → {url}")
+                        return url
+                    else:
+                        logging.warning(f"[0x0.st] Failed ({resp.status}): {text}")
+        except Exception as e:
+            logging.error(f"[AutoUpdate.0x0.st] Exception: {e}")
+
+        # 3) Upload failed
         logging.error("[AutoUpdate.upload_from_redis_key] All upload methods failed")
         return ""
 
@@ -704,43 +704,48 @@ class AutoUpdater:
 # Initialize the auto updater
 auto_updater = AutoUpdater()
 
+
 async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
     """
-    Periodic update function that runs at even hours (0, 2, 4, ..., 22, 24).
-    Additionally, on every even hour:00, it will:
-      1. initialize & update_data
-      2. dump Redis into a single JSON key
-      3. upload that JSON directly from Redis → 0x0.st
-      4. send the resulting link to ADMIN_ID
+    Periodic background task:
+    - Every 10 minutes: save_data_cycle()
+    - At 00:00 and 12:00: initialize() + update_data()
+    - If update=True on first call, run init + update immediately (only once)
     """
+    last_save_time = datetime.datetime.min
+    last_init_update_hour = -1
+
+    # Run one-time update if required
+    if update:
+        if not hasattr(auto_updater, 'initialized'):
+            await auto_updater.save_data_cycle()
+            logging.info("save_data_cycle run")
+            """await auto_updater.initialize(bot=bot)
+            await auto_updater.update_data()"""
+            auto_updater.initialized = True
+            
+            logging.info("Ran one-time initial update")
+
     while True:
         try:
-            if os.environ.get('USE_WEBHOOK', 'false').lower() == 'true':
-                current_time = datetime.datetime.now().time()
-                # Trigger at every hour and minute == 30
+            now = datetime.datetime.now()
+
+            # ─────────────────────────────────────────────
+            # Save data every 10 minutes
+            if (now - last_save_time).total_seconds() >= 600:
                 await auto_updater.save_data_cycle()
-                if current_time.hour in (0, 12) and current_time.minute == 0:
-                    # ──────────────────────────────────────────────────────
-                    # Step A: existing initialize & update_data
-                    await auto_updater.initialize(bot=bot)
-                    await auto_updater.update_data()
-                    # ──────────────────────────────────────────────────────
-                    await asyncio.sleep(1 * 30 * 60)
-                    # ──────────────────────────────────────────────────────
+                last_save_time = now
+                logging.info("save_data_cycle run")
 
-                # If `update` is True, run once on first invocation
-                elif update:
-                    """if not hasattr(auto_updater, 'initialized'):
-                        await auto_updater.initialize(bot=bot)
-                        await auto_updater.update_data()
+            # ─────────────────────────────────────────────
+            # Run initialize + update_data at 00:00 and 12:00
+            if now.minute == 0 and now.hour in (0, 12) and now.hour != last_init_update_hour:
+                await auto_updater.initialize(bot=bot)
+                await auto_updater.update_data()
+                last_init_update_hour = now.hour
+                logging.info(f"Data updated at hour {now.hour}:00")
 
-                        auto_updater.initialized = True"""
-                    # ──────────────────────────────────────────────────────
-                    await asyncio.sleep(1 * 30 * 60)
-                    # ──────────────────────────────────────────────────────
-
-            # Check again in 1 minute
-            await asyncio.sleep(60)
+            await asyncio.sleep(30)  # Check twice a minute
 
         except Exception as e:
             logging.error(f"Error in periodic_update: {e}")
