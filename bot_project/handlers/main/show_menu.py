@@ -59,7 +59,6 @@ class UserStartManager:
                 return False
 
             self.user_manager = user_mgr
-            AutoUpdater(bot=bot)
             self.auto_updater = auto_updater
             self.bot = bot
             self.input_validator = getattr(bot, 'input_validator', None)

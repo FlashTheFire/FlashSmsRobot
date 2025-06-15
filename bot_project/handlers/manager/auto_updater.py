@@ -727,6 +727,7 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
     # Run one-time update if required
     if update:
         if not hasattr(auto_updater, 'initialized'):
+            await auto_updater.initialize(bot=bot)
             await auto_updater.save_data_cycle()
             logging.info("save_data_cycle run")
             """await auto_updater.initialize(bot=bot)
