@@ -5,6 +5,9 @@ import asyncio
 import functools
 import contextlib
 import base64
+from PIL import Image
+from io import BytesIO
+import aiohttp
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import logging
@@ -119,7 +122,7 @@ async def qr_code(
     """Asynchronously generates and overlays a QR code on an image, returning it as BytesIO."""
     qr_img_bytes, rect_img = await asyncio.gather(
         fetch_qr(deposit_id),
-        asyncio.to_thread(Image.open, DEPOSIT_INR_QR_CODE)
+        fetch_image_from_url(DEPOSIT_INR_QR_CODE)
     )
     square_img = Image.open(qr_img_bytes).convert("RGBA")
     square_img = ImageOps.fit(square_img, (size, size), Image.LANCZOS)
@@ -411,6 +414,12 @@ async def fetch_url_str(url: str) -> str:
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             return await response.text()
+async def fetch_image_from_url(url: str) -> Image.Image:
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as resp:
+            resp.raise_for_status()
+            image_bytes = await resp.read()
+            return Image.open(BytesIO(image_bytes))
 
 async def AfterMin(minutes: int) -> str:
     """Asynchronously calculates a time string after a given number of minutes."""
