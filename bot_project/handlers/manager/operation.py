@@ -2456,7 +2456,7 @@ class SmsHubManagement:
     SMSHub management without separate countries endpoint.
     Fetches price data directly for provided country IDs.
     """
-    BASE_URL = "https://smshub.org/stubs/handler_api.php"
+    SMS_HUB_BASE_URL = "https://smshub.org/stubs/handler_api.php"
 
     def __init__(self, max_concurrent_requests: int = 5, timeout_seconds: int = 120):
         self.session: Optional[aiohttp.ClientSession] = None
@@ -2500,27 +2500,28 @@ class SmsHubManagement:
                 await asyncio.sleep(backoff)
         return None
 
-    async def get_prices(self, country_id: str) -> Optional[Dict[str, Any]]:
+    async def get_prices(self, country_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
-        Fetch prices for a specific country ID directly.
+        Fetch prices data. If a country_id is provided, it is appended to the query string.
         """
         async with self.semaphore:
-            url = f"{self.BASE_URL}?api_key={SMS_HUB_API_KEY}&action=getPrices&country={country_id}"
+            if country_id:
+                url = f"{self.SMS_HUB_BASE_URL}?api_key={SMS_HUB_API_KEY}&action=getPrices&country={country_id}"
+            else:
+                url = f"{self.SMS_HUB_BASE_URL}?api_key={SMS_HUB_API_KEY}&action=getPrices"
             return await self.fetch_json(url)
 
-    async def fetch_all_data(self, country_ids: list[str]) -> Dict[str, Any]:
+    async def fetch_all_data(self) -> Dict[str, Any]:
         """
-        Retrieves price data for all provided country IDs.
+        Retrieves all data from the SMSHub API.
         """
-        tasks = [self.get_prices(cid) for cid in country_ids]
-        results = await asyncio.gather(*tasks)
-        combined: Dict[str, Any] = {}
-        for cid, res in zip(country_ids, results):
-            if isinstance(res, dict):
-                combined[cid] = res.get(cid, {})
-            else:
-                logging.warning(f"Ignoring country '{cid}' due to invalid response: {res}")
-        return combined
+        data = await self.get_prices()
+        if data is None:
+            print("Failed to fetch data from SMSHub API.")
+            return {}
+        print(f"Data fetched from SMSHub API : {len(data)}")
+        return data
+
 
     @staticmethod
     def select_best_service(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -2608,10 +2609,15 @@ class GrizzlySmsManagement:
 
     async def fetch_all_data(self) -> Dict[str, Any]:
         """
-        Retrieves all data from the GrizzlySMS API.
+        Retrieves all data from the GrizzlySms API.
         """
         data = await self.get_prices()
-        return data or {}
+        if data is None:
+            print("Failed to fetch data from GrizzlySms API.")
+            return {}
+        print(f"Data fetched from GrizzlySms API : {len(data)}")
+        return data
+
 
     @staticmethod
     def select_best_service(data: Dict[str, Any]) -> Dict[str, Any]:
