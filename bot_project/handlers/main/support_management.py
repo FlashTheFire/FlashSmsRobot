@@ -638,7 +638,7 @@ class AISupportManagement:
         order_id: Optional[str] = None,
         order_number: Optional[str] = None,
         order_amount: str = "[0.001 +inf]",
-        order_status: Optional[List[str]] = ["COMPLETED", "PROCESSING"],
+        order_status: Optional[List[str]] = ["COMPLETED", "PROCESSING", "PENDING"],
         sort_fields: Optional[List[Dict[str, str]]] = None,
         country_id: Optional[int] = None,
         country_name_query: str = "",
@@ -669,7 +669,7 @@ class AISupportManagement:
                 "user_id": user_id,
                 "app_name_query": app_name_query,
                 "server_id": server_id,
-                "recorded_at": [get_timestamp(end_offset), get_timestamp(start_offset)]
+                "recorded_at": [get_timestamp(start_offset), get_timestamp(end_offset)]
             }
             # drop empty
             filters = {k: v for k, v in filters.items() if v not in (None, "", [], False)}
@@ -1211,7 +1211,7 @@ class AISupportManagement:
                                     "enum": ["TIMEOUT", "COMPLETED", "PENDING", "PROCESSING", "CANCELLED"]
                                 },
                                 "minItems": 1,
-                                "default": ["COMPLETED", "PROCESSING"],
+                                "default": ["COMPLETED", "PROCESSING", "PENDING"],
                                 "description": "Filter by any of the listed statuses."
                             },
                             "sort_fields": {
