@@ -18,7 +18,7 @@ import aiohttp
 from io import BytesIO
 from telebot.async_telebot import AsyncTeleBot
 from telebot.types import Message
-from utils.config import BOT_TOKEN as BotToken, USER_IMAGE_HASH
+from utils.config import BOT_TOKEN as BotToken, USER_IMAGE_HASH, DEPOSIT_INR_QR_CODE
 import redis.asyncio as redis
 from redis.commands.search.query import Query
 import pytz
@@ -114,12 +114,11 @@ async def qr_code(
     size: int,
     position: Tuple[int, int],
     radius: int,
-    rect_img_path: str = r"C:\Users\LOQ\OneDrive\Desktop\Coding-Flash\flash_sms\bot_project\images\general\deposit-inr-qr_code.jpeg"
 ) -> BytesIO:
     """Asynchronously generates and overlays a QR code on an image, returning it as BytesIO."""
     qr_img_bytes, rect_img = await asyncio.gather(
         fetch_qr(deposit_id),
-        asyncio.to_thread(Image.open, rect_img_path)
+        asyncio.to_thread(Image.open, DEPOSIT_INR_QR_CODE)
     )
     square_img = Image.open(qr_img_bytes).convert("RGBA")
     square_img = ImageOps.fit(square_img, (size, size), Image.LANCZOS)
