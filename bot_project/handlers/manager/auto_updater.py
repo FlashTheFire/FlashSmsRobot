@@ -302,7 +302,7 @@ class AutoUpdater:
         await pipe.hsetnx(redis_key, "is_show_server",  "True")
         await pipe.hsetnx(redis_key, "is_show_app", "True")
         if matches:
-            print(colored(f"Matches found: {matches}", "green"))
+            #print(colored(f"Matches found: {matches}", "green"))
             if str(f"{country_id}:{server_id}:{app_id}") in matches:
                 redis_data = {
                     "country_id": self.safe_str(country_id),
@@ -351,7 +351,7 @@ class AutoUpdater:
         if int(server_id) == int(1):
             five_sim = FiveSimManagement()
             server_data = await five_sim.get_servers(country_data["record_id"])
-            print(colored(f"Server data: {len(server_data)}", "red"))
+            #print(colored(f"Server data: {len(server_data)}", "red"))
         
         tasks = []
         for app in server["apps"]:
@@ -373,8 +373,6 @@ class AutoUpdater:
                 # group(1) is the “60:1:659” par
                 matches.append(m.group(1))
         print(colored(f"Matches found: {matches}", "green"))
-        # Load persistent country data (or initialize if not exists)
-        print(colored(f"Loading persistent country data...", "blue"))
         batches = list(self.chunker(data, 1))
         
         for batch_index, batch in enumerate(batches, start=1):
@@ -400,7 +398,7 @@ class AutoUpdater:
             await self.save_price_mapping(self.redis_client)
             
             if batch_index < len(batches):
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(0.01)
     
         print(colored("\n=== Data Insertion Complete ===", "cyan"))
 
@@ -452,7 +450,6 @@ class AutoUpdater:
             transformer = DataTransformer(server_ids, self.sms_providers, self.redis_client)
             await transformer.initialize()  
             data = transformer.transform_data(data)
-            print(colored(f"Data: {len(data)}", "blue"))
             if data:
                 await self.insert_data(data)
                 logging.info("Data update completed successfully")
