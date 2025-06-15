@@ -18,7 +18,6 @@ from colorama import Fore, Style, init as colorama_init
 import redis.asyncio as redis
 from utils.redis_manager import RedisManager, redis_manager
 from utils.config import  WEBHOOK_HOST as FIVE_SIM_URL
-import datetime
 from handlers.manager.operation import (
     FiveSimManagement, FastSmsManagement, SmsHubManagement, GrizzlySmsManagement,
     SmsBowerManagement, VakSmsManagement, TigerSmsManagement, SmsActivateManagement
@@ -44,6 +43,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 SERVICE_PREFIX = "service_data"
 REDIS_KEY_PRICE_MAP = "main_data:price-country"
 colorama_init(autoreset=True)
+IST = pytz.timezone("Asia/Kolkata")
+
 # ----------------- SMS Providers ------------------
 
 
@@ -710,7 +711,6 @@ auto_updater = AutoUpdater()
 
 
 
-IST = pytz.timezone("Asia/Kolkata")
 
 async def periodic_save_cycle():
     """
