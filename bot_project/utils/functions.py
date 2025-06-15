@@ -4,6 +4,7 @@ import sys
 import asyncio
 import functools
 import contextlib
+import base64
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import logging
@@ -259,17 +260,22 @@ async def setup_logger(log_file: Optional[str] = None, where_logger: Optional[st
 
 # Redis key for storing user profile images
 
+
 async def get_tg_profile_photo(user_id: int) -> Dict[str, Any]:
     """Asynchronously retrieves the Telegram profile photo for a user, storing and fetching from Redis."""
-    # Acquire Redis client
     redis_client = await redis_manager.get_client()
-    # Try to fetch image bytes from Redis hash
-    img_data = await redis_client.hget(USER_IMAGE_HASH, str(user_id))
-    if img_data:
-        logging.debug(f"Profile image for user {user_id} loaded from Redis hash.")
-        return {'response': True, 'result': img_data}
 
-    # If not in Redis, fetch from Telegram
+    # Fetch base64-encoded image from Redis
+    img_base64 = await redis_client.hget(USER_IMAGE_HASH, str(user_id))
+    if img_base64:
+        try:
+            img_data = base64.b64decode(img_base64)
+            logging.debug(f"Profile image for user {user_id} loaded from Redis hash.")
+            return {'response': True, 'result': img_data}
+        except Exception as e:
+            logging.error(f"Error decoding base64 image for user {user_id}: {e}")
+
+    # If not found, fetch from Telegram
     try:
         url = f'https://api.telegram.org/bot{BotToken}/getUserProfilePhotos'
         async with aiohttp.ClientSession() as session:
@@ -292,19 +298,24 @@ async def get_tg_profile_photo(user_id: int) -> Dict[str, Any]:
         logging.error(f"Error getting profile image: {e}")
         return {'response': False, 'error': str(e)}
 
+
 async def save_image_to_redis(user_id: int, image_url: str, redis_client: RedisManager) -> Dict[str, Any]:
-    """Downloads image from URL and saves binary data into Redis hash."""
+    """Downloads image from URL, encodes in base64, and saves to Redis hash."""
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(image_url) as response:
                 response.raise_for_status()
                 img_data = await response.read()
-                # Store binary data in Redis hash under field = user_id
-                await redis_client.hset(USER_IMAGE_HASH, str(user_id), img_data)
+
+                # Encode image to base64 string for safe Redis storage
+                img_base64 = base64.b64encode(img_data).decode('utf-8')
+
+                await redis_client.hset(USER_IMAGE_HASH, str(user_id), img_base64)
                 return {'response': True, 'result': img_data}
     except Exception as e:
         logging.error(f"Error saving image to Redis: {e}")
         return {'response': False, 'error': str(e)}
+
 
 async def convert_points(balance: Union[float, int], currency: str = "INR") -> int:
     """Asynchronously converts points (stub implementation)."""
