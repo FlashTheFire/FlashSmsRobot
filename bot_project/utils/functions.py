@@ -131,7 +131,6 @@ async def qr_code(
     )
     print('qr_img_bytes')
     print(qr_img_bytes)
-    return qr_img_bytes
     print('rect_img')
     print(rect_img)
 
