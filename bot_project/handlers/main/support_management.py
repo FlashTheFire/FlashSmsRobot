@@ -669,7 +669,7 @@ class AISupportManagement:
                 "user_id": user_id,
                 "app_name_query": app_name_query,
                 "server_id": server_id,
-                "recorded_at": [get_timestamp(start_offset), get_timestamp(end_offset)]
+                "recorded_at": [get_timestamp(end_offset), get_timestamp(start_offset)]
             }
             # drop empty
             filters = {k: v for k, v in filters.items() if v not in (None, "", [], False)}
