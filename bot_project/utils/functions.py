@@ -112,6 +112,8 @@ async def fetch_qr(order_id: str) -> BytesIO:
             async with session.get(image_url) as image_response:
                 if image_response.status != 200:
                     raise Exception(f"Failed to fetch QR code image, status code: {image_response.status}")
+                print('image_response')
+                print(image_response)
                 return BytesIO(await image_response.read())
         except Exception as e:
             print(f"Error fetching QR code: {e}")
@@ -131,6 +133,7 @@ async def qr_code(
     print(qr_img_bytes)
     print('rect_img')
     print(rect_img)
+
     square_img = Image.open(qr_img_bytes).convert("RGBA")
     square_img = ImageOps.fit(square_img, (size, size), Image.LANCZOS)
     mask = Image.new("L", (size, size), 0)

@@ -298,14 +298,14 @@ class ShowDepositManager:
                 "📌 <b>Sᴄᴀɴ Tʜɪs Qʀ Aɴᴅ Pᴀʏ Fʀᴏᴍ Aɴʏ Pᴀʏᴍᴇɴᴛ Aᴘᴘ.</b>"
             )
             updated_caption = caption.format(MIN_DEPOSIT, MIN_DEPOSIT, deposit_id, valid_until, f"{int(DEPOSIT_TIMEOUT):02d}")
-            
-            await self.bot.edit_message_text(
-                chat_id=deposit_data['user_id'],
-                message_id=deposit_data['message_id'],
-                text=updated_caption,
-                parse_mode="HTML",
-                reply_markup=keyboard
-            )
+            if deposit_data.get('message_id'):
+                await self.bot.edit_message_caption(
+                    chat_id=deposit_data['user_id'],
+                    message_id=deposit_data['message_id'],
+                    caption=updated_caption,
+                    parse_mode="HTML",
+                    reply_markup=keyboard
+                )
         except Exception as e:
             print(e)
             pass
