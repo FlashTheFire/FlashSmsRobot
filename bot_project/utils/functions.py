@@ -8,6 +8,10 @@ import base64
 from PIL import Image
 from io import BytesIO
 import aiohttp
+from io import BytesIO
+from typing import Tuple
+from PIL import Image, ImageDraw, ImageOps
+import asyncio
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import logging
@@ -125,29 +129,57 @@ async def qr_code(
     radius: int,
 ) -> BytesIO:
     """Asynchronously generates and overlays a QR code on an image, returning it as BytesIO."""
+
+    # Fetch QR code and background image concurrently
     qr_img_bytes, rect_img = await asyncio.gather(
         fetch_qr(deposit_id),
         fetch_image_from_url(DEPOSIT_INR_QR_CODE)
     )
-    print('qr_img_bytes')
-    print(qr_img_bytes)
-    print('rect_img')
-    print(rect_img)
 
-    square_img = Image.open(qr_img_bytes).convert("RGBA")
-    square_img = ImageOps.fit(square_img, (size, size), Image.LANCZOS)
+    print("[INFO] Successfully fetched QR and background images.")
+
+    # Convert QR image bytes to Image
+    try:
+        square_img = Image.open(qr_img_bytes).convert("RGBA")
+    except Exception as e:
+        raise RuntimeError(f"Failed to open QR image: {e}")
+
+    # Resize QR to desired size
+    square_img = ImageOps.fit(square_img, (size, size), method=Image.LANCZOS)
+
+    # Create a rounded mask for transparency
     mask = Image.new("L", (size, size), 0)
     draw = ImageDraw.Draw(mask)
     draw.rounded_rectangle((0, 0, size, size), radius, fill=255)
     square_img.putalpha(mask)
+
+    # Debug: Save QR image to file to check shape
+    square_img.save("/tmp/debug_qr.png")
+    print("[DEBUG] QR image saved to /tmp/debug_qr.png")
+
+    # Convert background image to RGBA and paste QR code
     rect_img = rect_img.convert("RGBA")
+
+    print(f"[DEBUG] Background size: {rect_img.size}")
+    print(f"[DEBUG] QR code position: {position}, size: {size}")
+
+    # Sanity check: QR code must fit within background
+    if position[0] + size > rect_img.size[0] or position[1] + size > rect_img.size[1]:
+        raise ValueError("QR code position + size exceeds background dimensions.")
+
     rect_img.paste(square_img, position, square_img)
+
+    # Debug: Save final image to inspect
+    rect_img.save("/tmp/final_result_debug.png")
+    print("[DEBUG] Final image saved to /tmp/final_result_debug.png")
+
+    # Return image as BytesIO
     img_byte_arr = BytesIO()
-    await asyncio.to_thread(rect_img.save, img_byte_arr, "PNG")
+    await asyncio.to_thread(rect_img.save, img_byte_arr, format="PNG")
     img_byte_arr.seek(0)
-    print('img_byte_arr')
-    print(img_byte_arr)
+
     return img_byte_arr
+
 
 async def format_currency(amount: Union[float, int], currency: str = "INR") -> str:
     """Asynchronously formats currency with proper symbols."""
