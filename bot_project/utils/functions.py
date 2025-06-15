@@ -265,7 +265,7 @@ async def get_tg_profile_photo(user_id: int) -> Dict[str, Any]:
     # Acquire Redis client
     redis_client = await redis_manager.get_client()
     # Try to fetch image bytes from Redis hash
-    img_data = await redis_client.hget(REDIS_IMAGE_HASH, str(user_id))
+    img_data = await redis_client.hget(USER_IMAGE_HASH, str(user_id))
     if img_data:
         logging.debug(f"Profile image for user {user_id} loaded from Redis hash.")
         return {'response': True, 'result': img_data}
@@ -301,7 +301,7 @@ async def save_image_to_redis(user_id: int, image_url: str, redis_client: RedisM
                 response.raise_for_status()
                 img_data = await response.read()
                 # Store binary data in Redis hash under field = user_id
-                await redis_client.hset(REDIS_IMAGE_HASH, str(user_id), img_data)
+                await redis_client.hset(USER_IMAGE_HASH, str(user_id), img_data)
                 return {'response': True, 'result': img_data}
     except Exception as e:
         logging.error(f"Error saving image to Redis: {e}")
