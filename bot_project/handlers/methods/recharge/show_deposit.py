@@ -282,14 +282,21 @@ class ShowDepositManager:
 
                 await self._create_deposit_record(deposit_data, deposit_id)
 
-                asyncio.create_task(self._delayed_message_edit(deposit_data, keyboard, caption, MIN_DEPOSIT, deposit_id, valid_until, int(DEPOSIT_TIMEOUT)-1))
+                asyncio.create_task(self._delayed_message_edit(deposit_data, keyboard, MIN_DEPOSIT, deposit_id, valid_until, int(DEPOSIT_TIMEOUT)-1))
 
         except Exception as e:
             print(f"🚫 Failed to start deposit: {str(e)}")
 
-    async def _delayed_message_edit(self, deposit_data, keyboard, caption, MIN_DEPOSIT, deposit_id, valid_until, DEPOSIT_TIMEOUT):
+    async def _delayed_message_edit(self, deposit_data, keyboard, MIN_DEPOSIT, deposit_id, valid_until, DEPOSIT_TIMEOUT):
         await asyncio.sleep(1)
         try:
+            caption = (
+                "<b>🔥 Yᴏᴜʀ Fʟᴀsʜ Qʀ-Cᴏᴅᴇ 》</b>\n\n"
+                "💰 <b>Mɪɴ Aᴍᴏᴜɴᴛ  »</b>  <code>₹{}</code>  <code>〚</code><code>💎 {}</code><code>〛</code>\n"
+                "💳 <b>Dᴇᴘᴏsɪᴛ Iᴅ  »</b>  [ <code>{}</code> ]\n"
+                "⏳ <b>Pᴀʏ Uɴᴅᴇʀ  »</b>  {} <b>[</b><code>{}</code> <code>Mɪɴ</code><b>]</b>\n\n"
+                "📌 <b>Sᴄᴀɴ Tʜɪs Qʀ Aɴᴅ Pᴀʏ Fʀᴏᴍ Aɴʏ Pᴀʏᴍᴇɴᴛ Aᴘᴘ.</b>"
+            )
             updated_caption = caption.format(MIN_DEPOSIT, MIN_DEPOSIT, deposit_id, valid_until, f"{int(DEPOSIT_TIMEOUT):02d}")
             
             await self.bot.edit_message_text(

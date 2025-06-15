@@ -127,6 +127,10 @@ async def qr_code(
         fetch_qr(deposit_id),
         fetch_image_from_url(DEPOSIT_INR_QR_CODE)
     )
+    print('qr_img_bytes')
+    print(qr_img_bytes)
+    print('rect_img')
+    print(rect_img)
     square_img = Image.open(qr_img_bytes).convert("RGBA")
     square_img = ImageOps.fit(square_img, (size, size), Image.LANCZOS)
     mask = Image.new("L", (size, size), 0)
@@ -138,6 +142,8 @@ async def qr_code(
     img_byte_arr = BytesIO()
     await asyncio.to_thread(rect_img.save, img_byte_arr, "PNG")
     img_byte_arr.seek(0)
+    print('img_byte_arr')
+    print(img_byte_arr)
     return img_byte_arr
 
 async def format_currency(amount: Union[float, int], currency: str = "INR") -> str:
