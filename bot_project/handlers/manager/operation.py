@@ -1054,19 +1054,15 @@ class UserManagement:
             try:
                 await redis_client.ft(USER_INFO_INDEX).info()
             except Exception as e:
-                if "Unknown index name" in str(e):
-                    await create_index(USER_INFO_INDEX, user_schema, USER_INFO_PREFIX)
-                else:
-                    raise
+                await create_index(USER_INFO_INDEX, user_schema, USER_INFO_PREFIX)
+                
 
             # Try SERVICE_INDEX
             try:
                 await redis_client.ft(SERVICE_INDEX).info()
             except Exception as e:
-                if "Unknown index name" in str(e):
-                    await create_index(SERVICE_INDEX, service_schema, SERVICE_PREFIX)
-                else:
-                    raise
+                await create_index(SERVICE_INDEX, service_schema, SERVICE_PREFIX)
+                
 
             await self.logger.info("UserManagement and Service indexes verified/created successfully")
 

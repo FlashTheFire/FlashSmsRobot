@@ -719,14 +719,14 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
 
                 # If `update` is True, run once on first invocation
                 elif update:
-                    if not hasattr(auto_updater, 'initialized'):
+                    """if not hasattr(auto_updater, 'initialized'):
                         await auto_updater.initialize(bot=bot)
                         await auto_updater.update_data()
 
                         auto_updater.initialized = True
                     # ──────────────────────────────────────────────────────
                     await auto_updater.save_data_cycle()
-                    await asyncio.sleep(1 * 30 * 60)
+                    await asyncio.sleep(1 * 30 * 60)"""
                     pass
                     # ──────────────────────────────────────────────────────
 
