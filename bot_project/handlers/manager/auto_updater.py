@@ -4,6 +4,11 @@ from typing import Optional, Dict, Any, Tuple, List, Union
 import logging
 import asyncio
 import aiohttp
+import pytz
+import asyncio
+import logging
+from datetime import datetime
+
 import requests
 import json
 import io
@@ -710,49 +715,62 @@ class AutoUpdater:
 auto_updater = AutoUpdater()
 
 
-async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
-    """
-    Periodic background task:
-    - Every 10 minutes: save_data_cycle()
-    - At 00:00 and 12:00: initialize() + update_data()
-    - If update=True on first call, run init + update immediately (only once)
-    """
-    last_save_time = datetime.datetime.min
-    last_init_update_hour = -1
 
-    # Run one-time update if required
-    if update:
-        if not hasattr(auto_updater, 'initialized'):
-            await auto_updater.initialize(bot=bot)
+IST = pytz.timezone("Asia/Kolkata")
+
+async def periodic_save_cycle():
+    """
+    Saves data every 10 minutes.
+    """
+    while True:
+        try:
+            now_ist = datetime.utcnow().replace(tzinfo=pytz.utc).astimezone(IST)
+            logging.info(f"Running save_data_cycle at {now_ist}")
             await auto_updater.save_data_cycle()
-            logging.info("save_data_cycle run")
-            """await auto_updater.initialize(bot=bot)
-            await auto_updater.update_data()"""
-            auto_updater.initialized = True
-            
-            logging.info("Ran one-time initial update")
+        except Exception as e:
+            logging.error(f"Error in save_data_cycle: {e}")
+        await asyncio.sleep(600)  # 10 minutes
+
+
+async def periodic_init_update(bot: AsyncTeleBot = None):
+    """
+    Runs initialize + update_data at 00:00 and 12:00 IST.
+    """
+    last_run_hour = -1
 
     while True:
         try:
-            now = datetime.datetime.now()
-
-            # ─────────────────────────────────────────────
-            # Save data every 10 minutes
-            if (now - last_save_time).total_seconds() >= 600:
-                await auto_updater.save_data_cycle()
-                last_save_time = now
-                logging.info("save_data_cycle run")
-
-            # ─────────────────────────────────────────────
-            # Run initialize + update_data at 00:00 and 12:00
-            if now.minute == 0 and now.hour in (0, 12) and now.hour != last_init_update_hour:
+            now_ist = datetime.utcnow().replace(tzinfo=pytz.utc).astimezone(IST)
+            if now_ist.minute == 0 and now_ist.hour in (0, 12) and now_ist.hour != last_run_hour:
+                logging.info(f"Running init + update_data at {now_ist}")
                 await auto_updater.initialize(bot=bot)
                 await auto_updater.update_data()
-                last_init_update_hour = now.hour
-                logging.info(f"Data updated at hour {now.hour}:00")
-
-            await asyncio.sleep(30)  # Check twice a minute
-
+                last_run_hour = now_ist.hour
+            await asyncio.sleep(30)
         except Exception as e:
-            logging.error(f"Error in periodic_update: {e}")
+            logging.error(f"Error in init_update: {e}")
             await asyncio.sleep(60)
+
+
+async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
+    """
+    Starts both periodic background tasks:
+    - Save cycle every 10 minutes
+    - Update at 00:00 and 12:00 IST
+    """
+    await auto_updater.initialize(bot=bot)
+
+    # Run one-time update if requested
+    if update:
+        if not hasattr(auto_updater, 'initialized'):
+            await auto_updater.initialize(bot=bot)
+            await auto_updater.update_data()
+            auto_updater.initialized = True
+            logging.info("Ran one-time initial update")
+
+    # Launch tasks in background
+    asyncio.create_task(periodic_save_cycle())
+    asyncio.create_task(periodic_init_update(bot=bot))
+
+    while True:
+        await asyncio.sleep(3600)  # Keep parent task alive
