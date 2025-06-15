@@ -474,6 +474,7 @@ class UserStartManager:
                 return
 
             url = parts[1].strip()
+            print(url)
             if not url.startswith("http"):
                 await self.bot.send_message(message.chat.id, "❌ Invalid URL. Must start with http or https.")
                 return
