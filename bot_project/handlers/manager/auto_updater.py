@@ -206,6 +206,7 @@ class AutoUpdater:
     def __init__(self):
         self.price_country_mapping: Dict[str, Dict[str, str]] = {}
         self.sms_providers = SMS_PROVIDERS_ID
+        self.bot: Optional[AsyncTeleBot] = None
 
         # Convert flat set into a dict mapping: {class_name: provider_id}
         self.services = [
