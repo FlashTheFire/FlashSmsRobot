@@ -298,8 +298,6 @@ class AutoUpdater:
 
             
         redis_key = f"{SERVICE_PREFIX}:{country_id}:{server_id}:{app_id}"
-        if int(server_id) == 1:
-            print(f"Redis Key: {redis_key}")
         await pipe.hsetnx(redis_key, "is_show_country", "True")
         await pipe.hsetnx(redis_key, "is_show_server",  "True")
         await pipe.hsetnx(redis_key, "is_show_app", "True")
@@ -337,7 +335,7 @@ class AutoUpdater:
             await self.update_price_mapping(app_id, app_price, country_id)
             pipe.hset(redis_key, mapping=redis_data)
             #print("The field 'is_adjustable' exist")
-        print(colored(f"    ✓ Added: {app.get('app_name')} {app_codes} | Price: ${app_price:<6} | Stock: {app.get('count')}", "green"))
+        #print(colored(f"    ✓ Added: {app.get('app_name')} {app_codes} | Price: ${app_price:<6} | Stock: {app.get('count')}", "green"))
 
     async def process_server(
         self,
@@ -437,10 +435,10 @@ class AutoUpdater:
                     except Exception as e:
                         logging.error(f"Error fetching data from {service_name}: {e}")
 
-            transformed = transformer.transform_data(whole_data)
+            #transformed = transformer.transform_data(whole_data)
             await self.redis_client.json().set('main_data:service:main_data', '$', whole_data)
             logging.info("Data successfully transformed and stored in Redis")
-            return transformed
+            #return transformed
         except Exception as e:
             logging.error(f"An error occurred while processing the data: {str(e)}")
             return None
@@ -448,11 +446,12 @@ class AutoUpdater:
     async def update_data(self):
         """Main update function that orchestrates the entire update process."""
         try:
-            data = await self.fetch_transform_data() #await self.redis_client.json().get('main_data:service:main_data') or {} #
-            '''server_ids = [sn for _, sn in self.services]
+            #await self.fetch_transform_data()
+            data = await self.redis_client.json().get('main_data:service:main_data') or {}
+            server_ids = [sn for _, sn in self.services]
             transformer = DataTransformer(server_ids, self.sms_providers, self.redis_client)
-            await transformer.initialize()  # Initialize Redis client and load mappings
-            data = transformer.transform_data(data)'''
+            await transformer.initialize()  
+            data = transformer.transform_data(data)
             print(colored(f"Data: {len(data)}", "blue"))
             if data:
                 await self.insert_data(data)
