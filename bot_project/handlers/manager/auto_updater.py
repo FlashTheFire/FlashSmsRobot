@@ -362,8 +362,7 @@ class AutoUpdater:
         print(colored(f"Matches found: {matches}", "green"))
         # Load persistent country data (or initialize if not exists)
         print(colored(f"Loading persistent country data...", "blue"))
-        batches = list(self.chunker(list(data.items()), 1))
-        print(colored(f"Batches: {len(batches)}", "green"))
+        batches = list(self.chunker(data, 1))
         
         for batch_index, batch in enumerate(batches, start=1):
             tasks = []
@@ -434,7 +433,11 @@ class AutoUpdater:
     async def update_data(self):
         """Main update function that orchestrates the entire update process."""
         try:
-            data = await self.redis_client.json().get('main_data:service:main_data') or {} #await self.fetch_transform_data() #y
+            data = await self.redis_client.json().get('main_data:service:main_data') or {} #await self.fetch_transform_data() #
+            server_ids = [sn for _, sn in self.services]
+            transformer = DataTransformer(server_ids, self.sms_providers, self.redis_client)
+            await transformer.initialize()  # Initialize Redis client and load mappings
+            data = transformer.transform_data(data)
             print(colored(f"Data: {len(data)}", "blue"))
             if data:
                 await self.insert_data(data)
