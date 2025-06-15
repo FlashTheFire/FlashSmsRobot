@@ -129,14 +129,7 @@ class DataTransformer:
         return None  # No valid mapping found
 
     def transform_data(self, fetched_data: Dict[str, Any]) -> List[Dict[str, Any]]:
-        # Dump raw fetched_data for post-mortem
-        with open("fetched_data.json", "w") as f:
-            json.dump(fetched_data, f, indent=2)
-        # Only log actual problems from here on
-        
-        # Load the data from a file for testing
-        with open("fetched_data.json", "r") as f:
-            fetched_data = json.load(f)
+
         transformed: List[Dict[str, Any]] = []
 
         for record_id, country_info in self.country_map.items():
@@ -717,14 +710,14 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
 
                 # If `update` is True, run once on first invocation
                 elif update:
-                    #if not hasattr(auto_updater, 'initialized'):
-                    #    await auto_updater.initialize(bot=bot)
-                    #    await auto_updater.update_data()
+                    if not hasattr(auto_updater, 'initialized'):
+                        await auto_updater.initialize(bot=bot)
+                        await auto_updater.update_data()
 
-                    #    auto_updater.initialized = True
+                        auto_updater.initialized = True
                     # ──────────────────────────────────────────────────────
                     await auto_updater.save_data_cycle()
-                    #await asyncio.sleep(1 * 30 * 60)
+                    await asyncio.sleep(1 * 30 * 60)
                     pass
                     # ──────────────────────────────────────────────────────
 
