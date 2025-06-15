@@ -455,7 +455,7 @@ class AutoUpdater:
         return {}
 
     async def load_old_data_from_url(self, url: str) -> Dict[str, Any]:
-        """Fetch a JSON dump from URL and return it as a dict."""
+        """Fetch a JSON dump from URL and return it as a flat dict."""
         if not url:
             logging.warning("[AutoUpdate.load_old_data_from_url] Empty URL")
             return {}
@@ -468,14 +468,23 @@ class AutoUpdater:
                         return {}
                     text = await resp.text()
             data = json.loads(text)
-            if isinstance(data, list) and len(data) == 1 and isinstance(data[0], dict):
-                return data[0]
-            if isinstance(data, dict):
+
+            # ✅ Properly unwrap the nested structure
+            if isinstance(data, list):
+                while isinstance(data, list) and len(data) == 1:
+                    data = data[0]
+                if isinstance(data, dict):
+                    return data
+                else:
+                    logging.warning("[AutoUpdate.load_old_data_from_url] Unexpected nested structure after unwrapping")
+            elif isinstance(data, dict):
                 return data
-            logging.warning("[AutoUpdate.load_old_data_from_url] Unexpected JSON structure")
+            else:
+                logging.warning("[AutoUpdate.load_old_data_from_url] Unexpected JSON structure")
         except Exception as e:
             logging.error(f"[AutoUpdate.load_old_data_from_url] Error fetching JSON: {e}")
         return {}
+
 
     async def import_redis_dump(self, url: str) -> None:
         """Download a dump from URL and recreate the keys in Redis."""
