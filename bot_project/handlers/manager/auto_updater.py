@@ -756,11 +756,11 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
 
     # Run one-time update if requested
     if update:
-        if not hasattr(auto_updater, 'initialized'):
+        """if not hasattr(auto_updater, 'initialized'):
             await auto_updater.initialize(bot=bot)
             await auto_updater.update_data()
             auto_updater.initialized = True
-            logging.info("Ran one-time initial update")
+            logging.info("Ran one-time initial update")"""
 
     # Launch tasks in background
     asyncio.create_task(periodic_save_cycle())
