@@ -130,8 +130,8 @@ async def qr_code(
         fetch_image_from_url(DEPOSIT_INR_QR_CODE)
     )
     print('qr_img_bytes')
-    print(rect_img)
-    return rect_img
+    print(qr_img_bytes)
+    return qr_img_bytes
     print('rect_img')
     print(rect_img)
 
