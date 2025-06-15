@@ -153,10 +153,6 @@ async def qr_code(
     draw.rounded_rectangle((0, 0, size, size), radius, fill=255)
     square_img.putalpha(mask)
 
-    # Debug: Save QR image to file to check shape
-    #square_img.save("/tmp/debug_qr.png")
-    #print("[DEBUG] QR image saved to /tmp/debug_qr.png")
-
     # Convert background image to RGBA and paste QR code
     rect_img = rect_img.convert("RGBA")
 
@@ -168,10 +164,6 @@ async def qr_code(
         raise ValueError("QR code position + size exceeds background dimensions.")
 
     rect_img.paste(square_img, position, square_img)
-
-    # Debug: Save final image to inspect
-    rect_img.save("/tmp/final_result_debug.png")
-    print("[DEBUG] Final image saved to /tmp/final_result_debug.png")
 
     # Return image as BytesIO
     img_byte_arr = BytesIO()
