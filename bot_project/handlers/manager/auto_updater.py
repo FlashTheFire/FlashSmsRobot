@@ -752,7 +752,6 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
     - Save cycle every 10 minutes
     - Update at 00:00 and 12:00 IST
     """
-    await auto_updater.initialize(bot=bot)
 
     # Run one-time update if requested
     if update:
