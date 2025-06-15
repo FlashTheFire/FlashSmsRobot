@@ -531,7 +531,7 @@ class AutoUpdater:
         """Store a Python dict into Redis under REDIS_DUMP_KEY as JSON."""
         try:
             payload = json.dumps([data])
-            r = redis_manager.get_client()
+            r = await redis_manager.get_client()
             await r.execute_command(
                 "JSON.SET", self.REDIS_DUMP_KEY, "$", payload
             )
@@ -541,7 +541,7 @@ class AutoUpdater:
 
     async def dump_redis_data(self) -> Dict[str, Any]:
         """Scan and dump selected Redis keys into a dict of type/value entries."""
-        r, result, cursor = redis_manager.get_client(), {}, 0
+        r, result, cursor = await redis_manager.get_client(), {}, 0
         try:
             while True:
                 cursor, keys = await r.scan(cursor=cursor, count=100)
