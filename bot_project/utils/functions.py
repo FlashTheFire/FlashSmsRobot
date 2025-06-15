@@ -101,17 +101,20 @@ async def fetch_qr(order_id: str) -> BytesIO:
     """Asynchronously fetches the QR code image and returns it as a BytesIO."""
     qr_url = QR_BASE_URL.format(order_id=order_id)
     async with aiohttp.ClientSession() as session:
-        async with session.get(qr_url) as response:
-            if response.status != 200:
-                raise Exception(f"Failed to fetch QR code JSON, status code: {response.status}")
-            response_json = await response.json()
-            image_url = response_json.get("image")
-            if not image_url:
-                raise Exception("Image URL not found in the JSON response")
-        async with session.get(image_url) as image_response:
-            if image_response.status != 200:
-                raise Exception(f"Failed to fetch QR code image, status code: {image_response.status}")
-            return BytesIO(await image_response.read())
+        try:
+            async with session.get(qr_url) as response:
+                if response.status != 200:
+                    raise Exception(f"Failed to fetch QR code JSON, status code: {response.status}")
+                response_json = await response.json()
+                image_url = response_json.get("image")
+                if not image_url:
+                    raise Exception("Image URL not found in the JSON response")
+            async with session.get(image_url) as image_response:
+                if image_response.status != 200:
+                    raise Exception(f"Failed to fetch QR code image, status code: {image_response.status}")
+                return BytesIO(await image_response.read())
+        except Exception as e:
+            print(f"Error fetching QR code: {e}")
 
 async def qr_code(
     deposit_id: str,
