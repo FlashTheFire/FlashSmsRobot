@@ -128,7 +128,7 @@ class UserWalletManagement:
                             call, user_data, image_path, chat_id, message_id, keyboard, caption, current_info
                         )
                 except Exception as e:
-                    print(f"Error processing buy command: {e}")
+                    print(f"Error processing process_wallet_callback command: {e}")
                     await self.bot.send_message(chat_id, "🚫 Eʀʀᴏʀ Gᴇɴᴇʀᴀᴛɪɴɢ Rᴇǫᴜᴇsᴛ.")
                     return
                 finally:
