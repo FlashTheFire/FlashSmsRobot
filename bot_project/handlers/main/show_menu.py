@@ -412,7 +412,7 @@ class UserStartManager:
             logger.error(f"Error checking membership for user {user.id}: {e}")
             await self.bot.send_message(message.from_user.id, "There was an error checking your membership. Please try again later.")
     
-    async def update_env_file(key, value):
+    async def update_env_file(self, key, value):
         lines = []
         if os.path.exists(ENV_FILE):
             with open(ENV_FILE, "r") as f:
