@@ -639,33 +639,40 @@ class AutoUpdater:
         return result
 
     async def upload_from_redis_key(self) -> str:
-        """
-        Fetch JSON from REDIS_DUMP_KEY, upload it to 0x0.st, and return the URL.
-        """
-        upload_url = "https://0x0.st"
-        try:
-            raw = await self.redis_client.execute_command("JSON.GET", self.REDIS_DUMP_KEY, "$")
-            if not raw:
-                logging.error("[AutoUpdate.upload_from_redis_key] No data to upload")
-                return ""
-            parsed = json.loads(raw) if isinstance(raw, str) else raw
-            payload = json.dumps(parsed, indent=2).encode()
-            form = aiohttp.FormData()
-            form.add_field("file", io.BytesIO(payload),
-                           filename="redis_dump.json",
-                           content_type="application/json")
-
-            timeout = aiohttp.ClientTimeout(total=30)
-            async with aiohttp.ClientSession(timeout=timeout) as sess:
-                async with sess.post(upload_url, data=form) as resp:
-                    text = await resp.text()
-                    if resp.status == 200 and text.startswith("http"):
-                        url = text.strip()
-                        logging.info(f"[AutoUpdate.upload_from_redis_key] Uploaded → {url}")
-                        return url
-                    logging.error(f"[AutoUpdate.upload_from_redis_key] Failed ({resp.status}): {text}")
-        except Exception as e:
-            logging.error(f"[AutoUpdate.upload_from_redis_key] Exception: {e}")
+        services = [
+            ("https://0x0.st", False),
+            ("https://transfer.sh/redis_dump.json", False),
+            ("https://file.io", True),
+        ]
+        raw = await self.redis_client.execute_command("JSON.GET", self.REDIS_DUMP_KEY, "$")
+        if not raw:
+            logging.error("No data to upload"); return ""
+        parsed = json.loads(raw) if isinstance(raw, str) else raw
+        payload = json.dumps(parsed, indent=2).encode()
+        for url, use_raw_body in services:
+            try:
+                timeout = aiohttp.ClientTimeout(total=30)
+                async with aiohttp.ClientSession(timeout=timeout) as sess:
+                    if use_raw_body:
+                        async with sess.post(url, data=payload) as resp:
+                            text = await resp.text()
+                    else:
+                        form = aiohttp.FormData()
+                        form.add_field("file", io.BytesIO(payload),
+                                       filename="redis_dump.json",
+                                       content_type="application/json")
+                        async with sess.post(url, data=form) as resp:
+                            text = await resp.text()
+                    if resp.status == 200 and text:
+                        link = text.strip()
+                        # file.io returns JSON
+                        if url.startswith("https://file.io"):
+                            link = json.loads(text)["link"]
+                        logging.info(f"Uploaded → {link}")
+                        return link
+                    logging.warning(f"Failed {url} ({resp.status})")
+            except Exception as e:
+                logging.error(f"[upload] Exception for {url}: {e}")
         return ""
 
     async def send_dump_link(self, chat_id: int, file_url: str) -> None:
