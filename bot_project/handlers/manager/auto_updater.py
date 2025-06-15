@@ -362,7 +362,7 @@ class AutoUpdater:
         print(colored(f"Matches found: {matches}", "green"))
         # Load persistent country data (or initialize if not exists)
         print(colored(f"Loading persistent country data...", "blue"))
-        batches = list(self.chunker(data, 1))
+        batches = [data[i:i+1] for i in range(0, len(data), 1)]
         
         for batch_index, batch in enumerate(batches, start=1):
             tasks = []
@@ -434,6 +434,7 @@ class AutoUpdater:
         """Main update function that orchestrates the entire update process."""
         try:
             data = await self.redis_client.json().get('main_data:service:main_data') or {} #await self.fetch_transform_data() #y
+            print(colored(f"Data: {len(data)}", "blue"))
             if data:
                 await self.insert_data(data)
                 logging.info("Data update completed successfully")
