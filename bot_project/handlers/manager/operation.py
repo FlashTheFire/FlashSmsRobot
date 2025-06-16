@@ -1948,8 +1948,8 @@ class CountryFlagUpdater:
             countries_dict = app_mapping = None
 
             # Load only what is needed
-            if is_country_return:
-                countries_dict = await self.redis_client.json().get('main_data:details:country_data')
+            countries_dict = await self.redis_client.json().get('main_data:details:country_data') or None
+            if is_country_return or not countries_dict:
                 if not countries_dict:
                     with open(os.path.join(os.path.dirname(__file__), 'file', 'country_code.json'), 'r', encoding='utf-8') as f:
                         countries_list = json.load(f)
@@ -1969,9 +1969,9 @@ class CountryFlagUpdater:
                 }
             else:
                 country_mapping = {}
-
-            if is_app_return:
-                app_mapping = await self.redis_client.json().get('main_data:service:app_data')
+            
+            app_mapping = await self.redis_client.json().get('main_data:service:app_data') or None
+            if is_app_return or not app_mapping:
                 if not app_mapping:
                     with open(os.path.join(os.path.dirname(__file__),  "file", "app_code.json"), 'r', encoding='utf-8') as f:
                         app_mapping = json.load(f)

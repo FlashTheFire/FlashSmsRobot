@@ -443,7 +443,7 @@ class AutoUpdater:
     async def update_data(self):
         """Main update function that orchestrates the entire update process."""
         try:
-            await self.fetch_transform_data()
+            #await self.fetch_transform_data()
             data = await self.redis_client.json().get('main_data:service:main_data') or {}
             server_ids = [sn for _, sn in self.services]
             transformer = DataTransformer(server_ids, self.sms_providers, self.redis_client)
