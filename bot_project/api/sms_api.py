@@ -183,7 +183,7 @@ class CombinedAPI:
                 return None
             return (
                 f"@{id_field}:{val}"
-                if val.isnumeric()
+                if str(val).isnumeric()
                 else f"@{name_field}:(%%{val}%%|{val}*|{val})"
             )
 
@@ -201,26 +201,36 @@ class CombinedAPI:
 
         q = " ".join(filters) if filters else "*"
 
-        cmd = [
-            "FT.AGGREGATE", self.service_index, q,
-            "GROUPBY", "4", "@country_id", "@app_id", "@app_price", "@server_id",
-            "REDUCE", "SUM", "1", "@app_count", "AS", "total_count",
-            "LIMIT", "0", "100000",
-        ]
+        batch_size = 10000
+        offset = 0
+        all_rows = []
 
-        try:
-            resp = await self.redis_client.execute_command(*cmd)
-        except RedisError as e:
-            logger.exception("Aggregation failed: %s", e)
-            raise RuntimeError(f"Redis aggregation error: {e}")
-        if not isinstance(resp, list) or len(resp) < 2:
-            return {}
+        while True:
+            cmd = [
+                "FT.AGGREGATE", self.service_index, q,
+                "GROUPBY", "4", "@country_id", "@app_id", "@app_price", "@server_id",
+                "REDUCE", "SUM", "1", "@app_count", "AS", "total_count",
+                "LIMIT", str(offset), str(batch_size),
+            ]
+            try:
+                resp = await self.redis_client.execute_command(*cmd)
+            except RedisError as e:
+                logger.exception("Aggregation failed: %s", e)
+                raise RuntimeError(f"Redis aggregation error: {e}")
+
+            if not isinstance(resp, list) or len(resp) < 2:
+                break
+
+            all_rows.extend(resp[1:])
+            if len(resp) - 1 < batch_size:
+                break
+            offset += batch_size
 
         if api_id == 1:
             raw_data_1: Dict[str, Dict[str, Dict[str, int]]] = {}
-            for row in resp[1:]:
+            for row in all_rows:
                 if not isinstance(row, list) or len(row) % 2 != 0:
-                    raise ValueError(f"Malformed row: {row}")
+                    continue
                 rd = {row[i]: row[i + 1] for i in range(0, len(row), 2)}
                 cid = rd.get("country_id")
                 aid = rd.get("app_id")
@@ -248,9 +258,9 @@ class CombinedAPI:
 
         elif api_id == 2:
             temp_data_2: Dict[str, Dict[str, Dict[str, Dict[str, Union[float, int]]]]] = {}
-            for row in resp[1:]:
+            for row in all_rows:
                 if not isinstance(row, list) or len(row) % 2 != 0:
-                    return {}
+                    continue
                 rd = {row[i]: row[i + 1] for i in range(0, len(row), 2)}
                 cid = rd.get("country_id")
                 aid = rd.get("app_id")
@@ -274,6 +284,7 @@ class CombinedAPI:
                 return temp_data_2.get(cid_str, {str(country_id): {}})
             else:
                 return temp_data_2
+
         else:
             return await self.app_data_prices(country_id, app_id, server_id, api_id=1)
     async def app_data_stock(
