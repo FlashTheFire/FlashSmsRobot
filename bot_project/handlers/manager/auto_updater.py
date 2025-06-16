@@ -722,6 +722,22 @@ class AutoUpdater:
 
         json_bytes = io.BytesIO(json.dumps(raw, indent=2).encode("utf-8"))
         json_bytes.seek(0)
+        
+        # ✅ Try temp.sh next
+        try:
+            response = requests.post("https://temp.sh/upload", files={
+                "file": ("flashsms.json", json_bytes, "application/json")
+            })
+            response.raise_for_status()
+            url = response.text.strip()
+            logging.info(f"[AutoUpdate.upload_from_redis_key] Uploaded to temp.sh: {url}")
+            return url
+        except Exception as e:
+            logging.error(f"[AutoUpdate.upload_from_redis_key] temp.sh failed: {e}")
+
+
+        # Reset buffer before retry
+        json_bytes.seek(0)
 
         # ✅ Try 0x0.st first
         try:
@@ -738,21 +754,6 @@ class AutoUpdater:
                 logging.warning(f"[AutoUpdate.upload_from_redis_key] 0x0.st failed: {response.status_code} - {response.text}")
         except Exception as e:
             logging.warning(f"[AutoUpdate.upload_from_redis_key] 0x0.st error: {e}")
-
-        # Reset buffer before retry
-        json_bytes.seek(0)
-
-        # ✅ Try temp.sh next
-        try:
-            response = requests.post("https://temp.sh/upload", files={
-                "file": ("flashsms.json", json_bytes, "application/json")
-            })
-            response.raise_for_status()
-            url = response.text.strip()
-            logging.info(f"[AutoUpdate.upload_from_redis_key] Uploaded to temp.sh: {url}")
-            return url
-        except Exception as e:
-            logging.error(f"[AutoUpdate.upload_from_redis_key] temp.sh failed: {e}")
 
         return ""
 
