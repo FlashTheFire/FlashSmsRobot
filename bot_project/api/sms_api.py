@@ -113,6 +113,7 @@ class RateLimiter:
 # CombinedAPI: holds all route handlers
 # ─────────────────────────────────────────────────────────────────────────────
 class CombinedAPI:
+    VALID_STATUSES = {-1, 1, 3, 6, 8}
     def __init__(self, redis_client: redis.Redis = None, rate_limiter: "RateLimiter" = None, bot: AsyncTeleBot = None):
         if redis_client is not None:
             self.redis_client = redis_client
@@ -1037,128 +1038,126 @@ class CombinedAPI:
     # V1 Legacy SMS API (/stubs/handler_api.php)
     # ─────────────────────────────────────────────────────────────────────────
     async def handle_v1_sms_api(self, request: web.Request) -> web.Response:
-        data = dict(request.rel_url.query)
-        action = data.get("action")
+        """
+        Unified handler for v1 SMS API actions in a single method.
+        Supported actions: getPrices, getNumbersStatus, getNumber,
+        setStatus, getStatus, getBalance, getServicesList, getCountriesList
+        """
+        params: Dict[str, str] = dict(request.rel_url.query)
+        action = params.get("action")
         if not action:
-            return web.Response(text="BAD_ACTION", status=200)
+            return web.json_response({"error": "BAD_ACTION"}, status=400)
 
-        if action == "getPrices":
-            country_id = data.get("country", None) or None
-            app_id = data.get("service", None) or None
-            server_id = data.get("operator", None) or None
+        try:
+            # Common parsing helpers
+            def parse_int(key: str, error_code: str) -> Optional[int]:
+                val = params.get(key)
+                if val is None:
+                    return None
+                try:
+                    return int(val)
+                except ValueError:
+                    raise web.HTTPBadRequest(text=error_code)
 
-            if not server_id.isdigit():
-                return web.Response(text="BAD_OPERATOR", status=200)
-            print(colored(f"getPrices: country_id={country_id}, app_id={app_id}, server_id={server_id}", "green"))
+            def parse_float(key: str, error_code: str) -> Optional[float]:
+                val = params.get(key)
+                if val is None:
+                    return None
+                try:
+                    return float(val)
+                except ValueError:
+                    raise web.HTTPBadRequest(text=error_code)
 
-            result = await self.app_data_prices(country_id=country_id, app_id=app_id, server_id=server_id, api_id=1)
-            print(colored(f"getPrices result: {len(result)}", "green"))
-            return web.Response(text=json.dumps(result), content_type="application/json")
-        if action == "getNumbersStatus":
-            country_id = data.get("country", None) or None
-            app_id = data.get("service", None) or None
-            server_id = data.get("server", None) or None
-            print(colored(f"getNumbersStatus: country_id={country_id}, app_id={app_id}, server_id={server_id}", "green"))
+            # Dispatch within one function
+            if action == "getPrices":
+                operator_id = parse_int("operator", "BAD_OPERATOR")
+                result = await self.app_data_prices(
+                    country_id=params.get("country"),
+                    app_id=params.get("service"),
+                    server_id=operator_id,
+                    api_id=1,
+                )
+                return web.json_response(result)
 
-            status = await self.app_data_stock(api_id=1, country_id=country_id, app_id=app_id, server_id=server_id)
-            print(colored(f"getNumbersStatus result: {len(status)}", "green"))
-            return web.Response(text=json.dumps(status), content_type="application/json")
+            if action == "getNumbersStatus":
+                operator_id = parse_int("operator", "BAD_OPERATOR")
+                result = await self.app_data_stock(
+                    api_id=1,
+                    country_id=params.get("country"),
+                    app_id=params.get("service"),
+                    server_id=operator_id,
+                )
+                return web.json_response(result)
 
+            if action == "getNumber":
+                user_id = await self.get_user_id_by_api_key(params.get("api_key"))
+                # Required
+                if not params.get("service"):
+                    raise web.HTTPBadRequest(text="NO_SERVICE")
+                if not params.get("country"):
+                    raise web.HTTPBadRequest(text="NO_COUNTRY")
 
-        if action == "getNumber":            
-            api_key = data.get("api_key")
-            user_id = await self.get_user_id_by_api_key(api_key)
+                service_id = parse_int("service", "BAD_SERVICE")
+                country_id = parse_int("country", "BAD_COUNTRY")
+                operator_id = parse_int("operator", "BAD_OPERATOR")
+                max_price = parse_float("maxPrice", "BAD_MAX_PRICE")
+                ref_id = parse_int("ref_id", "BAD_REF_ID")
 
-            service_id = data.get("service", None) or None
-            country_id = data.get("country", None) or None
+                result = await self.handle_get_number(
+                    user_id=user_id,
+                    server_id=operator_id,
+                    service_id=service_id,
+                    country_id=country_id,
+                    input_price=max_price,
+                    ref_id=ref_id,
+                    api_id=1,
+                )
+                if not result.get("status"):
+                    code = result.get("message", "ERROR")
+                    if code == "NO_NUMBERS":
+                        raise web.HTTPBadRequest(text="NO_NUMBERS")
+                    raise web.HTTPBadRequest(text=code)
+                order_id = result["order_id"]
+                code = result.get("code", "").lstrip("+")
+                number = result.get("number", "")
+                return web.Response(text=f"ACCESS_NUMBER:{order_id}:{code}{number}")
 
-            if not service_id:
-                return web.Response(text="NO_SERVICE", status=200)
-            elif not service_id.isdigit():
-                return web.Response(text="BAD_SERVICE", status=200)
-            elif not country_id:
-                return web.Response(text="NO_COUNTRY", status=200)
-            elif not country_id.isdigit():
-                return web.Response(text="BAD_COUNTRY", status=200)
+            if action == "setStatus":
+                order_id = parse_int("id", "BAD_ID")
+                status_id = parse_int("status", "BAD_STATUS")
+                if status_id not in self.VALID_STATUSES:
+                    raise web.HTTPBadRequest(text="BAD_STATUS")
+                result = await self.handle_set_status(status_id=status_id, order_id=order_id)
+                return web.json_response(result)
 
-            try:
-                max_price = float(data.get("maxPrice", None)) or None
-                server_id = int(data.get("operator", None)) or None
-                ref_id = int(data.get("ref_id", None)) or None
-            except Exception as e:
-                max_price = None
-                server_id = None
-                ref_id = None
+            if action == "getStatus":
+                order_id = parse_int("id", "BAD_ID")
+                result = await self.handle_get_status(order_id, api_id=1)
+                return web.json_response(result)
 
-            result = await self.handle_get_number(user_id, server_id, service_id, country_id, input_price=max_price, ref_id=ref_id, api_id=1)
-            message = result.get('message', '')
+            if action == "getBalance":
+                user_id = await self.get_user_id_by_api_key(params.get("api_key"))
+                data = await self.get_user_data(user_id=user_id)
+                balance = data.get("current_balance", 0.0)
+                return web.Response(text=f"ACCESS_BALANCE:{balance:.2f}")
 
-            if result.get('status') is False and message == "NO_NUMBERS":
-                return web.Response(text="NO_NUMBERS", status=200)
-            elif result.get('status') is False:
-                return web.Response(text=result.get('message'), status=200)
-            elif result.get('status') is True:
-                text = f"ACCESS_NUMBER:{result.get('order_id')}:{result.get('code').replace('+', '')}{result.get('number')}"
-                return web.Response(text=text)
-            return web.Response(text=json.dumps(result))
+            if action == "getServicesList":
+                services = await self.services_data(api_id=1)
+                return web.json_response(services)
 
+            if action == "getCountriesList":
+                countries = await self.countries_data(api_id=1)
+                return web.json_response(countries)
 
-        if action == "setStatus":
-            order_id = data.get("id", None) or None
-            status_id = data.get("status", None) or None
+            # Unknown action
+            raise web.HTTPBadRequest(text="BAD_ACTION")
 
-            print(f"setStatus: order_id={order_id}, status_id={status_id}")
-            if not order_id:
-                return web.Response(text="NO_ID", status=200)
-            elif not order_id.isdigit():
-                return web.Response(text="BAD_ID", status=200)
-            elif not status_id:
-                return web.Response(text="BAD_STATUS", status=200)
-            elif not status_id.isdigit():
-                return web.Response(text="BAD_STATUS", status=200)
-
-            try:
-                status_id = int(status_id)
-                order_id = int(order_id)
-            except ValueError:
-                print(f"ValueError: setStatus: order_id={order_id}, status_id={status_id}")
-                return web.Response(text="BAD_STATUS", status=200)
-
-            if status_id not in {-1, 1, 3, 6, 8}:
-                print(f"Invalid status: setStatus: order_id={order_id}, status_id={status_id}")
-                return web.Response(text="BAD_STATUS", status=200)
-
-            print(f"handle_set_status: order_id={order_id}, status_id={status_id}")
-            result = await self.handle_set_status(status_id, order_id)
-            return web.Response(text=result.get("message", json.dumps(result)))
-
-
-        if action == "getStatus":
-            act_id = data.get("id", None) or None
-            if not act_id:
-                return web.Response(text="NO_ID", status=200)
-            elif not act_id.isdigit():
-                return web.Response(text="BAD_ID", status=200)
-            
-            status = await self.handle_get_status(act_id, api_id=1)
-            return web.Response(text=status.get("message", json.dumps(status)))
-        
-        
-        if action == "getBalance":
-            api_key = data.get("api_key")
-            user_id = await self.get_user_id_by_api_key(api_key)
-            balance = await self.get_user_data(user_id=user_id)
-            return web.Response(text=f"ACCESS_BALANCE:{balance['current_balance']:.2f}")
-        
-
-        if action == "getServicesList":
-            services = await self.services_data(api_id=1)
-            return web.Response(text=json.dumps(services), content_type="application/json")     
-        if action == "getCountriesList":
-            countries = await self.countries_data(api_id=1)
-            return web.Response(text=json.dumps(countries), content_type="application/json")
-
-        return web.Response(text="BAD_ACTION", status=200)
+        except web.HTTPError as e:
+            # Already formatted HTTP errors
+            return web.Response(text=e.text, status=e.status)
+        except Exception as exc:
+            logger.exception("Error in V1 SMS API handler: %s", exc)
+            return web.json_response({"error": "INTERNAL_ERROR"}, status=500)
 
     # ─────────────────────────────────────────────────────────────────────────
     # Register all routes on the given `app`
