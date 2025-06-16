@@ -196,8 +196,7 @@ class CombinedAPI:
             ]
         ))
 
-        if filters:
-            filters.append("@app_price:[0.01 +inf]")
+        filters.append("@app_price:[0.01 +inf]")
 
         q = " ".join(filters) if filters else "*"
 
@@ -212,6 +211,7 @@ class CombinedAPI:
                 "REDUCE", "SUM", "1", "@app_count", "AS", "total_count",
                 "LIMIT", str(offset), str(batch_size),
             ]
+            print(' '.join(cmd))
             try:
                 resp = await self.redis_client.execute_command(*cmd)
             except RedisError as e:
