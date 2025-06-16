@@ -334,7 +334,7 @@ class AutoUpdater:
             await self.update_price_mapping(app_id, app_price, country_id)
             pipe.hset(redis_key, mapping=redis_data)
             #print("The field 'is_adjustable' exist")
-        print(colored(f"    ✓ Added: {app.get('app_name')} {app_codes} | Price: ${app_price:<6} | Stock: {app.get('count')}", "green"))
+        #print(colored(f"    ✓ Added: {app.get('app_name')} {app_codes} | Price: ${app_price:<6} | Stock: {app.get('count')}", "green"))
 
     async def process_server(
         self,
@@ -758,13 +758,16 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
     if update:
         if not hasattr(auto_updater, 'initialized'):
             redis_client = await redis_manager.get_client()
-            keys = [key async for key in redis_client.scan_iter(match='service_data:*', count=1000)]
+            keys = [key async for key in redis_client.scan_iter(match='service_data:*', count=10)]
             if len(keys) == 0:
                 await auto_updater.initialize(bot=bot)
                 await auto_updater.update_data()
                 auto_updater.initialized = True
                 logging.info("Ran one-time initial update")
-
+            else:
+                await auto_updater.initialize(bot=bot)
+                await auto_updater.save_data_cycle()
+                logging.info("Ran one-time save cycle")
     # Launch tasks in background
     asyncio.create_task(periodic_save_cycle(bot=bot))
     asyncio.create_task(periodic_init_update(bot=bot))
