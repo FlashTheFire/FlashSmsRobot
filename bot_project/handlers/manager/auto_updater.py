@@ -573,13 +573,9 @@ class AutoUpdater:
         logging.info(f"[AutoUpdate.import_redis_dump] Completed import of {len(data)} keys")
 
     async def save_data_to_redis(self, data: Dict[str, Any]) -> None:
-        """Store a Python dict into Redis under REDIS_DUMP_KEY as JSON."""
-        try:
-            payload = json.dumps([data])
+        try:            
             r = await redis_manager.get_client()
-            await r.execute_command(
-                "JSON.SET", REDIS_DUMP_KEY, "$", payload
-            )
+            await r.json().set(REDIS_DUMP_KEY, ".", data)
             logging.info(f"[AutoUpdate.save_data_to_redis] Saved {len(data)} entries")
         except Exception as e:
             logging.error(f"[AutoUpdate.save_data_to_redis] Error: {e}")
