@@ -425,9 +425,9 @@ class TopServiceManager:
                     else:
                         pass
                 await asyncio.sleep(self.UPDATE_INTERVAL)
-            except asyncio.CancelledError:
-                print("Automatic leaderboard update task cancelled")
-                await asyncio.sleep(60)
+            except asyncio.CancelledError as e:
+                print(f"Automatic leaderboard update task cancelled : {e}")
+                raise f"Automatic leaderboard update task cancelled : {e}"
             except Exception as e:
                 print(f"Error in automatic leaderboard update: {e}\n{traceback.format_exc()}")
                 await asyncio.sleep(60)
