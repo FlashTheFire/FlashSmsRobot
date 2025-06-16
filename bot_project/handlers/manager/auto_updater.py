@@ -673,7 +673,12 @@ class AutoUpdater:
         try:
             response = session.post("https://0x0.st", files=files)
             if response.status_code == 200:
+                print(f"[AutoUpdate.upload_from_redis_key] Uploaded to 0x0.st: {response.text.strip()}")
                 return response.text.strip()
+            else:
+                print(f"[AutoUpdate.upload_from_redis_key] Failed to upload to 0x0.st: {response.status_code}")
+                print(f"[AutoUpdate.upload_from_redis_key] Response: {response.text.strip()}")
+                return ""
         except Exception as e:
             logging.error(f"[AutoUpdate.0x0.st] Exception: {e}")
 
@@ -702,6 +707,7 @@ class AutoUpdater:
             data = await self.dump_redis_data()
             await self.save_data_to_redis(data)
             url = await self.upload_from_redis_key()
+            print(f"[AutoUpdate.save_data_cycle] URL: {url}")
             await self.send_dump_link(ADMIN_ID, url)
         except Exception as e:
             logging.error(f"[AutoUpdate.save_data_cycle] Failed cycle: {e}")
