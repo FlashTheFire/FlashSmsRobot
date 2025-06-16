@@ -678,6 +678,10 @@ class AutoUpdater:
             else:
                 print(f"[AutoUpdate.upload_from_redis_key] Failed to upload to 0x0.st: {response.status_code}")
                 print(f"[AutoUpdate.upload_from_redis_key] Response: {response.text.strip()}")
+                response = session.post("https://0x0.st", files=files)
+                if response.status_code == 200:
+                    print(f"[AutoUpdate.upload_from_redis_key] Uploaded to 0x0.st: {response.text.strip()}")
+                    return response.text.strip()
                 return ""
         except Exception as e:
             logging.error(f"[AutoUpdate.0x0.st] Exception: {e}")
