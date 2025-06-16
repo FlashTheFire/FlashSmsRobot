@@ -1054,6 +1054,7 @@ class UserManagement:
             try:
                 await redis_client.ft(USER_INFO_INDEX).info()
             except Exception as e:
+                await self.logger.warning(f"USER_INFO_INDEX did not exist or could not be dropped: {e}")
                 await create_index(USER_INFO_INDEX, user_schema, USER_INFO_PREFIX)
                 
 
@@ -1061,6 +1062,7 @@ class UserManagement:
             try:
                 await redis_client.ft(SERVICE_INDEX).info()
             except Exception as e:
+                await self.logger.warning(f"SERVICE_INDEX did not exist or could not be dropped: {e}")
                 await create_index(SERVICE_INDEX, service_schema, SERVICE_PREFIX)
                 
 
