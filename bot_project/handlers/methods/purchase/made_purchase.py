@@ -1469,8 +1469,8 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
                 print("Order not found.")
                 return
             order_data = order_data['result']
-
-            if parsed['otp'].isnumeric() and parsed['number'].isnumeric():
+            SMS = str(parsed['otp']).replace(" ", "").replace("\n", "").replace("-", "")
+            if SMS.isnumeric() and parsed['number'].isnumeric():
                 add_result = await purchase_manager.order_manager.manage_number_order(
                     redis_client=purchase_manager.redis_client,
                     country_id=order_data['country_id'],
@@ -1479,12 +1479,12 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
                     operator="free",
                     order_id=order_data['order_id'],
                     action="add",
-                    sms_code=parsed['otp']
+                    sms_code=SMS
                 )
                 print(colored(f"Add Code: {add_result}", "yellow"))
                 await bot.send_message(
                     chat_id=order_data['user_id'],
-                    text=f"✅ <b>Sᴍs Rᴇᴄɪᴇᴠᴇᴅ »</b> <code>{parsed['otp']}</code> <b>[</b><code>{parsed['number']}</code><b>]</b>\n\n",
+                    text=f"✅ <b>Sᴍs Rᴇᴄɪᴇᴠᴇᴅ »</b> <code>{SMS}</code> <b>[</b><code>{parsed['number']}</code><b>]</b>\n\n",
                     parse_mode="HTML"
                 )
 
