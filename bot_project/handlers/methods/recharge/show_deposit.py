@@ -63,13 +63,16 @@ def authorize_admin(user_id: int) -> bool:
 async def expire_old_codes():
     cursor = b"0"
     while True:
-        r = await redis_manager.get_client()
-        cursor, keys = await r.scan(cursor=cursor, match=f"{REDEEM_CODE_PREFIX}*", count=100)
-        for key in keys:
-            ttl = await redis_manager.redis_client.ttl(key)
-            if ttl == -1:
-                await redis_manager.redis_client.expire(key, CODE_TTL)
-        if cursor == b"0": break
+        try:
+            r = await redis_manager.get_client()
+            cursor, keys = await r.scan(cursor=cursor, match=f"{REDEEM_CODE_PREFIX}*", count=100)
+            for key in keys:
+                ttl = await redis_manager.redis_client.ttl(key)
+                if ttl == -1:
+                    await redis_manager.redis_client.expire(key, CODE_TTL)
+            if cursor == b"0": break
+        except Exception as e:
+            print(f"Error expiring old codes: {e}")
 
 
 
