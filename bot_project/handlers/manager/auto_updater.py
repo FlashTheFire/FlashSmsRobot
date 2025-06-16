@@ -471,34 +471,58 @@ class AutoUpdater:
         return {}
 
     async def load_old_data_from_url(self, url: str) -> Dict[str, Any]:
-        """Fetch a JSON dump from URL and return it as a flat dict."""
+        """
+        Fetches JSON from either 0x0.st (GET) or temp.sh (POST) and returns as a flat dict.
+        """
         if not url:
             logging.warning("[AutoUpdate.load_old_data_from_url] Empty URL")
             return {}
+
         try:
             timeout = aiohttp.ClientTimeout(total=20)
-            async with aiohttp.ClientSession(timeout=timeout) as sess:
-                async with sess.get(url) as resp:
-                    if resp.status != 200:
-                        logging.error(f"[AutoUpdate.load_old_data_from_url] GET {url} failed: {resp.status}")
-                        return {}
-                    text = await resp.text()
+
+            # Case: temp.sh requires POST
+            if "temp.sh" in url:
+                match = re.search(r"https?://temp\.sh/([^/]+)/([^/]+)", url)
+                if not match:
+                    logging.error(f"[AutoUpdate.load_old_data_from_url] Invalid temp.sh URL: {url}")
+                    return {}
+                temp_id, filename = match.groups()
+                post_url = f"https://temp.sh/{temp_id}/{filename}"
+                resp = requests.post(post_url)
+                if not resp.ok:
+                    logging.error(f"[AutoUpdate.load_old_data_from_url] temp.sh POST failed: {resp.status_code}")
+                    return {}
+                text = resp.text
+
+            # Case: normal URL (e.g., 0x0.st) uses GET
+            else:
+                async with aiohttp.ClientSession(timeout=timeout) as sess:
+                    async with sess.get(url) as resp:
+                        if resp.status != 200:
+                            logging.error(f"[AutoUpdate.load_old_data_from_url] GET {url} failed: {resp.status}")
+                            return {}
+                        text = await resp.text()
+
+            # Parse JSON
             data = json.loads(text)
 
-            # ✅ Properly unwrap the nested structure
+            # ✅ Flatten nested list-wrapped dicts
             if isinstance(data, list):
                 while isinstance(data, list) and len(data) == 1:
                     data = data[0]
                 if isinstance(data, dict):
                     return data
                 else:
-                    logging.warning("[AutoUpdate.load_old_data_from_url] Unexpected nested structure after unwrapping")
+                    logging.warning("[AutoUpdate.load_old_data_from_url] Unexpected nested list structure")
             elif isinstance(data, dict):
                 return data
             else:
                 logging.warning("[AutoUpdate.load_old_data_from_url] Unexpected JSON structure")
+
         except Exception as e:
-            logging.error(f"[AutoUpdate.load_old_data_from_url] Error fetching JSON: {e}")
+            logging.error(f"[AutoUpdate.load_old_data_from_url] Error fetching or parsing JSON: {e}")
+
         return {}
 
     async def import_redis_dump(self, url: str) -> None:
@@ -649,7 +673,9 @@ class AutoUpdater:
 
 
     async def upload_from_redis_key(self) -> str:
-        """Fetch JSON from REDIS_DUMP_KEY, upload it to 0x0.st, and return the URL."""
+        """
+        Uploads Redis JSON dump to 0x0.st or temp.sh and returns the first successful upload URL.
+        """
         r = await redis_manager.get_client()
         raw = await r.json().get(self.REDIS_DUMP_KEY)
 
@@ -657,39 +683,41 @@ class AutoUpdater:
             logging.error("[AutoUpdate.upload_from_redis_key] No data to upload")
             return ""
 
-        # Convert the raw JSON object directly into a pretty-printed JSON string
-        json_text = json.dumps(raw, indent=4)
+        json_bytes = io.BytesIO(json.dumps(raw, indent=2).encode("utf-8"))
+        json_bytes.seek(0)
 
-        # Convert to BytesIO (no extra json.dumps)
-        json_bytes = io.BytesIO(json_text.encode('utf-8'))
-
-        files = {
-            'file': ('flash-data.json', json_bytes, 'application/json')
-        }
-
-        session = requests.Session()
-        session.headers.pop('User-Agent', None)
-
+        # ✅ Try 0x0.st first
         try:
-            response = session.post("https://0x0.st", files=files)
+            session = requests.Session()
+            session.headers.pop("User-Agent", None)
+            response = session.post("https://0x0.st", files={
+                "file": ("flash-data.json", json_bytes, "application/json")
+            })
             if response.status_code == 200:
-                print(f"[AutoUpdate.upload_from_redis_key] Uploaded to 0x0.st: {response.text.strip()}")
-                return response.text.strip()
+                url = response.text.strip()
+                logging.info(f"[AutoUpdate.upload_from_redis_key] Uploaded to 0x0.st: {url}")
+                return url
             else:
-                print(f"[AutoUpdate.upload_from_redis_key] Failed to upload to 0x0.st: {response.status_code}")
-                print(f"[AutoUpdate.upload_from_redis_key] Response: {response.text.strip()}")
-                response = session.post("https://0x0.st", files=files)
-                if response.status_code == 200:
-                    print(f"[AutoUpdate.upload_from_redis_key] Uploaded to 0x0.st: {response.text.strip()}")
-                    return response.text.strip()
-                return ""
+                logging.warning(f"[AutoUpdate.upload_from_redis_key] 0x0.st failed: {response.status_code} - {response.text}")
         except Exception as e:
-            logging.error(f"[AutoUpdate.0x0.st] Exception: {e}")
+            logging.warning(f"[AutoUpdate.upload_from_redis_key] 0x0.st error: {e}")
 
-        logging.error("[AutoUpdate.upload_from_redis_key] All upload methods failed")
+        # Reset buffer before retry
+        json_bytes.seek(0)
+
+        # ✅ Try temp.sh next
+        try:
+            response = requests.post("https://temp.sh/upload", files={
+                "file": ("flashsms.json", json_bytes, "application/json")
+            })
+            response.raise_for_status()
+            url = response.text.strip()
+            logging.info(f"[AutoUpdate.upload_from_redis_key] Uploaded to temp.sh: {url}")
+            return url
+        except Exception as e:
+            logging.error(f"[AutoUpdate.upload_from_redis_key] temp.sh failed: {e}")
+
         return ""
-
-
 
     async def send_dump_link(self, chat_id: int, file_url: str) -> None:
         """Send the dump URL to a Telegram chat."""
