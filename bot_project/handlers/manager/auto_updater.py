@@ -791,13 +791,16 @@ async def periodic_save_cycle(bot: AsyncTeleBot = None):
     """
     Saves data every 30 minutes.
     """
+    last_run_min = -1
+
     while True:
         try:
             now_ist = datetime.utcnow().replace(tzinfo=pytz.utc).astimezone(IST)
-            if now_ist.minute % 30 == 0:
+            if now_ist.minute % 30 == 0 and now_ist.minute != last_run_min:
                 await auto_updater.initialize(bot=bot)
                 logging.info(f"Running save_data_cycle at {now_ist}")
                 await auto_updater.save_data_cycle()
+                last_run_min = now_ist.minute
             await asyncio.sleep(30)
         except Exception as e:
             logging.error(f"Error in save_data_cycle: {e}")

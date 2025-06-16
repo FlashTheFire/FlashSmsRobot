@@ -7,6 +7,7 @@ import logging
 from typing import Dict, Optional, Tuple, List, Any, Union
 from utils.redis_manager import redis_manager, RedisManager
 from redis.exceptions import RedisError
+from termcolor import colored
 from utils.config import COMMISSION
 from typing import Optional, Dict, Any
 from redis.exceptions import RedisError
@@ -185,23 +186,25 @@ class CombinedAPI:
                 else f"@{name_field}:(%%{val}%%|{val}*|{val})"
             )
 
-        parts = filter(
+        filters = list(filter(
             None,
             [
                 fld(country_id, "country_id", "country_name"),
                 fld(app_id,     "app_id",     "app_name"),
                 f"@server_id:{server_id}" if server_id else None,
-                "@app_price:[0.01 +inf]",
-            ],
-        )
-        q =  " ".join(parts) or "*"
+            ]
+        ))
+
+        if filters:
+            filters.append("@app_price:[0.01 +inf]")
+
+        q = " ".join(filters) if filters else "*"
 
         cmd = [
-            "FT.AGGREGATE",
-            self.service_index,
-            q,
+            "FT.AGGREGATE", self.service_index, q,
             "GROUPBY", "4", "@country_id", "@app_id", "@app_price", "@server_id",
             "REDUCE", "SUM", "1", "@app_count", "AS", "total_count",
+            "LIMIT", "0", "100000",
         ]
 
         try:
@@ -1040,20 +1043,21 @@ class CombinedAPI:
             return web.Response(text="BAD_ACTION", status=200)
 
         if action == "getPrices":
-            country_id = data.get("country", None)
-            app_id = data.get("service", None)
-            server_id = data.get("operator", None)
-            from termcolor import colored
+            country_id = data.get("country", None) or None
+            app_id = data.get("service", None) or None
+            server_id = data.get("operator", None) or None
+
+            if not server_id.isdigit():
+                return web.Response(text="BAD_OPERATOR", status=200)
             print(colored(f"getPrices: country_id={country_id}, app_id={app_id}, server_id={server_id}", "green"))
 
             result = await self.app_data_prices(country_id=country_id, app_id=app_id, server_id=server_id, api_id=1)
             print(colored(f"getPrices result: {len(result)}", "green"))
             return web.Response(text=json.dumps(result), content_type="application/json")
         if action == "getNumbersStatus":
-            country_id = data.get("country", None)
-            app_id = data.get("service", None)
-            server_id = data.get("server", None)
-            from termcolor import colored
+            country_id = data.get("country", None) or None
+            app_id = data.get("service", None) or None
+            server_id = data.get("server", None) or None
             print(colored(f"getNumbersStatus: country_id={country_id}, app_id={app_id}, server_id={server_id}", "green"))
 
             status = await self.app_data_stock(api_id=1, country_id=country_id, app_id=app_id, server_id=server_id)
@@ -1065,12 +1069,17 @@ class CombinedAPI:
             api_key = data.get("api_key")
             user_id = await self.get_user_id_by_api_key(api_key)
 
-            service_id = data.get("service")
+            service_id = data.get("service", None) or None
+            country_id = data.get("country", None) or None
+
             if not service_id:
                 return web.Response(text="NO_SERVICE", status=200)
-            country_id = data.get("country", None)
-            if not country_id:
+            elif not service_id.isdigit():
+                return web.Response(text="BAD_SERVICE", status=200)
+            elif not country_id:
                 return web.Response(text="NO_COUNTRY", status=200)
+            elif not country_id.isdigit():
+                return web.Response(text="BAD_COUNTRY", status=200)
 
             try:
                 max_price = float(data.get("maxPrice", None)) or None
@@ -1089,42 +1098,53 @@ class CombinedAPI:
             elif result.get('status') is False:
                 return web.Response(text=result.get('message'), status=200)
             elif result.get('status') is True:
-                '''{"status": true, "order_id": 33011823065513, "number": "387139478", "code": "+855", "service": "ds", "country": "Cambodia", "price": 1.53}'''
                 text = f"ACCESS_NUMBER:{result.get('order_id')}:{result.get('code').replace('+', '')}{result.get('number')}"
                 return web.Response(text=text)
-            
             return web.Response(text=json.dumps(result))
+
+
         if action == "setStatus":
-            order_id = data.get("id")
-            status_id = data.get("status")
+            order_id = data.get("id", None) or None
+            status_id = data.get("status", None) or None
+
             print(f"setStatus: order_id={order_id}, status_id={status_id}")
             if not order_id:
-                return web.Response(text="BAD_ACTION", status=200)
-            if not status_id:
+                return web.Response(text="NO_ID", status=200)
+            elif not order_id.isdigit():
+                return web.Response(text="BAD_ID", status=200)
+            elif not status_id:
                 return web.Response(text="BAD_STATUS", status=200)
+            elif not status_id.isdigit():
+                return web.Response(text="BAD_STATUS", status=200)
+
             try:
                 status_id = int(status_id)
                 order_id = int(order_id)
             except ValueError:
                 print(f"ValueError: setStatus: order_id={order_id}, status_id={status_id}")
                 return web.Response(text="BAD_STATUS", status=200)
+
             if status_id not in {-1, 1, 3, 6, 8}:
                 print(f"Invalid status: setStatus: order_id={order_id}, status_id={status_id}")
                 return web.Response(text="BAD_STATUS", status=200)
+
             print(f"handle_set_status: order_id={order_id}, status_id={status_id}")
             result = await self.handle_set_status(status_id, order_id)
             return web.Response(text=result.get("message", json.dumps(result)))
+
+
         if action == "getStatus":
-            act_id = data.get("id")
+            act_id = data.get("id", None) or None
             if not act_id:
                 return web.Response(text="NO_ID", status=200)
+            elif not act_id.isdigit():
+                return web.Response(text="BAD_ID", status=200)
             
             status = await self.handle_get_status(act_id, api_id=1)
             return web.Response(text=status.get("message", json.dumps(status)))
         
         
         if action == "getBalance":
-            # This returns plain‐text: ACCESS_BALANCE:<balance>
             api_key = data.get("api_key")
             user_id = await self.get_user_id_by_api_key(api_key)
             balance = await self.get_user_data(user_id=user_id)
