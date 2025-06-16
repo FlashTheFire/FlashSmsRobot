@@ -10,7 +10,6 @@ from redis.exceptions import RedisError
 from termcolor import colored
 from utils.config import COMMISSION
 from typing import Optional, Dict, Any
-from redis.exceptions import RedisError
 import logging
 from aiohttp import web
 import redis.asyncio as aioredis  # Ensure redis-py >= 4.2 is installed
@@ -173,222 +172,195 @@ class CombinedAPI:
 
     async def app_data_prices(
         self,
-        country_id: Optional[int] = None,
-        app_id: Optional[int] = None,
+        country_id: Optional[Union[int, str]] = None,
+        app_id: Optional[Union[int, str]] = None,
         server_id: Optional[int] = None,
-        api_id: Optional[int] = None
+        api_id: int = 1,
+        batch_size: int = 10_000,
     ) -> Dict[str, Any]:
-        def fld(val, id_field, name_field):
-            if not val:
+        """
+        Unified method to fetch, aggregate (via Redisearch cursor),
+        and format price data in two API styles.
+        """
+        # Build filter clauses
+        def fmt(val, field, name):
+            if val is None:
                 return None
-            return (
-                f"@{id_field}:{val}"
-                if str(val).isnumeric()
-                else f"@{name_field}:(%%{val}%%|{val}*|{val})"
-            )
+            s = str(val)
+            return f"@{field}:{s}" if s.isnumeric() else f"@{name}:(%%{s}%%|{s}*|{s})"
 
-        filters = list(filter(
-            None,
-            [
-                fld(country_id, "country_id", "country_name"),
-                fld(app_id,     "app_id",     "app_name"),
-                f"@server_id:{server_id}" if server_id else None,
-            ]
-        ))
+        filters = [
+            fmt(country_id, "country_id", "country_name"),
+            fmt(app_id, "app_id", "app_name"),
+            f"@server_id:{server_id}" if server_id is not None else None,
+            "@app_price:[0.01 +inf]",
+        ]
+        query = " ".join(f for f in filters if f) or "*"
 
-        filters.append("@app_price:[0.01 +inf]")
-
-        q = " ".join(filters) if filters else "*"
-
-        batch_size = 10000
-        offset = 0
-        all_rows = []
-
-        while True:
-            cmd = [
-                "FT.AGGREGATE", self.service_index, q,
+        # Initialize FT.AGGREGATE with cursor
+        try:
+            resp = await self.redis_client.execute_command(
+                "FT.AGGREGATE", self.service_index, query,
                 "GROUPBY", "4", "@country_id", "@app_id", "@app_price", "@server_id",
                 "REDUCE", "SUM", "1", "@app_count", "AS", "total_count",
-                "LIMIT", str(offset), str(batch_size),
-            ]
-            print(' '.join(cmd))
+                "WITHCURSOR", "COUNT", str(batch_size)
+            )
+        except RedisError as e:
+            logger.exception("Aggregation init failed: %s", e)
+            raise RuntimeError("Redis aggregation initialization error") from e
+
+        all_rows: List[List[Any]] = []
+        results, cursor = resp
+        if len(results) > 1:
+            all_rows.extend(results[1:])
+
+        # Read remaining via cursor
+        while cursor:
             try:
-                resp = await self.redis_client.execute_command(*cmd)
+                page, cursor = await self.redis_client.execute_command(
+                    "FT.CURSOR", "READ", self.service_index, cursor
+                )
             except RedisError as e:
-                logger.exception("Aggregation failed: %s", e)
-                raise RuntimeError(f"Redis aggregation error: {e}")
+                logger.exception("Cursor read failed: %s", e)
+                raise RuntimeError("Redis cursor read error") from e
+            if len(page) > 1:
+                all_rows.extend(page[1:])
 
-            if not isinstance(resp, list) or len(resp) < 2:
-                break
-
-            all_rows.extend(resp[1:])
-            if len(resp) - 1 < batch_size:
-                break
-            offset += batch_size
-
-        if api_id == 1:
-            raw_data_1: Dict[str, Dict[str, Dict[str, int]]] = {}
+        # Format for API 2
+        if api_id == 2:
+            out2: Dict[str, Any] = {}
             for row in all_rows:
-                if not isinstance(row, list) or len(row) % 2 != 0:
+                if not isinstance(row, list) or len(row) % 2:
                     continue
-                rd = {row[i]: row[i + 1] for i in range(0, len(row), 2)}
-                cid = rd.get("country_id")
-                aid = rd.get("app_id")
-                price = rd.get("app_price")
-                count = rd.get("total_count")
-                if None in (cid, aid, price, count):
+                data = {row[i]: row[i+1] for i in range(0, len(row), 2)}
+                cid = str(data.get("country_id"))
+                aid = str(data.get("app_id"))
+                srv = data.get("server_id")
+                price = data.get("app_price")
+                cnt = data.get("total_count")
+                if None in (cid, aid, srv, price, cnt):
                     continue
                 try:
-                    price_str = f"{float(price) * float(COMMISSION):.2f}"
-                    total = int(count)
+                    cost = round(float(price) * float(COMMISSION), 2)
+                    count = int(cnt)
                 except ValueError:
                     continue
-                raw_data_1.setdefault(cid, {}).setdefault(aid, {})[price_str] = total
-            sorted_data_1: Dict[str, Dict[str, Dict[str, int]]] = {}
-            for cid_key in sorted(raw_data_1.keys(), key=lambda x: int(x)):
-                sorted_data_1[cid_key] = {}
-                for aid_key in sorted(raw_data_1[cid_key].keys(), key=lambda x: int(x)):
-                    sorted_data_1[cid_key][aid_key] = dict(
-                        sorted(
-                            raw_data_1[cid_key][aid_key].items(),
-                            key=lambda item: float(item[0]),
-                        )
-                    )
-            return sorted_data_1
+                out2.setdefault(cid, {}).setdefault(aid, {})[str(int(srv))] = {"cost": cost, "count": count}
+            return out2.get(str(country_id), {}) if country_id is not None else out2
 
-        elif api_id == 2:
-            temp_data_2: Dict[str, Dict[str, Dict[str, Dict[str, Union[float, int]]]]] = {}
-            for row in all_rows:
-                if not isinstance(row, list) or len(row) % 2 != 0:
-                    continue
-                rd = {row[i]: row[i + 1] for i in range(0, len(row), 2)}
-                cid = rd.get("country_id")
-                aid = rd.get("app_id")
-                price = rd.get("app_price")
-                cnt = rd.get("total_count")
-                srv = rd.get("server_id")
-                if None in (cid, aid, price, cnt, srv):
-                    continue
-                try:
-                    price_val = round(float(price) * float(COMMISSION), 2)
-                    stock_val = int(cnt)
-                    server_val = int(srv)
-                except ValueError:
-                    continue
-                temp_data_2.setdefault(str(cid), {}).setdefault(str(aid), {})[str(server_val)] = {
-                    "cost": price_val,
-                    "count": stock_val
-                }
-            if country_id is not None:
-                cid_str = str(country_id)
-                return temp_data_2.get(cid_str, {str(country_id): {}})
-            else:
-                return temp_data_2
+        # Format for API 1
+        out1: Dict[str, Dict[str, Dict[str, int]]] = {}
+        for row in all_rows:
+            if not isinstance(row, list) or len(row) % 2:
+                continue
+            data = {row[i]: row[i+1] for i in range(0, len(row), 2)}
+            cid = data.get("country_id")
+            aid = data.get("app_id")
+            price = data.get("app_price")
+            cnt = data.get("total_count")
+            if None in (cid, aid, price, cnt):
+                continue
+            try:
+                key = f"{float(price) * float(COMMISSION):.2f}"
+                count = int(cnt)
+            except ValueError:
+                continue
+            out1.setdefault(cid, {}).setdefault(aid, {})[key] = count
 
-        else:
-            return await self.app_data_prices(country_id, app_id, server_id, api_id=1)
+        # Sort numeric keys
+        sorted_out = {
+            cid: {
+                aid: dict(sorted(details.items(), key=lambda x: float(x[0])))
+                for aid, details in sorted(out1[cid].items(), key=lambda x: int(x[0]))
+            }
+            for cid in sorted(out1.keys(), key=lambda x: int(x))
+        }
+        return sorted_out
+
+
     async def app_data_stock(
         self,
-        country_id: Optional[int] = None,
-        app_id: Optional[int] = None,
+        country_id: Optional[Union[int, str]] = None,
+        app_id: Optional[Union[int, str]] = None,
         server_id: Optional[int] = None,
         min_stock: int = 0,
-        api_id: int = None
+        api_id: int = 1,
+        batch_size: int = 10_000,
     ) -> Dict[str, Any]:
-        query = " ".join(
-            filter(None, [
-                f"@country_id:{country_id}" if country_id is not None else None,
-                f"@app_id:{app_id}" if app_id is not None else None,
-                f"@server_id:{server_id}" if server_id is not None else None,
-                f"@app_count:[{min_stock} +inf]"
-            ])
-        ) or "*"
-
-        cmd = [
-            "FT.AGGREGATE",
-            self.service_index,
-            query,
-            "GROUPBY",
-            "3",
-            "@country_id",
-            "@app_id",
-            "@server_id",
-            "REDUCE",
-            "SUM",
-            "1",
-            "@app_count",
-            "AS",
-            "total_stock"
+        """
+        Unified method to fetch, aggregate (via Redisearch cursor),
+        and format stock data in two API styles.
+        """
+        # Build filter clauses for stock
+        filters = [
+            f"@country_id:{country_id}" if country_id is not None else None,
+            f"@app_id:{app_id}" if app_id is not None else None,
+            f"@server_id:{server_id}" if server_id is not None else None,
+            f"@app_count:[{min_stock} +inf]",
         ]
+        query = " ".join(f for f in filters if f) or "*"
 
+        # Execute with cursor
         try:
-            resp = await self.redis_client.execute_command(*cmd)
+            resp = await self.redis_client.execute_command(
+                "FT.AGGREGATE", self.service_index, query,
+                "GROUPBY", "3", "@country_id", "@app_id", "@server_id",
+                "REDUCE", "SUM", "1", "@app_count", "AS", "total_stock",
+                "WITHCURSOR", "COUNT", str(batch_size)
+            )
         except RedisError as e:
-            logger.exception("Stock aggregation failed: %s", e)
-            raise RuntimeError(f"Redis aggregation error: {e}")
+            logger.exception("Stock aggregation init failed: %s", e)
+            raise RuntimeError("Redis stock aggregation initialization error") from e
 
-        if not isinstance(resp, list) or len(resp) < 2:
-            return {}
+        all_rows: List[List[Any]] = []
+        results, cursor = resp
+        if len(results) > 1:
+            all_rows.extend(results[1:])
+        while cursor:
+            try:
+                page, cursor = await self.redis_client.execute_command(
+                    "FT.CURSOR", "READ", self.service_index, cursor
+                )
+            except RedisError as e:
+                logger.exception("Stock cursor read failed: %s", e)
+                raise RuntimeError("Redis stock cursor read error") from e
+            if len(page) > 1:
+                all_rows.extend(page[1:])
 
-        if api_id == 1:
-            flat_result: Dict[str, int] = {}
-            for row in resp[1:]:
-                if not isinstance(row, list) or len(row) % 2 != 0:
+        # Format API2 for stock
+        if api_id == 2:
+            temp: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
+            for row in all_rows:
+                if not isinstance(row, list) or len(row) % 2:
                     continue
-                try:
-                    rd = {row[i]: row[i + 1] for i in range(0, len(row), 2)}
-                    aid = rd.get("app_id")
-                    sid = rd.get("server_id")
-                    stock = int(rd.get("total_stock", 0))
-                    if None in (aid, sid):
-                        continue
-                    key = f"{aid}_{sid}"
-                    flat_result[key] = stock
-                except (ValueError, TypeError):
+                data = {row[i]: row[i+1] for i in range(0, len(row), 2)}
+                cid_s = str(data.get("country_id"))
+                aid_s = str(data.get("app_id"))
+                sid_s = str(int(data.get("server_id"))) if data.get("server_id") is not None else None
+                stock = int(data.get("total_stock", 0))
+                if None in (cid_s, aid_s, sid_s):
                     continue
-            return flat_result
-
-        elif api_id == 2:
-            countries_list = []
-            temp_data: Dict[str, Dict[str, list]] = {}
-
-            for row in resp[1:]:
-                if not isinstance(row, list) or len(row) % 2 != 0:
-                    continue
-                try:
-                    rd = {row[i]: row[i + 1] for i in range(0, len(row), 2)}
-                    cid = rd.get("country_id")
-                    aid = rd.get("app_id")
-                    sid = rd.get("server_id")
-                    stock = int(rd.get("total_stock", 0))
-                    if None in (cid, aid, sid):
-                        continue
-                    cid_str = str(cid)
-                    aid_str = str(aid)
-                    sid_str = str(sid)
-                    temp_data.setdefault(cid_str, {}).setdefault(aid_str, [])
-                    temp_data[cid_str][aid_str].append({
-                        "server_id": sid_str,
-                        "stock": stock
-                    })
-                except (ValueError, TypeError):
-                    continue
-            for cid, apps in temp_data.items():
-                country_obj = {
-                    "country_id": cid,
-                    "applications": []
-                }
+                temp.setdefault(cid_s, {}).setdefault(aid_s, []).append({"server_id": sid_s, "stock": stock})
+            countries = []
+            for cid, apps in temp.items():
+                country_obj = {"country_id": cid, "applications": []}
                 for aid, servers in apps.items():
-                    app_obj = {
-                        "app_id": aid,
-                        "servers": servers
-                    }
-                    country_obj["applications"].append(app_obj)
-                countries_list.append(country_obj)
-            return {"countries": countries_list}
-        else:
-            return await self.app_data_stock(country_id, app_id, server_id, min_stock, api_id=1)
+                    country_obj["applications"].append({"app_id": aid, "servers": servers})
+                countries.append(country_obj)
+            return {"countries": countries}
 
+        # Format API1 for stock
+        flat: Dict[str, int] = {}
+        for row in all_rows:
+            if not isinstance(row, list) or len(row) % 2:
+                continue
+            data = {row[i]: row[i+1] for i in range(0, len(row), 2)}
+            aid, sid = data.get("app_id"), data.get("server_id")
+            stock = int(data.get("total_stock", 0))
+            if None in (aid, sid):
+                continue
+            flat[f"{aid}_{sid}"] = stock
+        return flat
 
     async def services_data(self, api_id: int = 1):
         try:
