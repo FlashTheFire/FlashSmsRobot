@@ -1412,6 +1412,7 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
             r"""
             🔥\s*TG\s*TECH\s*RECEIVER\s*✨\s*\n+        # Flexible header line
             ⏰\s*Time:\s*(?P<time>[^\n\r]+)\s*\n+       # Time line
+            🌍\s*Country:\s*(?P<country>[^\n\r]+)\s*\n+ # Country line
             ⚙️\s*Service:\s*(?P<service>[^\n\r]+)\s*\n+ # Service line
             ☎️\s*Number:\s*(?P<number>[^\n\r]+)\s*\n+   # Number line
             🔑\s*OTP:\s*(?P<otp>[^\n\r]+)               # OTP line
@@ -1432,6 +1433,7 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
 
             return {
                 "time": parsed_time,
+                "country": match["country"].strip(),
                 "service": match["service"].strip(),
                 "number": match["number"].strip(),
                 "otp": match["otp"].strip(),
@@ -1441,6 +1443,7 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
             return (
                 "<blockquote expandable><b>🔥 NEW OTP PARSED ✅</b>\n"
                 f"🕒 <b>Time:</b> {data['time']}\n"
+                f"🌍 <b>Country:</b> {data['country']}\n"
                 f"🔧 <b>Service:</b> {data['service']}\n"
                 f"📞 <b>Number:</b> {data['number']}\n"
                 f"🔑 <b>OTP:</b> <code>{data['otp']}</code></blockquote>"
