@@ -666,11 +666,18 @@ class AutoUpdater:
                 elif t == "zset":
                     v = [(m.decode() if isinstance(m, bytes) else m, s) for m, s in raw]
                 elif t in ("ReJSON", "ReJSON-RL"):
-                    js = raw.decode() if isinstance(raw, bytes) else raw
-                    try:
-                        v = json.loads(js)
-                    except json.JSONDecodeError:
-                        v = js
+                    # r.json().get() will already return a Python object,
+                    # so just use it directly if it's not bytes/str:
+                    if isinstance(raw, (bytes, bytearray, str)):
+                        # only decode+loads if we really have text
+                        js = raw.decode() if isinstance(raw, (bytes, bytearray)) else raw
+                        try:
+                            v = json.loads(js)
+                        except json.JSONDecodeError:
+                            v = js
+                    else:
+                        # already a dict/list
+                        v = raw
                 else:
                     continue
 
