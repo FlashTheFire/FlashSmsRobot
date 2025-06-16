@@ -758,7 +758,7 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
     if update:
         if not hasattr(auto_updater, 'initialized'):
             redis_client = await redis_manager.get_client()
-            keys = [] #[key async for key in redis_client.scan_iter(match='service_data:*', count=1000)]
+            keys = [key async for key in redis_client.scan_iter(match='service_data:*', count=1000)]
             if len(keys) == 0:
                 await auto_updater.initialize(bot=bot)
                 await auto_updater.update_data()
