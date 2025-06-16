@@ -17,7 +17,7 @@ from termcolor import colored
 from colorama import Fore, Style, init as colorama_init
 import redis.asyncio as redis
 from utils.redis_manager import RedisManager, redis_manager
-from utils.config import  WEBHOOK_HOST as FIVE_SIM_URL, REDIS_DUMP_KEY, SERVICE_DATA_KEY
+from utils.config import  WEBHOOK_HOST as FIVE_SIM_URL
 from handlers.manager.operation import (
     FiveSimManagement, FastSmsManagement, SmsHubManagement, GrizzlySmsManagement,
     SmsBowerManagement, VakSmsManagement, TigerSmsManagement, SmsActivateManagement
@@ -433,10 +433,9 @@ class AutoUpdater:
                     except Exception as e:
                         logging.error(f"Error fetching data from {service_name}: {e}")
 
-            #transformed = transformer.transform_data(whole_data)
-            await self.redis_client.json().set(SERVICE_DATA_KEY, '$', whole_data)
             logging.info("Data successfully transformed and stored in Redis")
-            #return transformed
+            data = transformer.transform_data(whole_data)
+            return data
         except Exception as e:
             logging.error(f"An error occurred while processing the data: {str(e)}")
             return None
@@ -444,32 +443,12 @@ class AutoUpdater:
     async def update_data(self):
         """Main update function that orchestrates the entire update process."""
         try:
-            #await self.fetch_transform_data()
-            data = await self.redis_client.json().get(SERVICE_DATA_KEY) or {}
-            server_ids = [sn for _, sn in self.services]
-            transformer = DataTransformer(server_ids, self.sms_providers, self.redis_client)
-            await transformer.initialize()  
-            data = transformer.transform_data(data)
+            data = await self.fetch_transform_data()
             if data:
                 await self.insert_data(data)
                 logging.info("Data update completed successfully")
         except Exception as e:
             logging.error(f"Error in update_data: {e}")
-
-    async def load_old_data(self) -> Dict[str, Any]:
-        """Load JSON dump stored under REDIS_DUMP_KEY in Redis."""
-        try:
-            raw = await self.redis_client.execute_command("JSON.GET", REDIS_DUMP_KEY, "$")
-            if not raw:
-                return {}
-            parsed = json.loads(raw)
-            if isinstance(parsed, list) and len(parsed) == 1 and isinstance(parsed[0], dict):
-                return parsed[0]
-            if isinstance(parsed, dict):
-                return parsed
-        except Exception as e:
-            logging.error(f"[AutoUpdate.load_old_data] Failed to GET JSON: {e}")
-        return {}
 
     async def load_old_data_from_url(self, url: str) -> Dict[str, Any]:
         """
@@ -572,16 +551,6 @@ class AutoUpdater:
 
         logging.info(f"[AutoUpdate.import_redis_dump] Completed import of {len(data)} keys")
 
-    async def save_data_to_redis(self, data: Dict[str, Any]) -> None:
-        try:            
-            r = await redis_manager.get_client()
-            #await r.json().set(REDIS_DUMP_KEY, ".", data)
-            payload = json.dumps(data)
-            await r.execute_command("JSON.SET", REDIS_DUMP_KEY, ".", payload)
-            logging.info(f"[AutoUpdate.save_data_to_redis] Saved {len(data)} entries")
-        except Exception as e:
-            logging.error(f"[AutoUpdate.save_data_to_redis] Error: {e}")
-
 
     async def dump_redis_data(self) -> Dict[str, Any]:
         """
@@ -592,7 +561,7 @@ class AutoUpdater:
           - free_numbers:*
           - image_data:*
           - secure_data:*
-          - main_data:*  (except the REDIS_DUMP_KEY itself)
+          - main_data:* 
         into a { key: {"type": t, "value": v} } dict,
         yielding back to the event loop at each stage.
         """
@@ -614,7 +583,7 @@ class AutoUpdater:
             if any(key.startswith(pref) for pref in prefixes):
                 return True
             # include main_data:* but skip the exact dump key
-            if key.startswith("main_data:") and key not in [REDIS_DUMP_KEY, SERVICE_DATA_KEY]:
+            if key.startswith("main_data:"):
                 return True
             return False
 
@@ -711,12 +680,10 @@ class AutoUpdater:
         logging.info(f"[AutoUpdate.dump_redis_data] Dumped {len(result)} keys")
         return result
 
-    async def upload_from_redis_key(self) -> str:
+    async def upload_from_redis_key(self, raw: Dict[str, Any]) -> str:
         """
         Uploads Redis JSON dump to 0x0.st or temp.sh and returns the first successful upload URL.
         """
-        r = await redis_manager.get_client()
-        raw = await r.json().get(REDIS_DUMP_KEY)
 
         if not raw:
             logging.error("[AutoUpdate.upload_from_redis_key] No data to upload")
@@ -780,9 +747,8 @@ class AutoUpdater:
         """
         try:
             data = await self.dump_redis_data()
-            await self.save_data_to_redis(data)
-            url = await self.upload_from_redis_key()
-            #print(f"[AutoUpdate.save_data_cycle] URL: {url}")
+            url = await self.upload_from_redis_key(data)
+            print(f"[AutoUpdate.save_data_cycle] URL: {url}")
             await self.send_dump_link(ADMIN_ID, url)
         except Exception as e:
             logging.error(f"[AutoUpdate.save_data_cycle] Failed cycle: {e}")

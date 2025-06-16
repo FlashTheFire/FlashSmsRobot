@@ -67,8 +67,6 @@ REFFERAL_PAGE = os.getenv("REFFERAL_PAGE", "default_referral_page")
 LOADING_GIF = os.getenv("LOADING_GIF", "default_loading.gif")
 WALLET_PAGE = os.getenv("WALLET_PAGE", "default_wallet_page")
 DEPOSIT_INR_QR_CODE = os.getenv("DEPOSIT_INR_QR_CODE", "https://i.postimg.cc/1thT9t0C/image.png")
-REDIS_DUMP_KEY = os.getenv("REDIS_DUMP_KEY", "main_data:service:redis_data")
-SERVICE_DATA_KEY = os.getenv("SERVICE_DATA_KEY", "main_data:service:main_data")
 
 # Redis configuration with defaults
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
