@@ -148,6 +148,7 @@ class OrderManagement:
         self._initialized = False
         self.logger: Optional[AdvancedLogger] = None
         self.enable_logging = enable_logging
+        self.CANDIDATES_KEY = "free_numbers:list"
         self.FIELD_MAP = {
             "PRICE": "order_amount",
             "DATE":  "recorded_at"
@@ -613,6 +614,7 @@ class OrderManagement:
                     # track multiple reservers if you want:
                     "user_ids":    data.get("user_ids", []) + ([user_id] if user_id else [])
                 })
+                await self.add_candidates(num)
                 await set_data(num, data)
 
                 return {
@@ -693,6 +695,50 @@ class OrderManagement:
             }
 
         return {"status": False, "message": "INVALID_ACTION"}
+    
+    async def get_candidates(self) -> List[str]:
+        """
+        Fetches the JSON‐encoded list of candidate numbers from Redis.
+        Returns an empty list if key is missing or invalid.
+        """
+        raw = await self.redis_manager.redis_client.get(self.CANDIDATES_KEY)
+        if not raw:
+            return []
+        # raw might be bytes or str
+        if isinstance(raw, (bytes, bytearray)):
+            raw = raw.decode("utf-8", errors="ignore")
+        try:
+            data = json.loads(raw)
+            # ensure it's a list of strings
+            if isinstance(data, list):
+                return [str(item) for item in data]
+        except json.JSONDecodeError:
+            pass
+        return []
+
+    async def add_candidates(self, new: Union[str, List[str]]) -> None:
+        """
+        Adds one or more new candidate numbers to the Redis list,
+        avoiding duplicates, and re‐saves as JSON.
+        """
+        # normalize to a flat list of strings
+        if isinstance(new, str):
+            to_add = [new]
+        else:
+            to_add = [str(x) for x in new]
+
+        current = await self.get_candidates()
+        # union while preserving order
+        updated = current[:]
+        for num in to_add:
+            if num not in updated:
+                updated.append(num)
+
+        # save back to Redis
+        await self.redis_manager.redis_client.set(
+            self.CANDIDATES_KEY,
+            json.dumps(updated)
+        )
 
 class UserManagement:
     """Manage user operations with Redis asynchronously."""

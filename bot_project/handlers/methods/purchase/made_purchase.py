@@ -189,7 +189,17 @@ class UserPurchaseManagement:
         }
         return data
 
-
+    async def unmask_number(self, masked: str, candidates: list[str]) -> str:
+        """
+        Given something like '7707503*897', build a regex '^7707503\d897$'
+        and return the one candidate that matches, or return masked if none.
+        """
+        # Escape then turn '*' → '\d'
+        pattern = "^" + re.escape(masked).replace(r"\*", r"\d") + "$"
+        for num in candidates:
+            if re.match(pattern, num):
+                return num
+        return masked
 
 
     async def reconstruct_fake_call(self, full_data) -> CallbackQuery:
@@ -1395,38 +1405,30 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
     
     @bot.channel_post_handler()
     async def otp_handler(msg: Message) -> None:
-        """
-        Unified handler for forwarded OTP messages.
-        1. Parses Time, Service, Number, OTP via regex.
-        2. Formats into a neat HTML message.
-        3. Forwards it to DESTINATION_CHAT_ID.
-        """
-        # Inline regex for the four fields
+        # … your existing docstring …
+
         print(msg.text)
         pattern = re.compile(
-    r"""
-        🔥\s*TG\s*TECH\s*RECEIVER\s*✨\s*\n+        # Flexible header line
-        ⏰\s*Time:\s*(?P<time>[^\n\r]+)\s*\n+       # Time line
-        ⚙️\s*Service:\s*(?P<service>[^\n\r]+)\s*\n+ # Service line
-        ☎️\s*Number:\s*(?P<number>[^\n\r]+)\s*\n+   # Number line
-        🔑\s*OTP:\s*(?P<otp>[^\n\r]+)               # OTP line
-    """,
-    re.VERBOSE | re.IGNORECASE | re.MULTILINE
-)
-
+            r"""
+            🔥\s*TG\s*TECH\s*RECEIVER\s*✨\s*\n+        # Flexible header line
+            ⏰\s*Time:\s*(?P<time>[^\n\r]+)\s*\n+       # Time line
+            ⚙️\s*Service:\s*(?P<service>[^\n\r]+)\s*\n+ # Service line
+            ☎️\s*Number:\s*(?P<number>[^\n\r]+)\s*\n+   # Number line
+            🔑\s*OTP:\s*(?P<otp>[^\n\r]+)               # OTP line
+            """,
+            re.VERBOSE | re.IGNORECASE | re.MULTILINE
+        )
 
         def parse_fields(text: str) -> Optional[Dict[str, Any]]:
-            """Extracts the four named groups or returns None if no match."""
             match = pattern.search(text)
             if not match:
                 return None
 
-            # Normalize and convert time to datetime if possible
             raw_time = match["time"].strip()
             try:
                 parsed_time = datetime.strptime(raw_time, "%Y-%m-%d %H:%M:%S")
             except ValueError:
-                parsed_time = raw_time  # fallback to raw string
+                parsed_time = raw_time
 
             return {
                 "time": parsed_time,
@@ -1436,7 +1438,6 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
             }
 
         def build_message(data: Dict[str, Any]) -> str:
-            """Turns the parsed dict into an HTML-formatted string."""
             return (
                 "<blockquote expandable><b>🔥 NEW OTP PARSED ✅</b>\n"
                 f"🕒 <b>Time:</b> {data['time']}\n"
@@ -1451,14 +1452,21 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
             if not parsed:
                 print("Forwarded message didn’t match OTP format, skipping.")
                 return
-                
-            
+
+            # try to unmask the number if it has a '*'
+            if "*" in parsed["number"]:
+                CANDIDATES = await purchase_manager.order_manager.get_candidates()
+                full = await purchase_manager.unmask_number(parsed["number"], CANDIDATES)
+                print(f"Unmasked {parsed['number']} → {full}")
+                parsed["number"] = full
+
             order_id = f'987654321{parsed["number"]}'
             order_data = await purchase_manager.order_manager.get_order_data(order_id)
             if not order_data['response']:
                 print("Order not found.")
                 return
             order_data = order_data['result']
+
             if parsed['otp'].isnumeric() and parsed['number'].isnumeric():
                 add_result = await purchase_manager.order_manager.manage_number_order(
                     redis_client=purchase_manager.redis_client,
@@ -1476,13 +1484,13 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
                     text=f"✅ <b>Sᴍs Rᴇᴄɪᴇᴠᴇᴅ »</b> <code>{parsed['otp']}</code> <b>[</b><code>{parsed['number']}</code><b>]</b>\n\n",
                     parse_mode="HTML"
                 )
+
             formatted = build_message(parsed)
             await bot.send_message(DESTINATION_CHAT_ID, formatted, parse_mode="HTML")
-            print("OTP forwarded successfully: %s", parsed)
+            print("OTP forwarded successfully:", parsed)
 
         except Exception as exc:
-            print("Unexpected error in otp_handler: %s", exc)
-
+            print("Unexpected error in otp_handler:", exc)
 
 
     
