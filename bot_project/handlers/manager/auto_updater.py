@@ -575,7 +575,9 @@ class AutoUpdater:
     async def save_data_to_redis(self, data: Dict[str, Any]) -> None:
         try:            
             r = await redis_manager.get_client()
-            await r.json().set(REDIS_DUMP_KEY, ".", data)
+            #await r.json().set(REDIS_DUMP_KEY, ".", data)
+            payload = json.dumps(data)
+            await r.execute_command("JSON.SET", REDIS_DUMP_KEY, ".", payload)
             logging.info(f"[AutoUpdate.save_data_to_redis] Saved {len(data)} entries")
         except Exception as e:
             logging.error(f"[AutoUpdate.save_data_to_redis] Error: {e}")
@@ -764,7 +766,10 @@ class AutoUpdater:
             return
         try:
             text = f"🔗 Redis dump: {file_url}"
-            await self.bot.send_message(chat_id, text)
+            try:
+                await self.bot.send_message(chat_id, text)
+            except Exception as e:
+                logging.error(f"[AutoUpdate.send_dump_link] Telegram error: {e}")
             logging.info("[AutoUpdate.send_dump_link] Sent link")
         except Exception as e:
             logging.error(f"[AutoUpdate.send_dump_link] Telegram error: {e}")
@@ -777,7 +782,7 @@ class AutoUpdater:
             data = await self.dump_redis_data()
             await self.save_data_to_redis(data)
             url = await self.upload_from_redis_key()
-            print(f"[AutoUpdate.save_data_cycle] URL: {url}")
+            #print(f"[AutoUpdate.save_data_cycle] URL: {url}")
             await self.send_dump_link(ADMIN_ID, url)
         except Exception as e:
             logging.error(f"[AutoUpdate.save_data_cycle] Failed cycle: {e}")
