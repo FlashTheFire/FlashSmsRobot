@@ -17,7 +17,7 @@ from termcolor import colored
 from colorama import Fore, Style, init as colorama_init
 import redis.asyncio as redis
 from utils.redis_manager import RedisManager, redis_manager
-from utils.config import  WEBHOOK_HOST as FIVE_SIM_URL
+from utils.config import  WEBHOOK_HOST as FIVE_SIM_URL, REDIS_DUMP_KEY
 from handlers.manager.operation import (
     FiveSimManagement, FastSmsManagement, SmsHubManagement, GrizzlySmsManagement,
     SmsBowerManagement, VakSmsManagement, TigerSmsManagement, SmsActivateManagement
@@ -207,7 +207,8 @@ class DataTransformer:
 
 # -------------------- AutoUpdater Class --------------------
 class AutoUpdater:
-    REDIS_DUMP_KEY = "main_data:service:main_data_json"
+    SCAN_COUNT = 100       # how many keys SCAN returns per round
+    BATCH_SIZE = 50        # how many keys to fetch type+value per pipeline
 
     def __init__(self):
         self.price_country_mapping: Dict[str, Dict[str, str]] = {}
@@ -583,94 +584,127 @@ class AutoUpdater:
         except Exception as e:
             logging.error(f"[AutoUpdate.save_data_to_redis] Error: {e}")
 
+
     async def dump_redis_data(self) -> Dict[str, Any]:
-        """Scan and dump selected Redis keys into a dict of type/value entries."""
-        r, result, cursor = await redis_manager.get_client(), {}, 0
-        try:
-            while True:
-                cursor, keys = await r.scan(cursor=cursor, count=100)
-                if not keys and cursor == 0:
-                    break
+        """
+        Asynchronously scan & dump only:
+          - user_data:*
+          - order_data:info:*
+          - deposit_data:info:*
+          - free_numbers:*
+          - image_data:*
+          - secure_data:*
+          - main_data:*  (except the REDIS_DUMP_KEY itself)
+        into a { key: {"type": t, "value": v} } dict,
+        yielding back to the event loop at each stage.
+        """
+        r = await redis_manager.get_client()
+        result: Dict[str, Any] = {}
 
-                filtered = []
-                for raw in keys:
-                    k = raw.decode() if isinstance(raw, bytes) else raw
-                    if (k.startswith("image_data:")
-                        or k.startswith("user_data:")
-                        or k.startswith("order_data:info:")
-                        or k.startswith("deposit_data:info:")
-                        or (k.startswith("main_data:") and k != self.REDIS_DUMP_KEY)
-                    ):
-                        filtered.append(k)
+        # all positive prefixes
+        prefixes = (
+            "user_data:",
+            "order_data:info:",
+            "deposit_data:info:",
+            "free_numbers:",
+            "image_data:",
+            "secure_data:",
+        )
 
-                if not filtered:
-                    if cursor == 0:
-                        break
+        async def should_include(key: str) -> bool:
+            # include any matching prefix
+            if any(key.startswith(pref) for pref in prefixes):
+                return True
+            # include main_data:* but skip the exact dump key
+            if key.startswith("main_data:") and key not in [self.REDIS_DUMP_KEY, "main_data:service:main_data"]:
+                return True
+            return False
+
+        async def process_batch(batch: List[str]):
+            # 1) pipeline to fetch types
+            pipe = r.pipeline()
+            for k in batch:
+                pipe.type(k)
+            types = await pipe.execute()
+            await asyncio.sleep(0)
+
+            # 2) pipeline to fetch values
+            pipe = r.pipeline()
+            for idx, k in enumerate(batch):
+                t = types[idx]
+                if isinstance(t, bytes):
+                    t = t.decode()
+                if t == "string":
+                    pipe.get(k)
+                elif t == "list":
+                    pipe.lrange(k, 0, -1)
+                elif t == "set":
+                    pipe.smembers(k)
+                elif t == "hash":
+                    pipe.hgetall(k)
+                elif t == "zset":
+                    pipe.zrange(k, 0, -1, "WITHSCORES")
+                elif t in ("ReJSON", "ReJSON-RL"):
+                    pipe.execute_command("JSON.GET", k)
+                else:
+                    pipe.ping()
+            values = await pipe.execute()
+            await asyncio.sleep(0)
+
+            # 3) decode & stash
+            for idx, k in enumerate(batch):
+                t = types[idx]
+                if isinstance(t, bytes):
+                    t = t.decode()
+                raw = values[idx]
+                if t == "string":
+                    v = raw.decode() if isinstance(raw, bytes) else raw
+                elif t in ("list", "set"):
+                    v = [x.decode() if isinstance(x, bytes) else x for x in raw]
+                elif t == "hash":
+                    v = {
+                        (bk.decode() if isinstance(bk, bytes) else bk):
+                        (bv.decode() if isinstance(bv, bytes) else bv)
+                        for bk, bv in raw.items()
+                    }
+                elif t == "zset":
+                    v = [(m.decode() if isinstance(m, bytes) else m, s) for m, s in raw]
+                elif t in ("ReJSON", "ReJSON-RL"):
+                    js = raw.decode() if isinstance(raw, bytes) else raw
+                    try:
+                        v = json.loads(js)
+                    except json.JSONDecodeError:
+                        v = js
+                else:
                     continue
 
-                # 1) fetch types
-                pipe = r.pipeline()
-                for k in filtered:
-                    pipe.type(k)
-                types = await pipe.execute()
+                result[k] = {"type": t, "value": v}
 
-                # 2) fetch values
-                pipe = r.pipeline()
-                for idx, k in enumerate(filtered):
-                    t = types[idx].decode() if isinstance(types[idx], bytes) else types[idx]
-                    if t == "string":
-                        pipe.get(k)
-                    elif t == "list":
-                        pipe.lrange(k, 0, -1)
-                    elif t == "set":
-                        pipe.smembers(k)
-                    elif t == "hash":
-                        pipe.hgetall(k)
-                    elif t == "zset":
-                        pipe.zrange(k, 0, -1, "WITHSCORES")
-                    elif t in ("ReJSON-RL", "ReJSON"):
-                        pipe.execute_command("JSON.GET", k)
-                    else:
-                        pipe.execute_command("PING")
-                values = await pipe.execute()
+        # 0) SCAN loop
+        cursor = b"0"
+        to_process: List[str] = []
 
-                # 3) decode & record
-                for idx, k in enumerate(filtered):
-                    t = types[idx].decode() if isinstance(types[idx], bytes) else types[idx]
-                    raw = values[idx]
-                    if t == "string":
-                        v = raw.decode() if isinstance(raw, bytes) else raw
-                    elif t in ("list", "set"):
-                        v = [x.decode() if isinstance(x, bytes) else x for x in raw]
-                    elif t == "hash":
-                        v = { (bk.decode() if isinstance(bk, bytes) else bk):
-                              (bv.decode() if isinstance(bv, bytes) else bv)
-                              for bk, bv in raw.items() }
-                    elif t == "zset":
-                        v = [((m.decode() if isinstance(m, bytes) else m), s) for m, s in raw]
-                    elif t in ("ReJSON-RL", "ReJSON"):
-                        if isinstance(raw, (bytes, str)):
-                            js = raw.decode() if isinstance(raw, bytes) else raw
-                            try:
-                                v = json.loads(js)
-                            except json.JSONDecodeError:
-                                v = js
-                        else:
-                            v = raw
-                    else:
-                        continue
+        while cursor != 0:
+            cursor, keys = await r.scan(cursor=cursor, count=self.SCAN_COUNT)
+            for raw in keys:
+                k = raw.decode() if isinstance(raw, bytes) else raw
+                if await should_include(k):
+                    to_process.append(k)
 
-                    result[k] = {"type": t, "value": v}
+            # when we have enough, process a batch
+            while len(to_process) >= self.BATCH_SIZE:
+                batch = to_process[: self.BATCH_SIZE]
+                to_process = to_process[self.BATCH_SIZE :]
+                await process_batch(batch)
 
-                if cursor == 0:
-                    break
+            await asyncio.sleep(0)
 
-        except Exception as e:
-            logging.error(f"[AutoUpdate.dump_redis_data] Error: {e}")
+        # leftover
+        if to_process:
+            await process_batch(to_process)
 
         logging.info(f"[AutoUpdate.dump_redis_data] Dumped {len(result)} keys")
         return result
-
 
     async def upload_from_redis_key(self) -> str:
         """
@@ -760,9 +794,10 @@ async def periodic_save_cycle(bot: AsyncTeleBot = None):
                 await auto_updater.initialize(bot=bot)
                 logging.info(f"Running save_data_cycle at {now_ist}")
                 await auto_updater.save_data_cycle()
+            await asyncio.sleep(30)
         except Exception as e:
             logging.error(f"Error in save_data_cycle: {e}")
-        await asyncio.sleep(60 * 30)  # 30 minutes
+            await asyncio.sleep(60)
 
 
 async def periodic_init_update(bot: AsyncTeleBot = None):
@@ -795,18 +830,16 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
     # Run one-time update if requested
     if update:
         if not hasattr(auto_updater, 'initialized'):
+            await auto_updater.initialize(bot=bot)
             redis_client = await redis_manager.get_client()
             keys = [key async for key in redis_client.scan_iter(match='service_data:*', count=1000)]
-            print(f"[AutoUpdate.periodic_update] Found {len(keys)} service_data keys")
+            print(colored(f"[AutoUpdate.periodic_update] Found {len(keys)} service_data keys", "green"))
             if len(keys) == 0:
-                await auto_updater.initialize(bot=bot)
-                await auto_updater.update_data()
                 auto_updater.initialized = True
                 logging.info("Ran one-time initial update")
-                await auto_updater.save_data_cycle()
+                await auto_updater.update_data()
                 logging.info("Ran one-time save cycle")
             else:
-                await auto_updater.initialize(bot=bot)
                 await auto_updater.save_data_cycle()
                 logging.info("Ran one-time save cycle")
     # Launch tasks in background

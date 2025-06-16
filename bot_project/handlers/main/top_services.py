@@ -37,7 +37,7 @@ class TopServiceManager:
         self.default_logo = os.path.join(self.base_path, "general/default_service.png")
         self.redis_client = None
         self._update_task = None
-        self.LEADERBOARD_KEY = "leaderboard:file_id"
+        self.LEADERBOARD_KEY = "image_data:leaderboard-file_id"
         self.UPDATE_INTERVAL = 60   # 10 minutes in seconds
         self.ADMIN_CHAT_ID = -1002203139746  # Replace with your admin channel/group ID
         #logger.info("TopServiceManager initialized")
