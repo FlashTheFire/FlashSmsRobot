@@ -334,7 +334,7 @@ class AutoUpdater:
             await self.update_price_mapping(app_id, app_price, country_id)
             pipe.hset(redis_key, mapping=redis_data)
             #print("The field 'is_adjustable' exist")
-        #print(colored(f"    ✓ Added: {app.get('app_name')} {app_codes} | Price: ${app_price:<6} | Stock: {app.get('count')}", "green"))
+        print(colored(f"    ✓ Added: {app.get('app_name')} {app_codes} | Price: ${app_price:<6} | Stock: {app.get('count')}", "green"))
 
     async def process_server(
         self,

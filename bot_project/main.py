@@ -244,7 +244,7 @@ class TelegramBot:
             await self.deposit_manager._init_logger()
             
             # Initialize search indexes
-            await self.user_manager._init_search_indexes()
+            #await self.user_manager._init_search_indexes()
             await self.order_manager._init_search_indexes()
             await self.deposit_manager._init_search_indexes()
             return True
