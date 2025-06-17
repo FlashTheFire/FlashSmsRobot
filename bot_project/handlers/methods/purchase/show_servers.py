@@ -566,7 +566,7 @@ class UserServerManagement:
                             parse_mode='HTML'
                         )
                     else:
-                        await self.bot.reply_to(message, "🚫 Nᴏ Sᴇʀᴠᴇʀs Aᴠᴀɪʟᴀʙʟᴇ.", show_alert=False)
+                        await self.bot.reply_to(message, "🚫 Nᴏ Sᴇʀᴠᴇʀs Aᴠᴀɪʟᴀʙʟᴇ.")
                 except Exception as e:
                     print(f"3 Error processing show servers: {e}")
                     error_message = "<blockquote><b>👨🏻‍💻Nᴏ Sᴇʀᴠᴇʀs Aᴠᴀɪʟᴀʙʟᴇ.</b>..</blockquote>"

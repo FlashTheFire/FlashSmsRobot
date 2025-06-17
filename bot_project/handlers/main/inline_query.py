@@ -368,7 +368,7 @@ class UserSearchManagement:
         )
 
         total = len(sorted_items)
-        sliced = sorted_items[offset: offset + (limit or tool_limit)]
+        sliced = sorted_items[int(offset): int(offset) + int(limit or tool_limit)]
 
         # 6) result dict
         result = {
@@ -424,8 +424,8 @@ class UserSearchManagement:
 
                 # Next offset
                 next_offset = (
-                    str(offset + CACHE_RESULTS_PER_PAGE)
-                    if total > offset + CACHE_RESULTS_PER_PAGE else ""
+                    str(int(offset) + int(CACHE_RESULTS_PER_PAGE))
+                    if int(total) > int(offset) + int(CACHE_RESULTS_PER_PAGE) else ""
                 )
 
                 await self.bot.answer_inline_query(
@@ -472,7 +472,7 @@ class UserSearchManagement:
             )
             apps = list(adv.get("results", {}).items())
             total_count = len(apps)
-            page_data = apps[offset: offset + CACHE_RESULTS_PER_PAGE]
+            page_data = apps[int(offset): int(offset) + int(CACHE_RESULTS_PER_PAGE)]
 
             # ─── 5) No results
             if not page_data:
@@ -520,11 +520,7 @@ class UserSearchManagement:
                         await small_caps()
                     )
                     stock = int(data.get("total_stock", 0))
-                    raw_price = data.get("lowest_price")
-                    try:
-                        lowp = float(raw_price) * float(COMMISSION) if raw_price is not None else 0.0
-                    except (TypeError, ValueError):
-                        lowp = 0.0
+                    lowp = float(data.get("lowest_price", 0.0)) * float(COMMISSION)
                     code = data.get("app_code", "")
                     first = code.split(",")[0].strip().lower() if "," in code else code.lower()
 
@@ -593,8 +589,8 @@ class UserSearchManagement:
 
             # ─── 8) Respond with pagination
             next_offset = (
-                str(offset + CACHE_RESULTS_PER_PAGE)
-                if total_count > offset + CACHE_RESULTS_PER_PAGE else ""
+                str(int(offset) + int(CACHE_RESULTS_PER_PAGE))
+                if int(total_count) > int(offset) + int(CACHE_RESULTS_PER_PAGE) else ""
             )
             await self.bot.answer_inline_query(
                 inline_query.id,
@@ -617,7 +613,6 @@ class UserSearchManagement:
                 )],
                 cache_time=5
             )
-
 
     async def handle_inline_query(self, inline_query, is_admin=False) -> None:
         """Handle an incoming inline query by processing it."""
@@ -717,11 +712,7 @@ class UserSearchManagement:
             for app_name, data in search_items:
                 app_id = str(data.get("app_id", app_name))
                 total_stock = int(data.get("total_stock", 0))
-                raw_price = data.get("lowest_price")
-                try:
-                    lowest_price = float(raw_price) * float(COMMISSION) if raw_price is not None else 0.0
-                except (TypeError, ValueError):
-                    lowest_price = 0.0
+                lowest_price = float(data.get("lowest_price", 0.0)) * float(COMMISSION)
                 result_text += await self.format_app_result(app_name, app_id, total_stock, lowest_price) + "\n\n"
 
             has_prev = False
@@ -785,7 +776,7 @@ class UserSearchManagement:
 
             direction, current_offset, query_text = parts[1], int(parts[2]), parts[3]
             if direction == "next":
-                offset = current_offset + RESULTS_PER_PAGE
+                offset = int(current_offset) + RESULTS_PER_PAGE
             elif direction == "prev":
                 offset = max(current_offset - RESULTS_PER_PAGE, 0)
             else:
@@ -806,11 +797,7 @@ class UserSearchManagement:
             for app_name, data in search_items:
                 app_id = str(data.get("app_id", app_name))
                 total_stock = int(data.get("total_stock", 0))
-                raw_price = data.get("lowest_price")
-                try:
-                    lowest_price = float(raw_price) * float(COMMISSION) if raw_price is not None else 0.0
-                except (TypeError, ValueError):
-                    lowest_price = 0.0
+                lowest_price = float(data.get("lowest_price", 0.0)) * float(COMMISSION)
                 result_text += await self.format_app_result(app_name, app_id, total_stock, lowest_price) + "\n\n"
 
             # Determine pagination availability.
