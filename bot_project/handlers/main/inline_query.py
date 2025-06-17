@@ -10,6 +10,8 @@ import asyncio
 from functools import partial
 import logging
 from termcolor import colored
+from colorama import Fore, Style, init as colorama_init
+import uuid
 
 import redis.asyncio as redis
 from redis.exceptions import RedisError
