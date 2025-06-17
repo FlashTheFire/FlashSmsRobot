@@ -318,68 +318,89 @@ class UserSearchManagement:
         query: str,
         offset: int = 0,
         limit: Optional[int] = 1500,
-        app_count: str = None,
-        app_price: str = None,
+        app_count: Optional[str] = None,
+        app_price: Optional[str] = None,
         sort_by: Optional[str] = None,
         country_name_query: Optional[str] = None,
         tool_limit: Optional[int] = 1500
     ) -> Dict[str, Any]:
-        """
-        Ultra-fast, parallelized advanced search with slicing and caching.
-        """
-        # 1) cache key
-        parts = [f'q={query}', f'off={offset}', f'lim={limit or tool_limit}', f'ac={app_count or "any"}', 
-                 f'ap={app_price or "any"}', f'so={sort_by or "none"}', f'cn={country_name_query or "all"}']
-        cache_key = 'adv:' + '|'.join(parts)
-        cached = await cache_manager.get(cache_key, CachePrefix.SEARCH)
-        if cached:
-            return cached
+        cache_key = f"search_advanced:q={query}|off={offset}|lim={limit or 1500}|count={app_count or 'any'}|price={app_price or 'any'}|sort={sort_by or 'none'}|country={country_name_query or 'all'}"
+        
+        try:
+            cached = await cache_manager.get(cache_key, CachePrefix.SEARCH)
+            if cached:
+                return cached
 
-        # 2) build patterns list (could add more patterns)
-        main_pattern = await self.build_simple_advanced_query(query)
-        patterns = [main_pattern]
+            advanced_query = await self.build_simple_advanced_query(query)
+            logging.debug(f"Advanced query: {advanced_query}")
 
-        # 3) run all patterns in parallel
-        tasks = [
-            self._search_pattern(p, app_count=app_count, app_price=app_price,
-                                  tool_limit=tool_limit, sort_by=sort_by,
-                                  country_name_query=country_name_query)
-            for p in patterns
-        ]
-        results_list = await asyncio.gather(*tasks)
+            # Concurrently search patterns
+            results = await asyncio.gather(
+                self._search_pattern(
+                    advanced_query,
+                    app_count=app_count,
+                    app_price=app_price,
+                    sort_by=sort_by,
+                    tool_limit=tool_limit,
+                    country_name_query=country_name_query
+                ),
+                return_exceptions=True
+            )
 
-        # 4) merge & prioritize
-        priority = {'exact':0,'prefix':1,'substring':2,'suffix':3,'other':4}
-        unified: Dict[str, Dict[str, Any]] = {}
-        for pat_idx, res in enumerate(results_list):
-            for name, data in res:
-                cat = self.categorize(name, query) if len(query)>1 else 'prefix'
-                if name in unified:
-                    if priority[cat] < priority[unified[name]['category']]:
-                        unified[name]['category'] = cat
-                else:
-                    if str(data.get('app_id','')).isdigit():
-                        unified[name] = {**data, 'app_name': name, 'category': cat}
+            if results and isinstance(results[0], Exception):
+                logging.error(f"Search pattern error: {results[0]}")
+                return self._empty_result()
 
-        # 5) sort
-        sorted_items = sorted(
-            unified.values(),
-            key=lambda d: (priority[d['category']], d['app_name'].lower())
-        )
+            raw_results = results[0] or []
+            priority_map = {"exact": 0, "prefix": 1, "substring": 2, "suffix": 3, "other": 4}
+            processed: Dict[str, Dict[str, Any]] = {}
 
-        total = len(sorted_items)
-        sliced = sorted_items[int(offset or 0): int(offset or 0) + int(limit or tool_limit or 0)]
+            for app_name, data in raw_results:
+                try:
+                    app_id = str(data.get("app_id", app_name))
+                    if not app_id.isdigit():
+                        continue
 
-        # 6) result dict
-        result = {
-            'total_results': total,
-            'results': {d['app_name']: d for d in sliced},
-            'cached_at': datetime.now().timestamp()
-        }
+                    category = self.categorize(app_name, query) if len(query) > 1 else "prefix"
+                    existing = processed.get(app_name)
+                    if existing:
+                        if priority_map[category] < priority_map[existing["category"]]:
+                            existing["category"] = category
+                    else:
+                        data["app_name"] = app_name
+                        data["category"] = category
+                        processed[app_name] = data
 
-        # 7) cache
-        await cache_manager.set(cache_key, result, CachePrefix.SEARCH)
-        return result
+                except Exception as e:
+                    logging.error(f"Error processing result for {app_name}: {e}")
+                    continue
+
+            # Sort by priority and name
+            sorted_items = sorted(
+                processed.items(),
+                key=lambda x: (priority_map.get(x[1]["category"], 5), x[0].lower())
+            )
+
+            total = len(sorted_items)
+            sliced = dict(sorted_items[offset:(offset + limit) if limit else None])
+
+            result = {
+                "total_results": total,
+                "sliced_results": len(sliced),
+                "results": sliced,
+                "cached_at": datetime.now().timestamp()
+            }
+
+            await cache_manager.set(cache_key, result, CachePrefix.SEARCH)
+            return result
+
+        except RedisError as e:
+            logging.error(f"[RedisError] search_advanced: {e}")
+        except Exception as e:
+            logging.error(f"[Exception] search_advanced: {e}")
+
+        return {"total_results": 0, "results": {}, "sliced_results": 0, "cached_at": datetime.now().timestamp()}
+
 
     async def validate_inline_query(self, user_id: str, query: str) -> Dict[str, Any]:
         try:
