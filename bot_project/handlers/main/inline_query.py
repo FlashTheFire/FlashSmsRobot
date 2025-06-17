@@ -398,25 +398,36 @@ class UserSearchManagement:
             cache_key = f"query_apps:q={query_text}|admin={int(is_admin)}|off={offset}"
             cached_blob = await cache_manager.get(cache_key, CachePrefix.SEARCH)
             if cached_blob:
-                results = [
-                    InlineQueryResultArticle(
+                # Ensure total is always an int
+                items = cached_blob.get("items", [])
+                total = int(cached_blob.get("total", 0))
+                # Reconstruct Telegram articles
+                results = []
+                for item in items:
+                    art = InlineQueryResultArticle(
                         id=item["id"],
                         title=item["title"],
                         description=item["description"],
                         thumbnail_url=item["thumb"],
-                        input_message_content=InputTextMessageContent(message_text=item["input_cmd"]),
-                        reply_markup=InlineKeyboardMarkup().add(
-                            InlineKeyboardButton("🛒 Sᴇʀᴠɪᴄᴇs", switch_inline_query_current_chat=item["switch"])
-                        ) if item["switch"] else None
-                    ) for item in cached_blob["items"]
-                ]
+                        input_message_content=InputTextMessageContent(message_text=item["input_cmd"])
+                    )
+                    if item.get("switch"):
+                        art.switch_inline_query_current_chat = item["switch"]
+                    results.append(art)
+
+                # Calculate next_offset safely
+                next_offset = ""
+                if total > offset + CACHE_RESULTS_PER_PAGE:
+                    next_offset = str(offset + CACHE_RESULTS_PER_PAGE)
+
                 await self.bot.answer_inline_query(
                     inline_query.id,
                     results,
                     cache_time=30,
-                    next_offset=str(offset + CACHE_RESULTS_PER_PAGE) if cached_blob["total"] > offset + CACHE_RESULTS_PER_PAGE else ""
+                    next_offset=next_offset
                 )
                 return
+
 
             start_time = time.time()
             validation = await self.validate_inline_query(str(inline_query.from_user.id), query_text)
@@ -553,11 +564,16 @@ class UserSearchManagement:
                 CachePrefix.SEARCH
             )
 
+            # Send paginated response
+            next_offset = ""
+            if total_count > offset + CACHE_RESULTS_PER_PAGE:
+                next_offset = str(offset + CACHE_RESULTS_PER_PAGE)
+
             await self.bot.answer_inline_query(
                 inline_query.id,
                 results,
                 cache_time=30,
-                next_offset=str(offset + CACHE_RESULTS_PER_PAGE) if total_count > offset + CACHE_RESULTS_PER_PAGE else ""
+                next_offset=next_offset
             )
 
         except Exception as e:
