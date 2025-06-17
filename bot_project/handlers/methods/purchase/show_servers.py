@@ -409,12 +409,12 @@ class UserServerManagement:
                     else:
                         await self.bot.answer_callback_query(call.id, "🚫 Nᴏ Sᴇʀᴠᴇʀs Aᴠᴀɪʟᴀʙʟᴇ.", show_alert=False)
                 except Exception as e:
-                    print(f"Error processing show servers: {e}")
+                    print(f"5 Error processing show servers: {e}")
                     await self.bot.answer_callback_query(call.id, "🚫 Nᴏ Sᴇʀᴠᴇʀs Aᴠᴀɪʟᴀʙʟᴇ.", show_alert=False)
                 finally:
                     await guard.release_lock(transaction_key)
         except Exception as e:
-            print(f"Error processing show servers: {e}")
+            print(f"6 Error processing show servers: {e}")
             await self.bot.answer_callback_query(call.id, "🚫 Nᴏ Sᴇʀᴠᴇʀs Aᴠᴀɪʟᴀʙʟᴇ.", show_alert=False)
 
     async def is_server_save(self, app_id: str, server_id: str, country_id: str, is_show: bool):
@@ -482,12 +482,12 @@ class UserServerManagement:
                     else:
                         await self.bot.answer_callback_query(call.id, "🚫 Nᴏ Sᴇʀᴠᴇʀs Aᴠᴀɪʟᴀʙʟᴇ.", show_alert=False)
                 except Exception as e:
-                    print(f"Error processing show servers: {e}")
+                    print(f"1 Error processing show servers: {e}")
                     await self.bot.answer_callback_query(call.id, "🚫 Nᴏ Sᴇʀᴠᴇʀs Aᴠᴀɪʟᴀʙʟᴇ.", show_alert=False)
                 finally:
                     await guard.release_lock(transaction_key)
         except Exception as e:
-            print(f"Error processing show servers: {e}")
+            print(f"2 Error processing show servers: {e}")
             await self.bot.answer_callback_query(call.id, "🚫 Nᴏ Sᴇʀᴠᴇʀs Aᴠᴀɪʟᴀʙʟᴇ.", show_alert=False)
 
     async def _acquire_transaction_lock(self, guard, transaction_key, input_data) -> bool:
@@ -554,13 +554,13 @@ class UserServerManagement:
                     else:
                         await self.bot.reply_to(message, "🚫 Nᴏ Sᴇʀᴠᴇʀs Aᴠᴀɪʟᴀʙʟᴇ.", show_alert=False)
                 except Exception as e:
-                    print(f"Error processing show servers: {e}")
+                    print(f"3 Error processing show servers: {e}")
                     error_message = "<blockquote><b>👨🏻‍💻Nᴏ Sᴇʀᴠᴇʀs Aᴠᴀɪʟᴀʙʟᴇ.</b>..</blockquote>"
                     await self.bot.send_message(user_id, error_message, parse_mode='html')
                 finally:
                     await guard.release_lock(transaction_key)
         except Exception as e:
-            print(f"Error processing show servers: {e}")
+            print(f"4 Error processing show servers: {e}")
             error_message = "<blockquote><b>👨🏻‍💻Nᴏ Sᴇʀᴠᴇʀs Aᴠᴀɪʟᴀʙʟᴇ.</b>..</blockquote>"
             await self.bot.send_message(user_id, error_message, parse_mode='html')
 
