@@ -263,14 +263,7 @@ class UserSearchManagement:
         country_name_query: Optional[str] = None
     ) -> List[Tuple[str, Dict[str, Any]]]:
         """
-        Search the Redis index using a custom FT.SEARCH query.
-        
-        :param pattern: Custom search query string.
-        :param app_count: Optional count filter. Defaults to "[1 +inf]".
-        :param app_price: Optional price filter. Defaults to "[0.01 +inf]".
-        :param limit: Optional limit for the number of results. Defaults to 1500.
-        :param sort_by: Optional field to sort the results by. Defaults to None.
-        :return: List of tuples containing the app_id and a dictionary of app data.
+        Search the Redis index using a custom FT.AGGREGATE query.
         """
         # Construct cache key
         cache_key_parts = [
@@ -291,13 +284,9 @@ class UserSearchManagement:
         query_str = f'{pattern} @is_show_server:(True) @is_show_app:(True) @is_show_country:(True)'
         if country_name_query:
             query_str += f" @country_name:(%%{country_name_query}%%|{country_name_query}*|{country_name_query})"
-        if app_price:
-            query_str += f" @app_price:{app_price}"
-        else:
-            query_str += " @app_price:[0.01 +inf]"
-        #if app_count:
-        #    query_str += f" @app_count:{app_count}"
+        query_str += f" @app_price:{app_price or '[0.01 +inf]'}"
 
+        # Build Redis query
         redis_query = [
             'FT.AGGREGATE', SERVICE_INDEX,
             query_str,
@@ -308,23 +297,19 @@ class UserSearchManagement:
             'REDUCE', 'FIRST_VALUE', '4', '@app_id', 'BY', '@app_price', 'ASC', 'AS', 'app_id',
             'REDUCE', 'FIRST_VALUE', '1', '@app_code', 'AS', 'app_code',
         ]
-
         if sort_by is not None:
             redis_query += ['SORTBY', '2', '@MinPrice', sort_by]
 
-        #redis_query += ['LIMIT', '0', str(tool_limit)]
-        print(colored(redis_query, 'blue'))
-
+        # Execute and retrieve rows
         try:
-            result = await self.user_manager._run_aggregate_cursor(redis_query, SERVICE_INDEX)
-            print(colored(result, 'red'))
+            rows = await self.user_manager._run_aggregate_cursor(redis_query, SERVICE_INDEX)
         except Exception as e:
             logging.error(f"Error executing search pattern with pattern {pattern}: {e}")
             return []
 
-        items = []
-        for i in range(1, len(result)):
-            rec = result[i]
+        # Process rows
+        items: List[Tuple[str, Dict[str, Any]]] = []
+        for rec in rows:  # iterate all returned rows
             try:
                 app_name = rec[1]
                 items.append((app_name, {
@@ -337,9 +322,8 @@ class UserSearchManagement:
                 logging.error(f"Error processing record: {rec} with error: {e}")
                 continue
 
-        # Store result in cache
+        # Cache and return
         await cache_manager.set(cache_key, items, CachePrefix.SEARCH)
-
         return items
 
     async def search_advanced(

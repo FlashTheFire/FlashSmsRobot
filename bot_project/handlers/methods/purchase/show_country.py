@@ -71,7 +71,8 @@ class UserCountryManagement:
             return {"valid": False, "error": "🔒 Iɴᴛᴇʀɴᴀʟ Vᴀʟɪᴅᴀᴛɪᴏɴ Eʀʀᴏʀ"}
 
     async def country_search(
-        self, app_id: str,
+        self,
+        app_id: str,
         country_id: Optional[str] = None,
         server_id: Optional[str] = None,
         is_admin: bool = False,
@@ -79,133 +80,124 @@ class UserCountryManagement:
         app_price: Optional[str] = "[0.01 +inf]",
         sort_by: Optional[str] = "ASC",
         limit: int = 500
-        ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[Dict[str, Any]]:
         """
         Aggregates service data by country for the given app_id.
-        Combines all servers per country and returns only the lowest price for each country.
-        Also returns a list of all server_ids found.
         """
         try:
             redis_client = self.redis_client
             if not redis_client:
                 return None
 
-            # Build query string with provided filters.
+            # Build query string
             query_str = f'@app_id:{app_id}'
             if server_id:
                 query_str += f' @server_id:{server_id}'
-
             if country_id:
                 query_str += f' @country_id:{country_id}'
-
             query_str += f" @app_price:{app_price}"
             if not is_admin:
-                query_str += f"@is_show_server:(True) @is_show_country:(True) @is_show_app:(True)" #@app_count:{app_count} 
+                query_str += " @is_show_server:(True) @is_show_country:(True) @is_show_app:(True)"
 
-            groupby_fields = ["@country_id", "@country_name", "@server_id", "@app_name"]
+            # Determine GROUPBY fields
+            fields = ["@country_id", "@country_name", "@server_id", "@app_name"]
+            groupby_num = "5" if is_admin else "4"
             if is_admin:
-                groupby_fields.append("@is_show_country")
-                groupby_num = "5"
-            else:
-                groupby_num = "4"
+                fields.append("@is_show_country")
 
-            cache_key = "country_data:" + ":".join(str(part) for part in [
-                app_id,
-                server_id if server_id else "",
-                country_id if country_id else "",
-                app_count,
-                app_price,
-                sort_by,
-                str(limit),
-                str(is_admin)
-            ])
+            # Cache key
+            cache_key = "country_data:" + ":".join(map(str, [
+                app_id, server_id or "", country_id or "",
+                app_count, app_price, sort_by, limit, is_admin
+            ]))
+            cached = await cache_manager.get(cache_key, CachePrefix.COUNTRY)
+            if cached:
+                return cached
 
-            cache_data = await cache_manager.get(cache_key, CachePrefix.COUNTRY)
-            if cache_data:
-                return cache_data
-
-
-
+            # Build aggregation command
             aggregation_query = [
                 "FT.AGGREGATE", SERVICE_INDEX, query_str,
-                "GROUPBY", groupby_num, *groupby_fields,
+                "GROUPBY", groupby_num, *fields,
                 "REDUCE", "MIN", "1", "@app_price", "AS", "MIN_PRICE",
                 "REDUCE", "SUM", "1", "@app_count", "AS", "TOTAL_STOCK",
-                "SORTBY", "2", "@MIN_PRICE", sort_by,   # or DESC for highest
-                "LIMIT", "0", limit                     # returns only the top result
-
+                "SORTBY", "2", "@MIN_PRICE", sort_by,
+                "LIMIT", "0", str(limit)
             ]
-            result = await self.user_manager._run_aggregate_cursor(aggregation_query, SERVICE_INDEX)  
-            print(f"result len: {len(result)}") 
-            if not result or len(result) < 2:
+
+            # Run and get rows
+            rows = await self.user_manager._run_aggregate_cursor(aggregation_query, SERVICE_INDEX)
+            if not rows:
                 return None
 
+            # Load country metadata
             whole_country_data = await redis_client.json().get('main_data:details:country_data') or {}
-            docs = []
-            server_ids_set = set()
 
-            for row in result[1:]:
+            docs = []
+            server_ids = set()
+
+            # Process all rows
+            for row in rows:
                 row_dict = {
-                    row[i].decode('utf-8') if isinstance(row[i], bytes) else row[i]:
-                    row[i+1].decode('utf-8') if isinstance(row[i+1], bytes) else row[i+1]
+                    (row[i].decode() if isinstance(row[i], bytes) else row[i]):
+                    (row[i + 1].decode() if isinstance(row[i + 1], bytes) else row[i + 1])
                     for i in range(0, len(row), 2)
                 }
+
                 try:
                     price = float(row_dict.get("MIN_PRICE", 0))
                     count = int(row_dict.get("TOTAL_STOCK", 0))
                 except ValueError:
                     continue
 
-                country_id_val = row_dict.get("country_id", "")
-                country_info = whole_country_data.get(country_id_val, {})
-                country_code = country_info.get('country_code', '')
-                country_name = country_info.get('country_name', '')
+                cid = row_dict.get("country_id", "")
+                info = whole_country_data.get(cid, {})
+                country_code = info.get('country_code', '')
+                country_name = info.get('country_name', '')
 
-                # Parse server_id and store in doc
+                # Parse server_id
                 raw_sid = row_dict.get("server_id", "")
-                parsed_sid = raw_sid
                 try:
-                    parsed_sid = int(raw_sid)
+                    sid = int(raw_sid)
                 except (ValueError, TypeError):
-                    pass
-                server_ids_set.add(parsed_sid)
+                    sid = raw_sid
+                server_ids.add(sid)
 
                 docs.append({
-                    'country_id': country_id_val,
+                    'country_id': cid,
                     'country_name': country_name,
                     'country_code': country_code,
-                    'app_name': row_dict.get("app_name", "Unknown"),
+                    'app_name': row_dict.get("app_name", ""),
                     'app_price': price,
                     'app_count': count,
                     'app_id': app_id,
                     'is_show_country': row_dict.get("is_show_country", False),
-                    'server_id': parsed_sid
+                    'server_id': sid
                 })
 
             if not docs:
                 return None
 
-            grouped = {}
+            # Group by country_code and select best price
+            best = {}
             for doc in docs:
                 key = doc['country_code']
-                if key in grouped:
-                    if doc['app_price'] < grouped[key]['app_price']:
-                        grouped[key] = doc
-                else:
-                    grouped[key] = doc
+                if key not in best or doc['app_price'] < best[key]['app_price']:
+                    best[key] = doc
 
-            sorted_docs = sorted(grouped.values(), key=lambda x: (x['app_price'], x['country_code']))
-            sorted_server_ids = sorted(server_ids_set, key=lambda x: (isinstance(x, str), x))
+            sorted_docs = sorted(best.values(), key=lambda d: (d['app_price'], d['country_code']))
+            sorted_servers = sorted(server_ids, key=lambda x: (isinstance(x, str), x))
 
-            country_data = {
+            result = {
                 'total': len(sorted_docs),
                 'docs': sorted_docs,
-                'server_ids': sorted_server_ids
+                'server_ids': sorted_servers
             }
-            await cache_manager.set(cache_key, country_data, CachePrefix.COUNTRY)
-            return country_data
+
+            await cache_manager.set(cache_key, result, CachePrefix.COUNTRY)
+            return result
+
         except Exception as e:
-            print(f"Aggregation query error in country_search: {e}")
+            logging.error(f"Aggregation query error in country_search: {e}")
             return None
 
     async def generate_buttons(
@@ -857,21 +849,25 @@ class UserCountryManagement:
             ]
             if server_query:
                 tasks.append(self.user_manager._run_aggregate_cursor(server_query, SERVICE_INDEX))
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            total_country_res, order_res, cancel_res = results[:3]
-            if server_query:
-                server_res = results[3]
-            
-            # Check for expected structure in total_country_res
-            if not isinstance(total_country_res, list) or len(total_country_res) < 2:
-                raise ValueError("Unexpected response structure for total_query")
-            flat_list = total_country_res[1] if isinstance(total_country_res[1], list) else []
-            result_dict = {flat_list[i*2]: flat_list[i*2 + 1] for i in range(len(flat_list) // 2)}
+            total_country_res, order_res, cancel_res, *rest = await asyncio.gather(*tasks, return_exceptions=True)
 
-            # Extract values with defaults if missing
+            # ─── PROCESS TOTAL_COUNTRY_RES ────────────────────────────────────────────
+            if not isinstance(total_country_res, list) or len(total_country_res) < 1:
+                raise ValueError("Unexpected response structure for total_query")
+
+            # Take the FIRST row (instead of total_country_res[1])
+            first_row = total_country_res[0]
+            # Build a dict from alternating keys/values
+            result_dict = {
+                first_row[i]: first_row[i+1]
+                for i in range(0, len(first_row), 2)
+            }
+
+            # Now extract your fields safely:
             app_name = result_dict.get("app_name", "Unknown").translate(await small_caps())
             app_code = result_dict.get("app_code", "Unknown").translate(await small_caps())
-            app_price = result_dict.get("app_price", "").translate(await small_caps())
+            app_price = result_dict.get("app_price", "0").translate(await small_caps())
+
             country_data = await redis_manager.redis_client.json().get('main_data:details:country_data') or {}
             country_name = country_data.get(country_id, {}).get('country_name', '').translate(await small_caps())
             country_code = country_data.get(country_id, {}).get('country_code', '')
