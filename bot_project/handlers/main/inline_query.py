@@ -391,63 +391,76 @@ class UserSearchManagement:
 
     async def query_apps(self, inline_query, is_admin: bool = False) -> None:
         try:
+            # ─── 1) Normalize query & offset
             raw_query = inline_query.query.strip().lower()
-            query_text = raw_query.removeprefix("#sᴇʀᴠɪᴄᴇ").strip() if is_admin else raw_query
+            query_text = (
+                raw_query.removeprefix("#sᴇʀᴠɪᴄᴇ").strip()
+                if is_admin else raw_query
+            )
             offset = int(inline_query.offset or "0")
 
+            # ─── 2) Try cache
             cache_key = f"query_apps:q={query_text}|admin={int(is_admin)}|off={offset}"
-            cached_blob = await cache_manager.get(cache_key, CachePrefix.SEARCH)
-            if cached_blob:
-                # Ensure total is always an int
-                items = cached_blob.get("items", [])
-                total = int(cached_blob.get("total", 0))
-                # Reconstruct Telegram articles
-                results = []
-                for item in items:
-                    art = InlineQueryResultArticle(
-                        id=item["id"],
-                        title=item["title"],
-                        description=item["description"],
-                        thumbnail_url=item["thumb"],
-                        input_message_content=InputTextMessageContent(message_text=item["input_cmd"])
-                    )
-                    if item.get("switch"):
-                        art.switch_inline_query_current_chat = item["switch"]
-                    results.append(art)
+            cached = await cache_manager.get(cache_key, CachePrefix.SEARCH)
+            if cached:
+                items = cached.get("items", [])
+                total = int(cached.get("total", 0))
 
-                # Calculate next_offset safely
-                next_offset = ""
-                if total > offset + CACHE_RESULTS_PER_PAGE:
-                    next_offset = str(offset + CACHE_RESULTS_PER_PAGE)
+                # Reconstruct results
+                articles = []
+                for it in items:
+                    art = InlineQueryResultArticle(
+                        id=it["id"],
+                        title=it["title"],
+                        description=it["description"],
+                        thumbnail_url=it["thumb"],
+                        input_message_content=InputTextMessageContent(
+                            message_text=it["input_cmd"]
+                        )
+                    )
+                    if it.get("switch"):
+                        art.switch_inline_query_current_chat = it["switch"]
+                    articles.append(art)
+
+                # Next offset
+                next_offset = (
+                    str(offset + CACHE_RESULTS_PER_PAGE)
+                    if total > offset + CACHE_RESULTS_PER_PAGE else ""
+                )
 
                 await self.bot.answer_inline_query(
                     inline_query.id,
-                    results,
+                    articles,
                     cache_time=30,
                     next_offset=next_offset
                 )
                 return
 
-
-            start_time = time.time()
-            validation = await self.validate_inline_query(str(inline_query.from_user.id), query_text)
-            if not validation["valid"]:
-                error_text = validation["error"]
+            # ─── 3) Validate
+            start = time.time()
+            valid = await self.validate_inline_query(
+                str(inline_query.from_user.id), query_text
+            )
+            if not valid["valid"]:
+                err = valid["error"]
                 await self.bot.answer_inline_query(
                     inline_query.id,
                     [InlineQueryResultArticle(
                         id="error",
                         title="Error",
-                        description=error_text,
+                        description=err,
                         thumbnail_url="https://img.freepik.com/free-vector/bird-colorful-logo-gradient-vector_343694-1365.jpg",
-                        input_message_content=InputTextMessageContent(message_text=error_text)
+                        input_message_content=InputTextMessageContent(
+                            message_text=err
+                        )
                     )],
                     cache_time=5
                 )
                 return
 
-            query_text = validation.get("sanitized_query", "")
-            search_data = await self.search_advanced(
+            # ─── 4) Fetch raw, slice
+            query_text = valid.get("sanitized_query", "")
+            adv = await self.search_advanced(
                 query=query_text,
                 offset=0,
                 limit=None,
@@ -457,31 +470,36 @@ class UserSearchManagement:
                 country_name_query=None,
                 tool_limit=None
             )
-            apps = list(search_data.get("results", {}).items())
+            apps = list(adv.get("results", {}).items())
             total_count = len(apps)
-            page_data = apps[offset:offset + CACHE_RESULTS_PER_PAGE]
+            page_data = apps[offset: offset + CACHE_RESULTS_PER_PAGE]
 
+            # ─── 5) No results
             if not page_data:
-                keyboard = InlineKeyboardMarkup().add(
-                    InlineKeyboardButton("⌕ Contact Support", url="https://t.me/udaysupport")
+                kb = InlineKeyboardMarkup().add(
+                    InlineKeyboardButton(
+                        "⌕ Contact Support",
+                        url="https://t.me/udaysupport"
+                    )
                 )
                 await self.bot.answer_inline_query(
                     inline_query.id,
                     [InlineQueryResultArticle(
                         id="not_found",
                         title=" Nᴏ Sᴇʀᴠɪᴄᴇs Aᴠᴀɪʟᴀʙʟᴇ",
-                        description="Wᴇ'ʀᴇ ᴄᴏɴsᴛᴀɴᴛʟʏ ᴜᴘᴅᴀᴛɪɴɢ ᴏᴜʀ sᴇʀᴠɪᴄᴇs. Tʀʏ ᴀɴᴏᴛʜᴇʀ sᴇᴀʀᴄʜ ᴏʀ ᴄᴏɴᴛᴀᴄᴛ sᴜᴘᴘᴏʀᴛ!",
+                        description=(
+                            "Wᴇ'ʀᴇ ᴄᴏɴsᴛᴀɴᴛʟʏ ᴜᴘᴅᴀᴛɪɴɢ ᴏᴜʀ sᴇʀᴠɪᴄᴇs. "
+                            "Tʀʏ ᴀɴᴏᴛʜᴇʀ sᴇᴀʀᴄʜ ᴏʀ ᴄᴏɴᴛᴀᴄᴛ sᴜᴘᴘᴏʀᴛ!"
+                        ),
                         thumbnail_url="https://img.freepik.com/free-vector/bird-colorful-logo-gradient-vector_343694-1365.jpg",
-                        reply_markup=keyboard,
+                        reply_markup=kb,
                         input_message_content=InputTextMessageContent(
                             message_text=(
                                 "*Nᴏ Sᴇʀᴠɪᴄᴇs Fᴏᴜɴᴅ*\n\n"
                                 "Yᴏᴜʀ Sᴇᴀʀᴄʜ Dɪᴅɴ'ᴛ Mᴀᴛᴄʜ Aɴʏ Aᴠᴀɪʟᴀʙʟᴇ Sᴇʀᴠɪᴄᴇs.\n"
-                                "Sᴜɢɢᴇsᴛɪᴏɴs:\n"
-                                "• Cʜᴇᴄᴋ Yᴏᴜʀ Sᴘᴇʟʟɪɴɢ\n"
-                                "• Tʀʏ Mᴏʀᴇ Gᴇɴᴇʀᴀʟ Kᴇʏᴡᴏʀᴅs\n"
-                                "• Cᴏɴᴛᴀᴄᴛ Oᴜʀ Sᴜᴘᴘᴏʀᴛ Tᴇᴀᴍ\n\n"
-                                "Wᴇ'ʀᴇ Cᴏɴsᴛᴀɴᴛʟʏ Aᴅᴅɪɴɢ Nᴇᴡ Sᴇʀᴠɪᴄᴇs!"
+                                "• Cʜᴇᴄᴋ Sᴘᴇʟʟɪɴɢ\n"
+                                "• Tʀʏ Gᴇɴᴇʀᴀʟ Kᴇʏᴡᴏʀᴅs\n"
+                                "• Cᴏɴᴛᴀᴄᴛ Sᴜᴘᴘᴏʀᴛ"
                             ),
                             parse_mode="Markdown"
                         )
@@ -490,88 +508,93 @@ class UserSearchManagement:
                 )
                 return
 
+            # ─── 6) Build page results + raw_items
             price_country = await self.redis_client.json().get('main_data:price-country') or {}
             country_data = await self.redis_client.json().get('main_data:details:country_data') or {}
-            results, raw_items = [], []
 
+            articles, raw_items = [], []
             for app_name, data in page_data:
                 try:
                     app_id = str(data.get("app_id", app_name))
-                    clean_name = self.input_validator.sanitize_text(app_name).title().translate(await small_caps())
-                    total_stock = int(data.get("total_stock", 0))
-                    lowest_price = float(data.get("lowest_price", 0.0)) * float(COMMISSION)
-                    app_code = data.get("app_code", "")
-                    first_code = app_code.split(",")[0].strip().lower() if "," in app_code else app_code.lower()
+                    clean = self.input_validator.sanitize_text(app_name).title().translate(
+                        await small_caps()
+                    )
+                    stock = int(data.get("total_stock", 0))
+                    lowp = float(data.get("lowest_price", 0.0)) * float(COMMISSION)
+                    code = data.get("app_code", "")
+                    first = code.split(",")[0].strip().lower() if "," in code else code.lower()
 
-                    app_prices = price_country.get(app_id, {})
-                    countries = {}
-                    for p_str, cid in app_prices.items():
+                    # pick top countries
+                    pc = price_country.get(app_id, {})
+                    cp: Dict[str, float] = {}
+                    for ps, cid in pc.items():
                         try:
-                            price = float(p_str)
-                            if price > 0 and (cid not in countries or price < countries[cid]):
-                                countries[cid] = price
+                            p = float(ps)
+                            if p > 0 and (cid not in cp or p < cp[cid]):
+                                cp[cid] = p
                         except:
                             continue
 
-                    top_countries = sorted(countries.items(), key=lambda x: x[1])[:4]
-                    has_more = len(countries) > 3
-                    display_countries = [
-                        country_data.get(cid, {}).get("country_code", "") for cid, _ in top_countries[:3]
-                    ]
-                    top_display = f"[{', '.join(display_countries)}{',...' if has_more else ''}]"
+                    top4 = sorted(cp.items(), key=lambda x: x[1])[:4]
+                    has_more = len(cp) > 3
+                    flags = [ country_data.get(cid,{}).get("country_code","") for cid,_ in top4[:3] ]
+                    display = f"[{','.join(flags)}{',...' if has_more else ''}]"
 
-                    description = (
-                        f"❯ Tʜᴇ Sᴛᴀʀᴛɪɴɢ Pʀɪᴄᴇ Is Oɴʟʏ {lowest_price:.2f} Pᴏɪɴᴛ's.\n"
-                        f"• Aᴠᴀɪʟᴀʙʟᴇ Aᴄʀᴏss » {top_display}\n"
-                        f"• Tᴏᴛᴀʟ Sᴛᴏᴄᴋ » {await self.format_number_to_text(total_stock)}"
+                    desc = (
+                        f"❯ Starting Price: {lowp:.2f} points\n"
+                        f"• Available in: {display}\n"
+                        f"• Stock: {await self.format_number_to_text(stock)}"
                     )
 
-                    input_cmd = f"#Sᴇʀᴠɪᴄᴇ|{app_id}" if is_admin else f"/Buy_{app_id}"
-                    switch_query = "#Sᴇʀᴠɪᴄᴇ " if is_admin else ""
+                    cmd = f"#Sᴇʀᴠɪᴄᴇ|{app_id}" if is_admin else f"/Buy_{app_id}"
+                    switch = "#Sᴇʀᴠɪᴄᴇ " if is_admin else ""
 
                     item = {
                         "id": str(uuid.uuid4()),
-                        "title": clean_name,
-                        "description": description,
+                        "title": clean,
+                        "description": desc,
                         "thumb": (
-                            f"https://smsactivate.s3.eu-central-1.amazonaws.com/assets/ico/{first_code}0.webp"
-                            if first_code else
+                            f"https://smsactivate.s3.eu-central-1.amazonaws.com/assets/ico/{first}0.webp"
+                            if first else
                             "https://img.icons8.com/color/48/000000/shop.png"
                         ),
-                        "input_cmd": input_cmd,
-                        "switch": switch_query
+                        "input_cmd": cmd,
+                        "switch": switch
                     }
                     raw_items.append(item)
-                    results.append(
-                        InlineQueryResultArticle(
-                            id=item["id"],
-                            title=item["title"],
-                            description=item["description"],
-                            thumbnail_url=item["thumb"],
-                            input_message_content=InputTextMessageContent(message_text=item["input_cmd"]),
-                            reply_markup=InlineKeyboardMarkup().add(
-                                InlineKeyboardButton("🛒 Sᴇʀᴠɪᴄᴇs", switch_inline_query_current_chat=item["switch"])
-                            )
+
+                    art = InlineQueryResultArticle(
+                        id=item["id"],
+                        title=item["title"],
+                        description=item["description"],
+                        thumbnail_url=item["thumb"],
+                        input_message_content=InputTextMessageContent(
+                            message_text=item["input_cmd"]
+                        ),
+                        reply_markup=InlineKeyboardMarkup().add(
+                            InlineKeyboardButton("🛒 Sᴇʀᴠɪᴄᴇs", switch_inline_query_current_chat=item["switch"])
                         )
                     )
+                    articles.append(art)
                 except Exception as e:
                     logging.error(f"App error: {e}")
                     continue
 
+            # ─── 7) Cache primitives
             await cache_manager.set(
                 cache_key,
                 {"items": raw_items, "total": total_count, "ts": time.time()},
                 CachePrefix.SEARCH
             )
 
-            # Send paginated response
-            next_offset = ""
-            if total_count > offset + CACHE_RESULTS_PER_PAGE:
-                next_offset = str(offset + CACHE_RESULTS_PER_PAGE)
-
+            # ─── 8) Respond with pagination
+            next_offset = (
+                str(offset + CACHE_RESULTS_PER_PAGE)
+                if total_count > offset + CACHE_RESULTS_PER_PAGE else ""
+            )
             await self.bot.answer_inline_query(
                 inline_query.id,
-                results,
+                articles,
                 cache_time=30,
                 next_offset=next_offset
             )
@@ -584,7 +607,9 @@ class UserSearchManagement:
                     id="error",
                     title="Error",
                     description="An error occurred. Please try again.",
-                    input_message_content=InputTextMessageContent(message_text="Error occurred. Please try again.")
+                    input_message_content=InputTextMessageContent(
+                        message_text="Error occurred. Please try again."
+                    )
                 )],
                 cache_time=5
             )
