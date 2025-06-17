@@ -24,79 +24,55 @@ class CacheManager:
     def __init__(self):
         self._logger = logging.getLogger(__name__)
         self.redis_client = redis_manager.redis_client
-    
+
     def _build_key(self, prefix: str, key: str) -> str:
-        """Build a standardized cache key"""
         return f"{prefix}{key}" if prefix else key
-    
 
     def get_expire(self) -> int:
-        """Get seconds from now to the next 12AM or 12PM (whichever is sooner)"""
         now = datetime.now()
         next_am = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
         next_pm = now.replace(hour=12, minute=0, second=0, microsecond=0)
         if now >= next_pm:
             next_pm += timedelta(days=1)
-        next_time = min(next_am, next_pm)
-        return int((next_time - now).total_seconds())
+        return int((min(next_am, next_pm) - now).total_seconds())
 
     async def get(self, key: str, prefix: str = "") -> Optional[Any]:
-        """Retrieve from Redis cache with prefix support"""
         full_key = self._build_key(prefix, key)
         try:
-            data = await self.redis_client.get(full_key) or {}
-            if not data:
+            raw = await self.redis_client.get(full_key)
+            if not raw:
                 return {}
-
-            if isinstance(data, bytes):
-                data = data.decode('utf-8')
-
-            parsed = json.loads(data)
+            if isinstance(raw, bytes):
+                raw = raw.decode('utf-8')
+            parsed = json.loads(raw)
             return parsed.get("data")
-
         except json.JSONDecodeError as e:
             self._logger.error(f"JSON decode error for key {full_key}: {e}")
-        except AttributeError as e:
-            if "object has no attribute 'get'" in str(e):
-                self._logger.error(f"Redis get error for key {full_key}: {e}")
-            else:
-                raise
+            return {}
         except Exception as e:
-            self._logger.error(f"Redis get error for key {full_key}: {e}")
+            if "has no attribute 'get'" in str(e):
+                self._logger.error(f"Redis get error for key {full_key}: {e}")
+                return {}
+            self._logger.error(f"Unknown Redis get error for key {full_key}: {e}")
         return {}
 
-    async def set(
-        self,
-        key: str,
-        data: Any,
-        prefix: str = "",
-        expire_time: Optional[int] = None
-    ) -> bool:
-        """Set cache with prefix support and optional expiration"""
+    async def set(self, key: str, data: Any, prefix: str = "", expire_time: Optional[int] = None) -> bool:
         full_key = self._build_key(prefix, key)
         try:
-            # Convert special types
-            if isinstance(data, InlineKeyboardMarkup):
-                data = data.to_dict()
-
-            expire_time = expire_time or self.get_expire()
-
+            expire = expire_time or self.get_expire()
+            payload = data.to_dict() if isinstance(data, InlineKeyboardMarkup) else data
             cache_data = {
-                "data": data,
+                "data": payload,
                 "cached_at": datetime.utcnow().isoformat(),
                 "cache_key": full_key
             }
-
-            json_data = json.dumps(cache_data, default=str)
-            await self.redis_client.setex(full_key, expire_time, json_data)
+            await self.redis_client.setex(full_key, expire, json.dumps(cache_data, default=str))
             return True
-
         except Exception as e:
             self._logger.error(f"Cache set error for key {full_key}: {e}")
             return False
 
     async def delete(self, key: str, prefix: str = "") -> bool:
-        """Delete a cache entry"""
         full_key = self._build_key(prefix, key)
         try:
             await self.redis_client.delete(full_key)

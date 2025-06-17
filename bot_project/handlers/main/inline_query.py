@@ -312,7 +312,7 @@ class UserSearchManagement:
         if sort_by is not None:
             redis_query += ['SORTBY', '2', '@MinPrice', sort_by]
 
-        redis_query += ['LIMIT', '0', str(tool_limit)]
+        #redis_query += ['LIMIT', '0', str(tool_limit)]
         print(colored(redis_query, 'blue'))
 
         try:
