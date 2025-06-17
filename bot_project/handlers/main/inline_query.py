@@ -368,7 +368,7 @@ class UserSearchManagement:
         )
 
         total = len(sorted_items)
-        sliced = sorted_items[int(offset): int(offset) + int(limit or tool_limit)]
+        sliced = sorted_items[int(offset or 0): int(offset or 0) + int(limit or tool_limit or 0)]
 
         # 6) result dict
         result = {
@@ -424,8 +424,8 @@ class UserSearchManagement:
 
                 # Next offset
                 next_offset = (
-                    str(int(offset) + int(CACHE_RESULTS_PER_PAGE))
-                    if int(total) > int(offset) + int(CACHE_RESULTS_PER_PAGE) else ""
+                    str(int(offset) + int(CACHE_RESULTS_PER_PAGE) if CACHE_RESULTS_PER_PAGE else 0)
+                    if int(total) > int(offset or 0) + int(CACHE_RESULTS_PER_PAGE or 0) else ""
                 )
 
                 await self.bot.answer_inline_query(
@@ -472,7 +472,7 @@ class UserSearchManagement:
             )
             apps = list(adv.get("results", {}).items())
             total_count = len(apps)
-            page_data = apps[int(offset): int(offset) + int(CACHE_RESULTS_PER_PAGE)]
+            page_data = apps[int(offset) if offset else 0: int(offset) + int(CACHE_RESULTS_PER_PAGE) if CACHE_RESULTS_PER_PAGE else 0]
 
             # ─── 5) No results
             if not page_data:
@@ -589,8 +589,8 @@ class UserSearchManagement:
 
             # ─── 8) Respond with pagination
             next_offset = (
-                str(int(offset) + int(CACHE_RESULTS_PER_PAGE))
-                if int(total_count) > int(offset) + int(CACHE_RESULTS_PER_PAGE) else ""
+                str(int(offset) + int(CACHE_RESULTS_PER_PAGE or 0))
+                if int(total_count or 0) > int(offset or 0) + int(CACHE_RESULTS_PER_PAGE or 0) else ""
             )
             await self.bot.answer_inline_query(
                 inline_query.id,
@@ -776,7 +776,7 @@ class UserSearchManagement:
 
             direction, current_offset, query_text = parts[1], int(parts[2]), parts[3]
             if direction == "next":
-                offset = int(current_offset) + int(RESULTS_PER_PAGE)
+                offset = int(current_offset) + int(RESULTS_PER_PAGE) if current_offset else 0
             elif direction == "prev":
                 offset = max(current_offset - RESULTS_PER_PAGE, 0)
             else:
