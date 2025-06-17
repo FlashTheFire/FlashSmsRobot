@@ -326,7 +326,7 @@ class UserCountryManagement:
 
         # 3) cache it
         to_cache = {
-            "markup": markup.to_python(),
+            "markup": markup.to_dict(),
             "meta": [app_id, app_name]
         }
         await cache_manager.set(cache_key, to_cache, prefix=CachePrefix.BUTTONS)

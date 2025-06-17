@@ -375,7 +375,7 @@ class UserServerManagement:
             # 4) Cache the result
             await cache_manager.set(
                 cache_key,
-                [message, text, keyboard.to_python()],
+                [message, text, keyboard.to_dict()],
                 CachePrefix.SEARCH
             )
 
