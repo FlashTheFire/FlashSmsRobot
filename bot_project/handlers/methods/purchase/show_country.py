@@ -217,7 +217,7 @@ class UserCountryManagement:
         cache_key = f"gen_btns:{search_result.get('query_hash','')}:{page}:{per_page_items}:{country_id or ''}:{int(is_admin)}"
         
         # 1) try cache
-        cached = await cache_manager.get(cache_key, prefix="buttons")
+        cached = await cache_manager.get(cache_key, prefix=CachePrefix.BUTTONS)
         if cached:
             # cached is stored as {"markup": json_markup, "meta": [app_id, app_name]}
             data = cached

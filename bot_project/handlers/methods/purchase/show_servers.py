@@ -260,8 +260,12 @@ class UserServerManagement:
         # 2) Try cache
         cached = await cache_manager.get(cache_key, CachePrefix.SEARCH)
         if cached:
-            msg, text, kb_dict = cached
-            keyboard = InlineKeyboardMarkup(inline_keyboard=kb_dict["inline_keyboard"])
+            # cached is stored as {"markup": json_markup, "meta": [app_id, app_name]}
+            data = cached
+            # restore markup
+            markup_dict = data["markup"]
+            keyboard = InlineKeyboardMarkup(**markup_dict)
+            msg, text = data["meta"]
             return msg, text, keyboard
 
         # 3) Cache miss → fetch & build
@@ -356,11 +360,11 @@ class UserServerManagement:
             )
 
             # 4) Cache the result
-            await cache_manager.set(
-                cache_key,
-                [message, text, keyboard.to_dict()],
-                CachePrefix.SEARCH
-            )
+            to_cache = {
+                "markup": keyboard.to_dict(),
+                "meta": [message, text]
+            }
+            await cache_manager.set(cache_key, to_cache, prefix=CachePrefix.BUTTONS)
 
             return message, text, keyboard
 
