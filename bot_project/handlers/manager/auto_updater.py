@@ -462,6 +462,26 @@ class AutoUpdater:
                 logging.info("Data update completed successfully")
         except Exception as e:
             logging.error(f"Error in update_data: {e}")
+    
+    async def recover_data(self, url: str):
+        """
+        Handles the /add command. Expects a URL in the message text.
+        If valid, it will fetch and import Redis keys from that dump.
+        """
+        try:
+            print(url)
+            if not url.startswith("http"):
+                print("❌ Invalid URL. Must start with http or https.")
+                return
+
+            await self.bot.send_message(ADMIN_ID, f"⏳ Importing Redis data from:\n{url}")
+            await self.import_redis_dump(url)
+            await self.bot.send_message(ADMIN_ID, "✅ Redis import complete.")
+            return True
+        except Exception as e:
+            logging.error(f"[add_dump_from_url] Error: {e}")
+            return False
+
 
     async def load_old_data_from_url(self, url: str) -> Dict[str, Any]:
         """
@@ -777,9 +797,10 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
         if not hasattr(auto_updater, 'initialized'):
             await auto_updater.initialize(bot=bot)
             redis_client = await redis_manager.get_client()
-            keys = [key async for key in redis_client.scan_iter(match='service_data:*', count=1000)]
+            keys = [key async for key in redis_client.scan_iter(match='service_data:22:1:*', count=1000)]
             print(colored(f"[AutoUpdate.periodic_update] Found {len(keys)} service_data keys", "green"))
             if len(keys) == 0:
+                await auto_updater.recover_data(url="https://temp.sh/DKsdK/flashsms.json")
                 auto_updater.initialized = True
                 logging.info("Ran one-time initial update")
                 await auto_updater.update_data()
