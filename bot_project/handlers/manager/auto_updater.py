@@ -313,7 +313,7 @@ class AutoUpdater:
         redis_key = f"{SERVICE_PREFIX}:{country_id}:{server_id}:{app_id}"
 
         # if you only want to index some apps, guard here:
-        if matches and f"{country_id}:{server_id}:{app_id}" not in matches:
+        if matches and f"{country_id}:{server_id}:{app_id}" in matches:
             print(colored(f"Skipping app {app_name} ({code_field}) | Price: ${app_price:<6.2f} | Stock: {app_count}", "yellow"))
             return
 
