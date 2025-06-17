@@ -994,8 +994,10 @@ class UserPurchaseManagement:
         if not uids:
             return
         first_id = uids[0]
-        full_data = json.loads(await self.redis_client.get(f"cache-data:callback_data:{first_id}"))
-
+        full_data = json.loads(await self.redis_client.get(f"cache-data:callback_data:{first_id}") or '{}')
+        if not full_data:
+            print(colored(f"No full_data found for {first_id}", "red"))
+            return
         # Counter for batch balance checks
         check_count = 0
 
