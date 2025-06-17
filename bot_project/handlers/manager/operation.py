@@ -16,6 +16,7 @@ import json
 import logging
 import time
 from pathlib import Path
+from utils.cache_manager import CacheManager, CachePrefix, cache_manager
 from functools import wraps
 from datetime import datetime, timedelta
 from typing import Optional, Tuple, Dict
@@ -146,6 +147,7 @@ class OrderManagement:
         self.redis_manager = redis_manager
         self.redis_keys = None
         self._initialized = False
+
         self.logger: Optional[AdvancedLogger] = None
         self.enable_logging = enable_logging
         self.CANDIDATES_KEY = "free_numbers:list"
@@ -547,7 +549,6 @@ class OrderManagement:
                 "count": 0,
                 "order_ids": [] if return_ids else None,
             }
-
 
     async def manage_number_order(self,
         redis_client: Redis = None,
@@ -1307,6 +1308,45 @@ class UserManagement:
             except Exception as e:
                 await self.logger.error(f"Error updating user data for {user_id}: {e}")
                 return {'response': False, 'error': str(e)}
+    
+    @handle_redis_exceptions
+    async def _run_aggregate_cursor(
+        self,
+        cmd: List[Any],
+        index: str,
+        batch_size: int = 10_000
+    ) -> List[List[Any]]:
+        """
+        Executes FT.AGGREGATE with WITHCURSOR, returns a flat list of rows.
+        """
+        cache_key = f"cursor_data:{batch_size}:{index}" + "_".join(map(str, cmd))
+        cache_data = await cache_manager.get(cache_key, prefix=CachePrefix.TEMP)
+        if cache_data:
+            return cache_data
+        all_rows: List[List[Any]] = []
+        # append WITHCURSOR clause
+        cmd_ext = [*cmd, "WITHCURSOR", "COUNT", str(batch_size)]
+        try:
+            results, cursor = await self.redis_manager.redis_client.execute_command(*cmd_ext)
+        except RedisError as e:
+            print("Aggregation init failed: %s", e)
+            raise RuntimeError("Redis aggregation initialization error") from e
+        # first page
+        if len(results) > 1:
+            all_rows.extend(results[1:])
+        # subsequent pages
+        while cursor:
+            try:
+                page, cursor = await self.redis_manager.redis_client.execute_command(
+                    "FT.CURSOR", "READ", index, cursor
+                )
+            except RedisError as e:
+                print("Cursor read failed: %s", e)
+                raise RuntimeError("Redis cursor read error") from e
+            if len(page) > 1:
+                all_rows.extend(page[1:])
+        await cache_manager.set(cache_key, all_rows, prefix=CachePrefix.TEMP)
+        return all_rows
 
 # ---------------- DepositManagement Class ----------------
 class DepositManagement:

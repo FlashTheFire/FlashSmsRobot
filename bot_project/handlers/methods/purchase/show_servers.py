@@ -1,5 +1,5 @@
 from telebot.async_telebot import AsyncTeleBot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, Message, InlineQuery, InlineQueryResultArticle, InputTextMessageContent
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, Message, InlineQuery, InlineQueryResultArticle, InputTextMessageContent, InlineQueryResult
 from redis.commands.search.query import Query
 from utils.functions import setup_logger, small_caps, large_caps, country_flag_link
 from utils.cache_manager import cache_manager, CachePrefix
@@ -16,13 +16,13 @@ from utils.redis_keys import RedisKeys
 import json
 import asyncio
 from functools import lru_cache, partial
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple, Union
 from redis import Redis
 
 class UserServerManagement:
     def __init__(self) -> None:
-        self.user_manager: Optional[OrderManagement] = None
         self.input_validator: Optional[InputValidator] = None
+        self.user_manager: Optional[UserManagement] = None
         self.transaction_guard: Optional[TransactionGuard] = None
         self._initialized: bool = False
         self.bot: Optional[AsyncTeleBot] = None
@@ -82,7 +82,7 @@ class UserServerManagement:
         try:
             if not await self.ensure_managers_initialized():
                 return {"valid": False, "error": "🛠️ Sᴇʀᴠɪᴄᴇ Tᴇᴍᴘᴏʀᴀʀɪʟʏ Uɴᴀᴠᴀɪʟᴀʙʟᴇ..."}
-                return {"valid": False, "error": f"⚠️ Tᴏᴏ Mᴀɴʏ Sᴇʀᴠᴇʀ Rᴇǫᴜᴇsᴛs. Pʟᴇᴀsᴇ Wᴀɪᴛ {reset_time:.0f}s. (🔄 {remaining} ʟᴇғᴛ)"}
+                #return {"valid": False, "error": f"⚠️ Tᴏᴏ Mᴀɴʏ Sᴇʀᴠᴇʀ Rᴇǫᴜᴇsᴛs. Pʟᴇᴀsᴇ Wᴀɪᴛ {reset_time:.0f}s. (🔄 {remaining} ʟᴇғᴛ)"}
             if not self.input_validator.validate_user_id(user_id):
                 return {"valid": False, "error": "🆔 Iɴᴠᴀʟɪᴅ Usᴇʀ ID Fᴏʀᴍᴀᴛ"}
             if not app_id.isdigit():
@@ -91,7 +91,6 @@ class UserServerManagement:
                 return {"valid": False, "error": "🔢 Iɴᴠᴀʟɪᴅ Sᴇʀᴠᴇʀ ID Fᴏʀᴍᴀᴛ"}
             return {"valid": True}
         except Exception as e:
-            #await logging.error(f"Error validating server request: {e}")
             return {"valid": False, "error": "🔒 Iɴᴛᴇʀɴᴀʟ Vᴀʟɪᴅᴀᴛɪᴏɴ Eʀʀᴏʀ"}
 
     async def build_query(self, filters: dict) -> str:
@@ -126,6 +125,10 @@ class UserServerManagement:
         sort_by: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         try:
+            cache_key = f"{app_id}:{country_id or ''}:{country_name or ''}:{is_inline}:{is_admin}:{app_count or ''}:{app_price or ''}:{limit or ''}:{sort_by or ''}"
+            cache_data = await cache_manager.get(cache_key, CachePrefix.COUNTRY)
+            if cache_data:
+                return cache_data
             query_str = f"@app_id:{app_id}"
             if country_id:
                 query_str += f" @country_id:{country_id}"
@@ -159,7 +162,7 @@ class UserServerManagement:
                     "LIMIT", "0", str(limit)
                 ])
             print(colored(f"Executing aggregation query: {' '.join(aggregation_query)}", "blue"))
-            result = await redis_client.execute_command(*aggregation_query)
+            result = await self.user_manager._run_aggregate_cursor(aggregation_query, SERVICE_INDEX)
             print(colored(f"\n\nAggregation result: {result}\n\n", "blue"))
             if not result or len(result) < 2:
                 print(colored(f"No results found for query: {query_str}", "red"))
@@ -244,86 +247,145 @@ class UserServerManagement:
                 "app_name": global_app_name,
                 "all_countries": top_country_ids,
             }
+            await cache_manager.set(cache_key, data, CachePrefix.COUNTRY)
             return data
 
         except Exception as e:
             #print(f"Error fetching server data: {e}")
             return None
 
-    async def show_server(self, message: Message, app_id: str, country_id: Optional[str] = None, country_code: Optional[str] = None, page: Optional[int] = 1, is_admin: bool = False):
+    async def show_server(
+        self,
+        message: Message,
+        app_id: str,
+        country_id: Optional[str] = None,
+        country_code: Optional[str] = None,
+        page: int = 1,
+        is_admin: bool = False
+    ) -> Tuple[Optional[Message], Optional[str], Optional[InlineKeyboardMarkup]]:
+
+        # 1) Build a cache key
+        key_parts = [
+            f"app={app_id}",
+            f"cid={country_id or ''}",
+            f"ccode={country_code or ''}",
+            f"page={page}",
+            f"admin={int(is_admin)}"
+        ]
+        cache_key = "show_srv:" + "|".join(key_parts)
+
+        # 2) Try cache
+        cached = await cache_manager.get(cache_key, CachePrefix.SEARCH)
+        if cached:
+            msg, text, kb_dict = cached
+            keyboard = InlineKeyboardMarkup(**kb_dict)
+            return msg, text, keyboard
+
+        # 3) Cache miss → fetch & build
         try:
-            data = await self.fetch_server_data(redis_client=self.redis_client, app_id=app_id, country_id=country_id, is_admin=is_admin)
+            data = await self.fetch_server_data(
+                redis_client=self.redis_client,
+                app_id=app_id,
+                country_id=country_id,
+                is_admin=is_admin
+            )
             if not data or not data.get("servers"):
-                # No available servers found
                 return None, None, None
 
             keyboard = InlineKeyboardMarkup()
-            # Retrieve full country data mapping (cid -> info)
             full_country_data = await self.get_country_data()
-    
-            sorted_servers = sorted(data["servers"].items(), key=lambda x: float(x[1]["min_price"]))
+            sorted_servers = sorted(
+                data["servers"].items(),
+                key=lambda x: float(x[1]["min_price"])
+            )
+
             for server_id, info in sorted_servers:
-                # 'countries' now holds a list of country IDs (cids)
                 countries = info["countries"]
                 is_show = info.get("is_show_server")
-                # Build a display list by mapping each cid to its country_code (flag)
-                country_display = []
+                # map first 3 country IDs to flags
+                country_display: List[str] = []
                 for i, cid in enumerate(countries):
-                    if i < 3:
-                        code = full_country_data.get(cid, {}).get("country_code", "")
-                        if code:
-                            country_display.append(code)
-                price = float(info["min_price"]) * float(COMMISSION)
+                    if i >= 3:
+                        break
+                    code = full_country_data.get(cid, {}).get("country_code", "")
+                    if code:
+                        country_display.append(code)
                 if len(countries) > 3:
                     country_display.append("...")
+                price = float(info["min_price"]) * float(COMMISSION)
                 stock = await self.stock_formatter(info["total_stock"])
 
                 if is_admin:
-                    callback_data = f"#modify_data:{app_id}:{country_id}:{server_id}"
-                    if len(callback_data) > 64:
-                        #print(f"Callback data too long for {country_id}: {len(callback_data)} chars")
+                    cb1 = f"#modify_data:{app_id}:{country_id}:{server_id}"
+                    if len(cb1) > 64:
                         continue
-                    button_label = f"〔{', '.join(country_display)}〕 » Sᴇʀᴠᴇʀ{server_id}".translate(await small_caps())
+                    label = (
+                        f"〔{', '.join(country_display)}〕 » Sᴇʀᴠᴇʀ{server_id}"
+                    ).translate(await small_caps())
+
                     if is_show == 'True':
                         line = f"☰ {price:.2f}    ⃝🟢".translate(await small_caps())
-                    elif is_show == 'False':
+                    else:
                         line = f"☰ {price:.2f} 🔴 ⃝ ".translate(await small_caps())
+
                     keyboard.add(
-                        InlineKeyboardButton(button_label, callback_data=callback_data),
-                        InlineKeyboardButton(line, callback_data=f"admin_is_server:{page}:{app_id}:{country_id}:{server_id}:{is_show}")
+                        InlineKeyboardButton(label, callback_data=cb1),
+                        InlineKeyboardButton(
+                            line,
+                            callback_data=f"admin_is_server:{page}:{app_id}:{country_id}:{server_id}:{is_show}"
+                        )
                     )
                     is_admin = 'Admin_'
                 else:
-                    button_text = (
+                    btn_text = (
                         f"Sᴇʀᴠᴇʀ{server_id} ➨ "
                         f"[{', '.join(country_display)}] » 💎 {price:.2f} 〔{stock}〕"
-                    )
-                    callback_data = f"purchase:{app_id}:{price:.2f}:{server_id}:{country_id}:{country_display[0]}"
-                    keyboard.add(
-                        InlineKeyboardButton(text=button_text.translate(await small_caps()), callback_data=callback_data)
-                    )
+                    ).translate(await small_caps())
+
+                    cb = f"purchase:{app_id}:{price:.2f}:{server_id}:{country_id}:{country_display[0]}"
+                    keyboard.add(InlineKeyboardButton(text=btn_text, callback_data=cb))
                     is_admin = ''
 
+            # no servers → user feedback
             if not keyboard.keyboard:
                 await self.bot.reply_to(message, "❌ Nᴏ Aᴠᴀɪʟᴀʙʟᴇ Sᴇʀᴠᴇʀs Wɪᴛʜ Sᴛᴏᴄᴋ.")
                 return None, None, None
 
-            app_code = str(app_id.translate(await small_caps()))
+            # optional “deselect” & “countries” row
             if country_id:
                 keyboard.add(
-                    InlineKeyboardButton(text=f"• Dᴇsᴇʟᴇᴄᴛ [{country_code}]", callback_data=f"{is_admin.lower()}country:{page}:{app_id}"),
-                    InlineKeyboardButton(text=f"⌕ Cᴏᴜɴᴛʀɪᴇs", switch_inline_query_current_chat=f"#{is_admin.replace('_', '').translate(await small_caps())}AᴘᴘIᴅ:{app_code} ")
+                    InlineKeyboardButton(
+                        text=f"• Dᴇsᴇʟᴇᴄᴛ [{country_code}]",
+                        callback_data=f"{is_admin.lower()}country:{page}:{app_id}"
+                    ),
+                    InlineKeyboardButton(
+                        text="⌕ Cᴏᴜɴᴛʀɪᴇs",
+                        switch_inline_query_current_chat=(
+                            f"#{is_admin.replace('_','').translate(await small_caps())}"
+                            f"AᴘᴘIᴅ:{app_id.translate(await small_caps())} "
+                        )
+                    )
                 )
 
             text = (
                 f"<b>⦿ Sᴇʀᴠɪᴄᴇ ❯</b> {data['app_name'].translate(await small_caps())}\n\n"
                 f"<b>↓ Cʜᴏᴏsᴇ Sᴇʀᴠᴇʀ Bᴇʟᴏw</b>"
             )
+
+            # 4) Cache the result
+            await cache_manager.set(
+                cache_key,
+                [message, text, keyboard.to_python()],
+                CachePrefix.SEARCH
+            )
+
             return message, text, keyboard
 
-        except Exception as e:
-            #print(f"Error showing servers: {e}")
-            await self.bot.reply_to(message, "❌ Aɴ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ Wʜɪʟᴇ Fᴇᴛᴄʜɪɴɢ Sᴇʀᴠᴇʀs.")
+        except Exception:
+            await self.bot.reply_to(
+                message,
+                "❌ Aɴ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ Wʜɪʟᴇ Fᴇᴛᴄʜɪɴɢ Sᴇʀᴠᴇʀs."
+            )
             return None, None, None
 
     async def process_show_servers(self, call: CallbackQuery, is_admin: bool = False) -> None:
@@ -513,39 +575,71 @@ class UserServerManagement:
             await self.bot.send_message(user_id, error_message, parse_mode='html')
 
     async def _handle_app_id_inline(
-        self, 
-        inline_query, 
-        is_admin: bool = False, 
-        app_count: str = "[1 +inf]", 
-        app_price: str = "[0.01 +inf]", 
+        self,
+        inline_query,
+        app_count: str = "[1 +inf]",
+        app_price: str = "[0.01 +inf]",
         limit: int = None,
         sort_by: Optional[str] = None
-    ):
+    ) -> Union[None, List[Dict[str, Any]]]:
         try:
+            # detect admin vs. user
+            is_admin = "#AᴅᴍɪɴAᴘᴘIᴅ:" in inline_query.query
+
+            # build a cache key unique to this query + params
+            cache_key = (
+                "inline_app:"
+                + inline_query.query
+                + f":count={app_count}"
+                + f":price={app_price}"
+                + f":limit={limit or ''}"
+                + f":sort={sort_by or ''}"
+            )
+
+            # try cache
+            cached = await cache_manager.get(cache_key, CachePrefix.SEARCH)
+            if cached:
+                # cached for "tool" mode is a list of dicts
+                if inline_query.id == "tool":
+                    return cached
+                # cached for normal inline mode is tuple (results, next_offset)
+                results, next_offset = cached
+                await self.bot.answer_inline_query(
+                    inline_query.id,
+                    results,
+                    cache_time=1,
+                    next_offset=next_offset
+                )
+                return
+
+            # parse out app_id and optional country_filter
             if not is_admin:
-                query_parts = inline_query.query.split('#AᴘᴘIᴅ:')[1].split()
+                parts = inline_query.query.split('#AᴘᴘIᴅ:')[1].split()
             else:
-                query_parts = inline_query.query.split('#AᴅᴍɪɴAᴘᴘIᴅ:')[1].split()
-            app_id = query_parts[0].translate(await large_caps())
-            country_filter = query_parts[1].lower() if len(query_parts) > 1 else None
+                parts = inline_query.query.split('#AᴅᴍɪɴAᴘᴘIᴅ:')[1].split()
+
+            app_id = parts[0].translate(await large_caps())
+            country_filter = parts[1].lower() if len(parts) > 1 else None
 
             country_data = await self.get_country_data()
 
-            # Build mapping dictionaries keyed by unique country_id (cid)
-            country_names = {}  # cid -> full name
-            country_codes = {}  # lower case full name or parts -> country code
+            # build name/code maps
+            country_names: Dict[str, str] = {}
+            country_codes: Dict[str, str] = {}
             for cid, info in country_data.items():
-                code, name = info.get("country_code"), info.get("country_name")
+                code = info.get("country_code")
+                name = info.get("country_name")
                 if code and name:
                     country_names[cid] = name
                     country_codes[name.lower()] = code
-                    for part in name.lower().split():
-                        if len(part) > 2:
-                            country_codes[part] = code
+                    for token in name.lower().split():
+                        if len(token) > 2:
+                            country_codes[token] = code
 
+            # fetch raw server data
             data = await self.fetch_server_data(
-                redis_client=self.redis_client, 
-                app_id=app_id, 
+                redis_client=self.redis_client,
+                app_id=app_id,
                 country_name=country_filter,
                 is_inline=True,
                 app_count=app_count,
@@ -553,107 +647,126 @@ class UserServerManagement:
                 limit=limit,
                 sort_by=sort_by
             )
-            print(data)
-
             if not data or not data.get("servers"):
                 if inline_query.id != "tool":
                     await self.bot.answer_inline_query(inline_query.id, '[]')
                 else:
-                    print(colored(f"No servers found for app_id: {app_id} and country_filter: {country_filter}", "red"))
+                    print(colored(
+                        f"No servers found for app_id: {app_id} and country_filter: {country_filter}",
+                        "red"
+                    ))
                     return []
                 return
 
-            # Aggregate data using country_id (cid) as key
-            country_stats = {}
-            for server_id, server_info in data["servers"].items():
+            # aggregate by country_id
+            country_stats: Dict[str, Any] = {}
+            for srv_id, srv_info in data["servers"].items():
                 try:
-                    server_num = server_id.rsplit("_", 1)[-1] if "_" in server_id else server_id
-                    if not server_num.isdigit():
+                    num = srv_id.rsplit("_", 1)[-1] if "_" in srv_id else srv_id
+                    if not num.isdigit():
                         continue
-
-                    # Now iterate over the inline prices using cid keys
-                    for cid, price in server_info.get("prices", {}).items():
-                        stats = country_stats.get(cid)
-                        if stats is None:
-                            # country_names is keyed by cid
+                    for cid, price in srv_info.get("prices", {}).items():
+                        entry = country_stats.get(cid)
+                        if entry is None:
                             cname = country_names.get(cid, "Unknown")
                             country_stats[cid] = [
-                                price,                         # Minimum price
-                                server_info["total_stock"],    # Total stock
-                                {server_num},                  # Set of server numbers
-                                cname                          # Country name
+                                price,                    # min price
+                                srv_info["total_stock"],  # total stock
+                                {num},                    # servers set
+                                cname                     # country name
                             ]
                         else:
-                            stats[0] = min(stats[0], price)
-                            stats[1] += server_info["total_stock"]
-                            stats[2].add(server_num)
-                except (ValueError, KeyError, IndexError) as e:
+                            entry[0] = min(entry[0], price)
+                            entry[1] += srv_info["total_stock"]
+                            entry[2].add(num)
+                except Exception:
                     continue
 
-            # Filter results based on the country filter (if provided)
-            filtered_countries = (
-                [country_filter] if country_filter in country_stats
-                else [cid for cid, stats in country_stats.items() 
-                      if country_filter.lower() in stats[3].lower() or country_filter.lower() in country_codes]
-            ) if country_filter else list(country_stats.keys())
+            # filter by country_filter
+            if country_filter:
+                if country_filter in country_stats:
+                    f_cids = [country_filter]
+                else:
+                    f_cids = [
+                        cid for cid, stats in country_stats.items()
+                        if country_filter in stats[3].lower()
+                        or country_filter in country_codes
+                    ]
+            else:
+                f_cids = list(country_stats.keys())
 
-            filtered_countries.sort(key=lambda cid: (country_stats[cid][0], country_stats[cid][3]))
-            
-            
+            f_cids.sort(key=lambda cid: (country_stats[cid][0], country_stats[cid][3]))
 
             offset = int(inline_query.offset or 0)
-            limit = 50
+            page_size = 50
             results = []
-         
-            for cid in filtered_countries[offset:offset + limit]:
-                min_price, total_stock, server_nums, country_name = country_stats[cid]
 
-                server_list = sorted(server_nums, key=int)
+            for cid in f_cids[offset:offset + page_size]:
+                min_price, total_stock, srv_nums, cname = country_stats[cid]
+                servers_sorted = sorted(srv_nums, key=int)
+
                 if inline_query.id != "tool":
-                    server_display = (
-                        f"[{', '.join(server_list)}]" if len(server_list) <= 3 
-                        else f"[{', '.join(server_list[:3])}, ...]"
+                    disp = (
+                        f"[{', '.join(servers_sorted)}]"
+                        if len(servers_sorted) <= 3
+                        else f"[{', '.join(servers_sorted[:3])}, ...]"
                     )
                 else:
-                    server_display = f"[{', '.join(server_list)}]"
-                price = float(min_price) * float(COMMISSION)
+                    disp = f"[{', '.join(servers_sorted)}]"
 
-                description = "".join([
-                    f"❯ Tʜᴇ Sᴛᴀʀᴛɪɴɢ Pʀɪᴄᴇ Is Oɴʟʏ {price:.2f} Pᴏɪɴᴛ's.\n",
-                    f"• Sᴇʀᴠᴇʀs » {server_display}\n",
+                price = float(min_price) * float(COMMISSION)
+                desc = (
+                    f"❯ Tʜᴇ Sᴛᴀʀᴛɪɴɢ Pʀɪᴄᴇ Is Oɴʟʏ {price:.2f} Pᴏɪɴᴛ's.\n"
+                    f"• Sᴇʀᴠᴇʀs » {disp}\n"
                     f"• Tᴏᴛᴀʟ Sᴛᴏᴄᴋ » {total_stock}"
-                ]).translate(await small_caps())
+                ).translate(await small_caps())
+
                 if not is_admin:
-                    input_message_content = f"/Buy_{app_id}_{cid}"
+                    imc = f"/Buy_{app_id}_{cid}"
                 else:
-                    input_message_content = f"#Sᴇʀᴠɪᴄᴇ|{app_id}|{cid}"
+                    imc = f"#Sᴇʀᴠɪᴄᴇ|{app_id}|{cid}"
+
                 if inline_query.id == "tool":
                     results.append({
-                        'country_id': f"{cid}",
-                        'country_name': f"{country_name}",
-                        'country_code': f"{country_data[cid]['country_code']}"
+                        'country_id': cid,
+                        'country_name': cname,
+                        'country_code': country_data[cid]['country_code']
                     })
                 else:
                     results.append(
                         InlineQueryResultArticle(
                             id=f"{cid}_{min_price}",
-                            title=f"{country_name} [{country_data[cid]['country_code']}]".translate(await small_caps()),
-                            description=description,
-                            input_message_content=InputTextMessageContent(input_message_content),
+                            title=(
+                                f"{cname} [{country_data[cid]['country_code']}]"
+                            ).translate(await small_caps()),
+                            description=desc,
+                            input_message_content=InputTextMessageContent(imc),
                             thumbnail_url=country_data[cid]["flag_url"]
                         )
-                    )   
+                    )
 
-            next_offset = str(offset + limit) if len(filtered_countries) > offset + limit else ""
-            if inline_query.id == "tool":
-                print(colored(f"Inline query id: {inline_query.id}", "red"))
-                return results
-            await self.bot.answer_inline_query(
-                inline_query.id, 
-                results,
-                cache_time=1,
-                next_offset=next_offset
+            next_offset = (
+                str(offset + page_size)
+                if len(f_cids) > offset + page_size
+                else ""
             )
+
+            # cache final results
+            if inline_query.id == "tool":
+                await cache_manager.set(cache_key, results, CachePrefix.SEARCH)
+                return results
+            else:
+                await cache_manager.set(
+                    cache_key,
+                    (results, next_offset),
+                    CachePrefix.SEARCH
+                )
+                await self.bot.answer_inline_query(
+                    inline_query.id,
+                    results,
+                    cache_time=1,
+                    next_offset=next_offset
+                )
         except Exception as e:
             await self.bot.answer_inline_query(inline_query.id, [])
 
@@ -669,7 +782,6 @@ class UserServerManagement:
         except Exception as e:
             ###print(f"Error fetching country data: {e}")
             return {}
-
 
     async def register_handlers(self, bot: AsyncTeleBot) -> None:
         @bot.inline_handler(func=lambda query: query.query.startswith('#AᴘᴘIᴅ'))

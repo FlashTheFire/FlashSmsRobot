@@ -84,7 +84,7 @@ class RateLimiter:
     ) -> Tuple[bool, int, int]:
         now = int(time.time())
         window_start = now - window
-        redis_key = f"cache_data:rate_limit:api_key:{client_key}"
+        redis_key = f"cache-data:rate_limit:api_key:{client_key}"
         try:
             async with self.redis.pipeline() as pipe:
                 pipe.zremrangebyscore(redis_key, 0, window_start)
@@ -125,6 +125,16 @@ class CombinedAPI:
         self.H_USER_KEYS = "secure_data:user_data:user_keys"
 
         self.user_aggregator: Optional[FinancialManagement] = financial_mgr
+
+    async def _acquire_transaction_lock(self, guard, transaction_key, input_data) -> bool:
+        """Acquire transaction lock with error handling."""
+        if not await guard.acquire_lock(transaction_key):
+            try:
+                return {"status": False, "message": "🔒 Aɴᴏᴛʜᴇʀ Tʀᴀɴsᴀᴄᴛɪᴏɴ Iɴ Pʀᴏɢʀᴇss, Pʟᴇᴀsᴇ Wᴀɪᴛ..."}
+            except Exception as e:
+                print(f"Error sending message: {e}")
+            return False
+        return True
 
     async def enrich_user(self, user_id: Dict) -> Dict:
         """
@@ -818,54 +828,66 @@ class CombinedAPI:
             return {"status": False, "message": "NO_BALANCE"}
         
 
-        
-        phone_result = await purchase_manager.fetch_phone_number(int(app_data['server_id']), app_data['app_code'], country_id, price=price, operator=app_data['server_name'], app_name=app_data['app_name'], chat_id=user_id, app_id=app_id)
-        print(json.dumps(phone_result, indent=4))
-        if not phone_result.get("status"):
-            if phone_result.get("message"):
-                return {"status": False, "message": "NO_NUMBERS"}
-            else:
-                return {"status": False, "message": json.dumps(phone_result)}
-        full_data = {
-            "server_id": app_data['server_id'],
-            "app_code": app_data['app_code'],
-            "country_id": country_id,
-            "price": price,
-            "operator": app_data['server_name'],
-            "app_name": app_data['app_name'],
-            "country_code": app_data['country_code'],
-            "country_name": app_data['country_name'],
-            "guard": None,
-            "message_id": 0,
-            "chat_id": user_id,
-            "app_data": app_data,
-            "app_id": app_id,
-            "call_data": '',
-            "user_id": user_id,
-            "first_name": "API",
-            "chat_type": "private",
-            "call_chat_id": 0,
-        }
-        call = await purchase_manager.reconstruct_fake_call(full_data)
-        order_id =await purchase_manager._finalize_purchase(
-            call,
-            phone_result,
-            full_data,
-            full_data['price'],
-            full_data['country_id'],
-            full_data['country_code'],
-            full_data['country_name'],
-            phone_result['service'],
-            call.message,
-            is_new=True,
-            is_api=True,
-            app_id=app_id,
-            server_id=app_data['server_id']
-        )
-        #return {'status': True, 'order_id': order_id, 'number': number, 'code': code, 'service': service}
+        transaction_key = RedisKeys.transaction_lock_key(user_id, f"purchase_number:{app_id}:{country_id}:{server_id}")
 
-        return {"status": True, "order_id": order_id, "number": phone_result['number'], "code": phone_result['code'], "service": phone_result['service'], "country": app_data['country_name'], "price": price}
-    
+        async with TransactionGuard(self.redis_client) as guard:
+            if not await self._acquire_transaction_lock(guard, transaction_key, call):
+                return {"status": False, "message": "🔒 Aɴᴏᴛʜᴇʀ Tʀᴀɴsᴀᴄᴛɪᴏɴ Iɴ Pʀᴏɢʀᴇss, Pʟᴇᴀsᴇ Wᴀɪᴛ..."}
+
+            try:
+                phone_result = await purchase_manager.fetch_phone_number(int(app_data['server_id']), app_data['app_code'], country_id, price=price, operator=app_data['server_name'], app_name=app_data['app_name'], chat_id=user_id, app_id=app_id)
+                print(json.dumps(phone_result, indent=4))
+                if not phone_result.get("status"):
+                    if phone_result.get("message"):
+                        return {"status": False, "message": "NO_NUMBERS"}
+                    else:
+                        return {"status": False, "message": json.dumps(phone_result)}
+                full_data = {
+                    "server_id": app_data['server_id'],
+                    "app_code": app_data['app_code'],
+                    "country_id": country_id,
+                    "price": price,
+                    "operator": app_data['server_name'],
+                    "app_name": app_data['app_name'],
+                    "country_code": app_data['country_code'],
+                    "country_name": app_data['country_name'],
+                    "guard": None,
+                    "message_id": 0,
+                    "chat_id": user_id,
+                    "app_data": app_data,
+                    "app_id": app_id,
+                    "call_data": '',
+                    "user_id": user_id,
+                    "first_name": "API",
+                    "chat_type": "private",
+                    "call_chat_id": 0,
+                }
+                call = await purchase_manager.reconstruct_fake_call(full_data)
+                order_id =await purchase_manager._finalize_purchase(
+                    call,
+                    phone_result,
+                    full_data,
+                    full_data['price'],
+                    full_data['country_id'],
+                    full_data['country_code'],
+                    full_data['country_name'],
+                    phone_result['service'],
+                    call.message,
+                    is_new=True,
+                    is_api=True,
+                    app_id=app_id,
+                    server_id=app_data['server_id']
+                )
+                #return {'status': True, 'order_id': order_id, 'number': number, 'code': code, 'service': service}
+
+                try:
+                    return {"status": True, "order_id": order_id, "number": phone_result['number'], "code": phone_result['code'], "service": phone_result['service'], "country": app_data['country_name'], "price": price}
+                except Exception as e:
+                    return {"status": False, "message": "TOO_MANY_REQUESTS"}
+            except Exception as e:
+                return {"status": False, "message": "TOO_MANY_REQUESTS"}
+            finally:
+                await guard.release_lock(transaction_key)
     async def _processing_order(self, order_id: str) -> None:
         """Finalize order completion with audit trail and error handling"""
         try:

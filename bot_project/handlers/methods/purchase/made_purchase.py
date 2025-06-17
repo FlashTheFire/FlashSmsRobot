@@ -135,6 +135,9 @@ class UserPurchaseManagement:
             if price is not None and server_id is None:
                 key_parts.append(str(price))
             cache_key = "app_data:" + ":".join(str(part) for part in key_parts)
+            cache_data = await cache_manager.get(cache_key, CachePrefix.SEARCH)
+            if cache_data:
+                return cache_data
 
             # Base RedisSearch tag query (no braces)
             parts = filter(
@@ -168,7 +171,7 @@ class UserPurchaseManagement:
 
             # Process and cache
             app_data = await self._process_app_documents([result.docs[0]])
-            await cache_manager.set(redis_client, cache_key, app_data, 300, CachePrefix.SEARCH)
+            await cache_manager.set(cache_key, app_data, CachePrefix.SEARCH)
             if price is None:
                 return app_data
             return app_data if float(app_data['app_price']) <= price else {}
@@ -200,7 +203,6 @@ class UserPurchaseManagement:
             if re.match(pattern, num):
                 return num
         return masked
-
 
     async def reconstruct_fake_call(self, full_data) -> CallbackQuery:
         if not isinstance(full_data, dict):
@@ -262,33 +264,6 @@ class UserPurchaseManagement:
             unit = "Dᴀʏ"
 
         return f"{value} {unit}{'s' if value != 1 else ''}"
-
-    '''async def _process_app_documents(self, docs) -> Dict:
-        """Process Redis documents into app data structure asynchronously"""
-        app_data = {
-            'app_name': docs[0].app_name,
-            'app_code': docs[0].app_code,
-            'app_price': float(docs[0].app_price),
-            'app_count': int(docs[0].app_count),
-            'operator': docs[0].server_name,
-            'server_id': docs[0].server_id,
-        }
-
-        #for doc in docs:
-        #    try:
-        #        price = float(doc.app_price)
-        #        count = int(doc.app_count)
-        #        if float(count) > 0:
-        #            app_data['min_price'] = min(app_data['min_price'], price)
-        #            app_data['total_stock'] += count
-        #            if server := getattr(doc, 'server_id', None):
-        #                app_data['servers'].add(server)
-        #    except (ValueError, AttributeError):
-        #        continue
-
-        #app_data['min_price'] = app_data['min_price'] if app_data['min_price'] != float('inf') else 0
-        #app_data['servers'] = sorted(app_data['servers'])
-        return app_data'''
 
     async def process_purchase_flow(self, call, user_id: str, app_id: str, price: float,
                                   server_id: int, country_id: str, country_code: str, country_name: str) -> bool:
@@ -675,7 +650,6 @@ class UserPurchaseManagement:
             raise e
         return order_id
         
-
     async def _build_purchase_data(self, call, result, app_data, price, country_id, country_code, country_name, service, progress_msg, is_api: bool = False, app_id: str = None, server_id: str = None) -> Dict:
         """Build unified purchase data structure asynchronously"""
         callback_user_id = call.from_user.id if call.from_user else None
@@ -1499,322 +1473,3 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
     
 
 __all__ = ['init_managers', 'register_handlers']
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-'''
-# Global instance and interface
-purchase_manager = UserPurchaseManagement()
-
-async def init_managers(order_manager: OrderManagement, user_manager: UserManagement, bot: AsyncTeleBot) -> bool:
-    """Initialize purchase management system asynchronously"""
-    return await purchase_manager.init_managers(order_manager, user_manager, bot)
-
-async def register_handlers(bot: AsyncTeleBot) -> None:
-    """Register purchase-related bot handlers."""
-    @bot.callback_query_handler(func=lambda call: call.data.startswith("purchase:"))
-    async def handle_purchase_callback(call):
-        try:
-            _, app_id, price, server_id, country_id, country_code = call.data.replace(' ', '').split(':')
-            #logging.info(app_id, price, server_id, country_id, country_code)
-            text = f'service_data:{country_id}:{server_id}:{app_id}'
-            country_name = await redis_manager.redis_client.hget(text, 'country_name')
-            
-            process_purchase = partial(
-                purchase_manager.process_purchase_flow,
-                call,
-                str(call.from_user.id),
-                app_id,
-                round(float(price), 2),
-                int(server_id),
-                country_id,
-                country_code,
-                country_name
-            )
-            asyncio.create_task(process_purchase())
-        except ValueError:
-            asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", show_alert=True))
-        except Exception as e:
-            #logger.error(f"Callback error: {e}")
-            asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ", show_alert=True))
-'''        # Define all valid matching rules in a dictionary
-'''rules = {
-            (672, 6, 22): {"type": "adi", "ranges": '200'},
-            (572, 6, 22): {"type": "jx", "ranges": '200'},
-            (672, 2, 22): {"type": "adi", "ranges": '200'},
-            (672, 5, 22): {"type": "adi", "ranges": '200'},
-            (579, 5, 22): {"type": "ace", "ranges": '100'},
-            (579, 6, 22): {"type": "ace", "ranges": '100'},
-            (579, 5, 22): {"type": "ace", "ranges": '100'},
-            (572, 2, 22): {"type": "jx", "ranges": '200'},
-            (572, 1, 22): {"type": "jx", "ranges": '200'},
-            (572, 5, 22): {"type": "jx", "ranges": '200'},
-            (572, 4, 22): {"type": "jx", "ranges": '200'},
-            (86, 1, 22): {"type": "bgb", "ranges": '150'},
-            (86, 2, 22): {"type": "bgb", "ranges": '150'},
-            (56, 2, 22): {"type": "ot", "ranges": '250'},
-            (56, 6, 22): {"type": "ot", "ranges": '250'},
-            (56, 3, 22): {"type": "ot", "ranges": '250'},
-        }
-
-        rule = rules.get((int(app_id), int(server_id), int(country_id)), None)
-        if rule:
-            must_api_code = rule["type"]
-            must_return = True
-            ranges = int(rule["ranges"])
-        else:
-            must_api_code = None
-            must_return = False
-            ranges = 50'''
-
-'''elif response_text == "NO_NUMBERS":
-                            for i in range(ranges):
-                                async with session.get(url) as response:
-                                    response_text = await response.text()
-                                    print(f"{1 + i}. API Response: {response_text}")
-                                    if response_text != "NO_NUMBERS":
-                                        result = await self._process_api_response(server, service_parts, country, price, operator, response_text, app_name)
-                                        break
-                                    if response_text.startswith("ACCESS_NUMBER:"):
-                                        result = await self._process_api_response(server, service_parts, country, price, operator, response_text, app_name)
-                                        break
-                                    if i % 15 == 0:
-                                        emoji = "⏳" if i % 10 == 5 else "⌛"
-                                        try:
-                                            await self.bot.edit_message_text(
-                                                chat_id=chat_id,
-                                                message_id=message_id,
-                                                text=f"<b>{emoji} Fᴇᴛᴄʜɪɴɢ Fʀᴏᴍ Sᴇʀᴠᴇʀ,</b> <code>{str(i + 1).translate(await small_caps())}</code> <b>Aᴛᴛᴇᴍᴘᴛs.</b>..",
-                                                parse_mode="HTML"
-                                            )
-                                        except Exception:
-                                            pass
-                            print(f"{1 + ranges}. API Response: NO_NUMBERS")
-                            result = {"status": False, "message": "📵 Nᴏ Nᴜᴍʙᴇʀs Aᴠᴀɪʟᴀʙʟᴇ..."}
-                            break'''
-"""    async def _add_to_redis(self, key: str, chat_id: int, timeout_seconds: int) -> None:
-        print(f"Adding to Redis for {key}")
-        expire_at = int(time.time()) + timeout_seconds
-        await self.redis_client.zadd(f"schedule:{key}", {chat_id: expire_at})
-
-    async def schedule_number_check(
-        self,
-        **kwargs
-    ) -> None:
-        print(f"Scheduling number check for {kwargs['app_name']} from {kwargs['server_id']}")
-        full_data = kwargs
-
-        timeout_seconds = full_data.get('timeout_seconds', 24 * 3600)  # default 24h
-        poll_interval = full_data.get('poll_interval', 10)
-
-        redis_key = f"service_data:{full_data['country_id']}:{full_data['server_id']}:{full_data['app_id']}"
-        exists = await self.redis_client.exists(f"schedule:{redis_key}")
-
-        await self._add_to_redis(redis_key, full_data['callback_id'], timeout_seconds)
-        if exists:
-            return
-
-        full_data['key'] = redis_key
-        full_data['timeout_seconds'] = timeout_seconds
-        full_data['poll_interval'] = poll_interval
-
-        asyncio.create_task(
-            self._background_check_loop(**dict(full_data))
-        )
-
-    async def _background_check_loop(self, **full_data) -> None:
-        '''
-        Periodically checks availability of a number for all users waiting on this schedule key.
-        Expires entries older than `timeout_seconds`, notifies them, then exits when either
-        someone successfully purchases or the timeout is reached.
-        '''
-        redis_key = f"schedule:{full_data['key']}"
-        async def notify_and_remove(uids, message_fn, message_notify, keyboard=None):
-            '''Helper to send notifications and remove from sorted set.'''
-            for uid in uids:
-                raw_data = await redis_manager.redis_client.get(f"cache-data:callback_data:{user_id}")
-                user_full_data = json.loads(raw_data)
-                user_id = user_full_data['user_id']
-                message_id = user_full_data['message_id']
-
-                try:
-                    await self.bot.send_message(int(user_id), message_fn(user_id), reply_markup=keyboard, parse_mode="HTML")
-                except Exception as e:
-                    print(f"Failed notifying {user_id}: {e}")
-                try:
-                    markup = InlineKeyboardMarkup(
-                        [
-                            [
-                                InlineKeyboardButton(
-                                    "🔔 Qᴜᴇᴜᴇ Bᴜʏ",
-                                    callback_data=f"notify_on:{callback_id}"
-                                ),   
-                                InlineKeyboardButton(
-                                    text="⌕ Cᴏᴜɴᴛʀɪᴇs",
-                                    switch_inline_query_current_chat=f"#AᴘᴘIᴅ:{str(full_data['app_id']).translate(await small_caps())} "
-                                )
-                            ]
-                        ]
-                    )
-                    text = (
-                        f"<b>{message_notify}</b>\n\n"
-                        "<blockquote expandable>"
-                        "<b>Wᴏᴜʟᴅ Yᴏᴜ Lɪᴋᴇ Mᴇ Tᴏ “</b><code>Nᴏᴛɪғʏ</code><b>”</b>\n"
-                        "<b>Yᴏᴜ Wʜᴇɴ Tʜᴇ Sᴇʀᴠɪᴄᴇ Bᴇᴄᴏᴍᴇs Aᴠᴀɪʟᴀʙʟᴇ.!?</b>\n\n"
-                        f"<b>• Sᴇʀᴠɪᴄᴇ »</b> <code>{str(full_data['app_name']).translate(await small_caps())}</code>\n"
-                        f"<b>• Cᴏᴜɴᴛʀʏ »</b> <code>{str(full_data['country_name']).translate(await small_caps())}</code> "
-                        f"[<code>{full_data['country_code']}</code>]\n"
-                        f"<b>• Aᴍᴏᴜɴᴛ »</b> 💎 <code>{str(full_data['price']).translate(await small_caps())}</code> "
-                        f"[<code>{str(full_data['server_id']).translate(await small_caps())}</code>]"
-                        "</blockquote>"
-                    )
-                    await self.bot.edit_message_text(
-                        chat_id=user_id,
-                        message_id=message_id,
-                        text=text,
-                        reply_markup=markup,
-                        parse_mode="HTML"
-                    )
-                except Exception as e:
-                    print(f"Failed notifying {user_id}: {e}")
-                await self.redis_client.zrem(redis_key, uid)
-
-        while True:
-            now = int(time.time())
-            print(colored(f"Polling for {full_data['app_name']} (server {full_data['server_id']})…", "green"))
-
-            # 1) Notify & remove any entries that have timed out
-            expired = await self.redis_client.zrangebyscore(redis_key, 0, now)
-            if expired:
-                await notify_and_remove(
-                    expired,
-                    lambda uid: (
-                        f"<i>⏳ Yᴏᴜʀ Pʟᴀᴄᴇ Iɴ Tʜᴇ Ǫᴜᴇᴜᴇ Hᴀꜱ Bᴇᴇɴ Rᴇʟᴇᴀꜱᴇᴅ.</i>",
-                        f"⏰ <i>Uɴꜰᴏʀᴛᴜɴᴀᴛᴇʟʏ, “</i><b>{full_data['app_name']}</b><i>” Wᴀꜱ Nᴏᴛ Aᴠᴀɪʟᴀʙʟᴇ Wɪᴛʜɪɴ Lᴀꜱᴛ</b> <code>{full_data['timeout_seconds'] // 3600}</code> <i>Hᴏᴜʀꜱ.</b>\n\n"
-                    ),
-                    message_notify="💡 Tʀʏ Aɴᴏᴛʜᴇʀ Sᴇʀᴠᴇʀ Fᴏʀ Fᴀsᴛᴇʀ Rᴇsᴜʟᴛs.."
-                )
-
-            # 2) If nobody's left waiting, we're done
-            remaining = await self.redis_client.zrange(redis_key, 0, -1)
-            if not remaining:
-                print("No more waiting users; exiting loop.")
-                return
-
-            # 3) Single availability check per interval
-            #primary_uid = int(remaining[0])
-            print(colored(f"Checking availability for {full_data['app_name']}…", "yellow"))
-
-            try:
-                phone_result = await self.fetch_phone_number(
-                    full_data['server_id'],
-                    full_data['app_code'],
-                    full_data['country_id'],
-                    price=full_data['price'],
-                    operator=full_data['operator'],
-                    app_name=full_data['app_name']
-                )
-                print(colored(f"Fetch result: {phone_result}", "cyan"))
-
-                if phone_result.get('status'):
-                    # 4) Loop through all waiting users and find the first with sufficient balance
-                    for uid_bytes in remaining:
-                        raw_data = await redis_manager.redis_client.get(f"cache-data:callback_data:{uid_bytes}")
-                        user_full_data = json.loads(raw_data)
-                        user_id = user_full_data['user_id']
-                        if await self._handle_user_balance(user_id, user_full_data['price'], user_id, progress_msg=None):
-                            # reconstruct call in that user's context
-                            user_full_data.update(chat_id=user_id)
-                            call = await self.reconstruct_fake_call(user_full_data)
-
-                            # finalize purchase for this user
-                            await self._finalize_purchase(
-                                call,
-                                phone_result,
-                                user_full_data,
-                                user_full_data["price"],
-                                user_full_data["country_id"],
-                                user_full_data["country_code"],
-                                user_full_data["country_name"],
-                                phone_result["service"],
-                                call.message,
-                                is_new=True
-                            )
-                            text = (
-                                f"<blockquote expandable><b>✅ Yᴏᴜʀ Oʀᴅᴇʀ Fᴏʀ “</b><code>{str(user_full_data['app_name']).translate(await small_caps())}</code><b>” Hᴀꜱ Bᴇᴇɴ Pᴜʀᴄʜᴀꜱᴇᴅ Sᴜᴄᴄᴇꜱꜰᴜʟʟʏ!</b>\n\n"
-                                f"⏰ <b>Fᴏʀᴛᴜɴᴀᴛᴇʟʏ, Nᴜᴍʙᴇʀ Aʀᴇ Bᴀᴄᴋ Iɴ Sᴛᴏᴄᴋ, Wɪᴛʜɪɴ Lᴀꜱᴛ</b> <code>{full_data['timeout_seconds'] // 3600}</code> <i>Hᴏᴜʀꜱ.</b>\n\n</blockquote>"
-                            )
-                            await self.bot.send_message(user_id, text, parse_mode="HTML")
-                            # remove *that* user and break
-                            await self.redis_client.zrem(redis_key, uid_bytes)
-                            break
-                        else:
-                            print(colored(f"User {user_id} has insufficient balance, skipping.", "red"))
-                    else:
-                        # nobody could pay: wait for next tick
-                        print(colored("No user had sufficient balance; retrying…", "magenta"))
-                        break
-
-                    # 5) If phone_result succeeded, notify *all* remaining users that it's available now
-                    post_remaining = await self.redis_client.zrange(redis_key, 0, -1)
-                    if post_remaining:
-                        text = (
-                            f"<blockquote expandable><b> “{str(full_data['app_name']).translate(await small_caps())}” Is Aᴠᴀɪʟᴀʙʟᴇ Fᴏʀ Pᴜʀᴄʜᴀsᴇ.</b></blockquote>\n\n"
-                            f"<b>• Cᴏᴜɴᴛʀʏ »</b> <code>{str(full_data['country_name']).translate(await small_caps())}</code> [<code>{full_data['country_code']}</code>]\n"
-                            f"<b>• Aᴍᴏᴜɴᴛ »</b> 💎 <code>{str(full_data['price']).translate(await small_caps())}</code> [<code>{str(full_data['server_id']).translate(await small_caps())}</code>]",
-                        )
-                        keyboard = InlineKeyboardMarkup()
-                        keyboard.add(
-                            InlineKeyboardButton(
-                                "🛒 Pᴜʀᴄʜᴀsᴇ Tʜɪs Sᴇʀᴠɪᴄᴇ",
-                                callback_data=f"purchase:{full_data.get('app_id', '')}:{full_data.get('price', '')}:{full_data.get('server_id', '')}:{full_data.get('country_id', '')}:{full_data.get('country_code', '')}"
-                            )
-                        )
-                        await notify_and_remove(
-                            post_remaining,
-                            lambda uid: text,
-                            message_notify="🟢 Sᴛᴏᴄᴋ Aᴠᴀɪʟᴀʙʟᴇ – Pʀᴏᴄᴇᴇᴅ Tᴏ Bᴜʏ Nᴏᴡ!",
-                            keyboard=keyboard
-                        )
-                    return
-
-            except Exception as e:
-                print(colored(f"Error during availability check: {e}", "red"))
-
-            # 6) Safety sleep and timeout guard
-            await asyncio.sleep(full_data['poll_interval'])
-"""
-
-'''    async def _handle_bad_service(self, server: int, service_parts: List[str], country: str, 
-                                  price: float, operator: str, app_name: str = None) -> Dict:
-        services_to_try = []
-        if server == 1:
-            services_to_try = [app_name] if app_name else []
-        elif server in [3, 4, 5]:
-            services_to_try = service_parts
-
-        services_to_try = [s for s in services_to_try if s]  # Remove None values
-        
-        for service in services_to_try:
-            result = await self.fetch_phone_number(server, service, country, price, operator)
-            if result['status'] or result['message'] != "🚫 Wʀᴏɴɢ Sᴇʀᴠɪᴄᴇ Sᴘᴇᴄɪғɪᴇᴅ...":
-                return result
-        
-        return await self._handle_api_errors("BAD_SERVICE")
-
-'''

@@ -28,8 +28,10 @@ from utils.functions import small_caps
 from utils.config import SERVICE_INDEX, COMMISSION
 from handlers.manager.operation import get_async_logger
 from handlers.security import InputValidator
+from handlers.manager.operation import UserManagement, user_mgr
 from handlers.methods.purchase.show_country import country_management
 from utils.redis_manager import RedisManager, redis_manager
+from utils.cache_manager import cache_manager, CachePrefix
 
 SERVICE_INDEX = "service_index"
 CACHE_TTL = 240
@@ -42,7 +44,7 @@ class UserSearchManagement:
     def __init__(self):
         self.redis_client: Optional[RedisManager] = None
         self.cache_ttl = CACHE_TTL
-        self.user_manager = None
+        self.user_manager: Optional[UserManagement] = None
         self.input_validator = InputValidator()
         self.bot = None
         self._initialized = False
@@ -219,8 +221,6 @@ class UserSearchManagement:
             else:
                 return f"{value} Cʀᴏʀᴇs"
 
-
-
     async def build_simple_advanced_query(self, user_input: str) -> str:
         """
         Build an advanced fuzzy query for the @app_name field.
@@ -271,6 +271,23 @@ class UserSearchManagement:
         :return: List of tuples containing the app_id and a dictionary of app data.
         """
         redis_client = self.redis_client
+
+        # Construct cache key
+        cache_key_parts = [
+            pattern,
+            app_price or "default_price",
+            str(tool_limit),
+            sort_by or "default_sort",
+            country_name_query or "all"
+        ]
+        cache_key = "search:" + "|".join(cache_key_parts)
+
+        # Try to get from cache
+        cache_data = await cache_manager.get(cache_key, CachePrefix.SEARCH)
+        if cache_data:
+            return cache_data
+
+        # Build query string
         query_str = f'{pattern} @is_show_server:(True) @is_show_app:(True) @is_show_country:(True)'
         if country_name_query:
             query_str += f" @country_name:(%%{country_name_query}%%|{country_name_query}*|{country_name_query})"
@@ -280,7 +297,7 @@ class UserSearchManagement:
             query_str += " @app_price:[0.01 +inf]"
         #if app_count:
         #    query_str += f" @app_count:{app_count}"
-        
+
         redis_query = [
             'FT.AGGREGATE', SERVICE_INDEX,
             query_str,
@@ -293,18 +310,17 @@ class UserSearchManagement:
         ]
 
         if sort_by is not None:
-            # Add SORTBY for MinPrice with the given order ASC or DESC
             redis_query += ['SORTBY', '2', '@MinPrice', sort_by]
 
-        # Add LIMIT in all cases
         redis_query += ['LIMIT', '0', str(tool_limit)]
         print(colored(redis_query, 'blue'))
+
         try:
-            result = await redis_client.execute_command(*redis_query)
+            result = await self.user_manager._run_aggregate_cursor(*redis_query, index=SERVICE_INDEX)
         except Exception as e:
             logging.error(f"Error executing search pattern with pattern {pattern}: {e}")
             return []
-        
+
         items = []
         for i in range(1, len(result)):
             rec = result[i]
@@ -319,36 +335,62 @@ class UserSearchManagement:
             except Exception as e:
                 logging.error(f"Error processing record: {rec} with error: {e}")
                 continue
-        
+
+        # Store result in cache
+        await cache_manager.set(cache_key, items, CachePrefix.SEARCH)
+
         return items
 
-    async def search_advanced(self, query: str, offset: int = 0, limit: Optional[int] = 1500, app_count: str=None, app_price: str=None, sort_by: Optional[str] = None, country_name_query: Optional[str] = None, tool_limit: Optional[int] = 1500) -> Dict[str, Any]:
+    async def search_advanced(
+        self,
+        query: str,
+        offset: int = 0,
+        limit: Optional[int] = 1500,
+        app_count: str = None,
+        app_price: str = None,
+        sort_by: Optional[str] = None,
+        country_name_query: Optional[str] = None,
+        tool_limit: Optional[int] = 1500
+    ) -> Dict[str, Any]:
         try:
-            redis_client = self.redis_client
-            cache_key = f"search_cache:{query}"
-            cached_result = await redis_client.get(cache_key)
-            if cached_result:
-                result_dict = json.loads(cached_result)
-                sorted_items = list(result_dict["results"].items())
-                sliced_items = dict(sorted_items[offset: (offset + limit) if limit is not None else None])
-                result_dict["results"] = sliced_items
-                result_dict["total_results"] = len(sorted_items)
-                result_dict["sliced_results"] = len(sliced_items)
-                return result_dict
+            # Construct a detailed cache key for the advanced search
+            cache_key_parts = [
+                f"q={query}",
+                f"app_count={app_count or 'any'}",
+                f"app_price={app_price or 'any'}",
+                f"sort={sort_by or 'none'}",
+                f"country={country_name_query or 'all'}",
+                f"limit={tool_limit or '1500'}"
+            ]
+            cache_key = "search_advanced:" + "|".join(cache_key_parts)
 
-            # Use the advanced query builder to create a single pattern.
+            # Try getting from cache
+            cached_result = await cache_manager.get(cache_key, CachePrefix.SEARCH)
+            if cached_result:
+                sorted_items = list(cached_result["results"].items())
+                sliced_items = dict(sorted_items[offset: (offset + limit) if limit is not None else None])
+                cached_result["results"] = sliced_items
+                cached_result["total_results"] = len(sorted_items)
+                cached_result["sliced_results"] = len(sliced_items)
+                return cached_result
+
+            # Build advanced query
             advanced_query = await self.build_simple_advanced_query(query)
-            # For debugging, #print the advanced query.
             logging.debug(f"Advanced query: {advanced_query}")
 
-            # Build a single configuration tuple for the advanced query.
             pattern_configs = [("advanced", advanced_query)]
-            
-            # Launch the search task(s).
-            tasks = [self._search_pattern(pattern, app_count=app_count, app_price=app_price, sort_by=sort_by, tool_limit=tool_limit, country_name_query=country_name_query) for _, pattern in pattern_configs]
+            tasks = [
+                self._search_pattern(
+                    pattern,
+                    app_count=app_count,
+                    app_price=app_price,
+                    sort_by=sort_by,
+                    tool_limit=tool_limit,
+                    country_name_query=country_name_query
+                ) for _, pattern in pattern_configs
+            ]
             results_by_pattern = await asyncio.gather(*tasks)
-            
-            # Define a priority mapping for categorization.
+
             priority = {"exact": 0, "prefix": 1, "substring": 2, "suffix": 3, "other": 4}
             processed_results: Dict[str, Dict[str, Any]] = {}
 
@@ -356,6 +398,7 @@ class UserSearchManagement:
                 if isinstance(pattern_results, Exception):
                     logging.error(f"Error processing pattern '{cat_hint}': {pattern_results}")
                     continue
+
                 for app_name, data in pattern_results:
                     new_cat = self.categorize(app_name, query) if len(query.strip()) > 1 else "prefix"
                     if app_name in processed_results:
@@ -374,26 +417,30 @@ class UserSearchManagement:
                 processed_results.items(),
                 key=lambda x: (priority.get(x[1]['category'], 5), x[0].lower())
             ))
-            
+
             result_dict = {
                 "total_results": len(sorted_results),
                 "results": sorted_results,
                 "cached_at": datetime.now().timestamp()
             }
-            await redis_client.set(cache_key, json.dumps(result_dict), ex=self.cache_ttl)
-            
+
+            # Cache the full result set
+            await cache_manager.set(cache_key, result_dict, CachePrefix.SEARCH)
+
             sorted_items = list(sorted_results.items())
             sliced_items = dict(sorted_items[offset: (offset + limit) if limit is not None else None])
             result_dict["results"] = sliced_items
             result_dict["total_results"] = len(sorted_items)
             result_dict["sliced_results"] = len(sliced_items)
             logging.debug(f"|| results {len(sorted_items)}")
+
             return result_dict
 
         except RedisError as e:
             logging.error(f"Redis error in search_advanced: {e}")
         except Exception as e:
             logging.error(f"Error in search_advanced: {e}")
+
         return {"total_results": 0, "results": {}, "cached_at": datetime.now().timestamp()}
 
     async def validate_inline_query(self, user_id: str, query: str) -> Dict[str, Any]:
@@ -408,31 +455,61 @@ class UserSearchManagement:
         try:
             if not is_admin:
                 query_text = inline_query.query.strip().lower()
-            elif is_admin:
+            else:
                 query_text = inline_query.query.strip().lower().removeprefix("#sᴇʀᴠɪᴄᴇ").strip()
 
             offset = int(inline_query.offset) if inline_query.offset else 0
+
+            # Build deterministic cache key
+            cache_key = (
+                f"query_apps:"
+                f"q={query_text}|"
+                f"admin={int(is_admin)}|"
+                f"off={offset}"
+            )
+
+            # Attempt to load from cache
+            cached_blob = await cache_manager.get(cache_key, CachePrefix.SEARCH)
+            if cached_blob:
+                results, total_count, cached_at = cached_blob
+                await self.bot.answer_inline_query(
+                    inline_query.id,
+                    results,
+                    cache_time=30,
+                    next_offset=str(offset + CACHE_RESULTS_PER_PAGE) if total_count > offset + CACHE_RESULTS_PER_PAGE else ""
+                )
+                return
+
             start_time = time.time()
 
-            validation_result = await self.validate_inline_query(str(inline_query.from_user.id), query_text)
-            if not validation_result["valid"]:
+            validation = await self.validate_inline_query(str(inline_query.from_user.id), query_text)
+            if not validation["valid"]:
                 await self.bot.answer_inline_query(
                     inline_query.id,
                     [
                         InlineQueryResultArticle(
                             id="error",
                             title="Error",
-                            description=validation_result["error"],
+                            description=validation["error"],
                             thumbnail_url="https://img.freepik.com/free-vector/bird-colorful-logo-gradient-vector_343694-1365.jpg",
-                            input_message_content=InputTextMessageContent(message_text=validation_result["error"])
+                            input_message_content=InputTextMessageContent(message_text=validation["error"])
                         )
                     ],
                     cache_time=5
                 )
                 return
 
-            query_text = validation_result.get("sanitized_query", "")
-            search_results = await self.search_advanced(query=query_text, offset=offset, limit=CACHE_RESULTS_PER_PAGE)
+            query_text = validation.get("sanitized_query", "")
+            search_results = await self.search_advanced(
+                query=query_text,
+                offset=offset,
+                limit=CACHE_RESULTS_PER_PAGE,
+                app_count=None,
+                app_price=None,
+                sort_by=None,
+                country_name_query=None,
+                tool_limit=None
+            )
 
             if not search_results or not search_results.get("results"):
                 keyboard = InlineKeyboardMarkup()
@@ -462,86 +539,70 @@ class UserSearchManagement:
                             )
                         )
                     ],
-
                     cache_time=30
                 )
                 return
+
             results = []
-            used_result_ids = set()
-            # Cache price-country data for the session
-            price_country_data = await self.redis_client.json().get('main_data:price-country') or {}
+            used_ids = set()
+            price_country = await self.redis_client.json().get('main_data:price-country') or {}
             country_data = await self.redis_client.json().get('main_data:details:country_data') or {}
-            
+
             for app_name, data in search_results["results"].items():
                 try:
                     app_id = str(data.get('app_id', app_name))
-                    clean_app_name = self.input_validator.sanitize_text(app_name)
+                    clean_name = self.input_validator.sanitize_text(app_name)
                     total_stock = int(data.get("total_stock", 0))
                     lowest_price = float(data.get("lowest_price", 0.0)) * float(COMMISSION)
                     app_code = data.get("app_code", "")
                     first_code = app_code.split(",")[0].strip().lower() if "," in app_code else app_code.lower()
-                    
-                    # Fast price data lookup with default
-                    app_price_data = price_country_data.get(app_id, {})
-                    
-                    # Ultra-fast country processing - single pass O(n)
-                    countries = []
-                    country_prices = {}  # {country: lowest_price}
-                    
-                    if app_price_data:
+
+                    app_price_data = price_country.get(app_id, {})
+                    country_prices = {}
+                    for price_str, cid in app_price_data.items():
                         try:
-                            # Single pass to get lowest price per country
-                            for price_str, country in app_price_data.items():
-                                try:
-                                    price = float(price_str)
-                                    if price <= 0:
-                                        continue
-                                        
-                                    curr_price = country_prices.get(country)
-                                    if curr_price is None or price < curr_price:
-                                        country_prices[country] = price
-                                except (ValueError, TypeError):
-                                    continue
+                            price = float(price_str)
+                            if price <= 0:
+                                continue
+                            prev = country_prices.get(cid)
+                            if prev is None or price < prev:
+                                country_prices[cid] = price
+                        except Exception:
+                            continue
 
-                            # Get top 3 countries by price - using sorted for cleaner code
-                            if country_prices:
-                                countries = [
-                                    country for country, _ in sorted(
-                                        country_prices.items(), 
-                                        key=lambda x: x[1]
-                                    )[:4]
-                                ]
+                    countries = [
+                        cid for cid, _ in sorted(country_prices.items(), key=lambda x: x[1])[:4]
+                    ]
+                    has_more = len(country_prices) > 3
+                    country_codes_display = [
+                        country_data.get(cid, {}).get('country_code', '')
+                        for cid in countries[:3]
+                    ]
+                    top_country_display = f"[{', '.join(country_codes_display)}{',...' if has_more else ''}]"
 
-                        except Exception as e:
-                            logging.error(f"Error processing price data for app {app_id}: {e}")
-                    
-                    # Format country display - only show ... if we have more unique countries
-                    has_more = len(country_prices) > 3  # More efficient than using set
-                    country_list = [country_data.get(country_id, {}).get('country_code', '') for country_id in countries[:3]]
-                    top_country_display = f"[{', '.join(country_list)}{',...' if has_more else ''}]"
-
-
-                    # Build description with optimized string concatenation
                     description = "".join([
                         f"❯ Tʜᴇ Sᴛᴀʀᴛɪɴɢ Pʀɪᴄᴇ Is Oɴʟʏ {lowest_price:.2f} Pᴏɪɴᴛ's.\n",
                         f"• Aᴠᴀɪʟᴀʙʟᴇ Aᴄʀᴏss » {top_country_display}\n",
                         f"• Tᴏᴛᴀʟ Sᴛᴏᴄᴋ » {await self.format_number_to_text(total_stock)}"
                     ])
 
-                    # Result ID generation without string interpolation
-                    import uuid
-                    result_id = str(uuid.uuid4())  # Generate unique result ID using UUID
-                    input_text = f"#Sᴇʀᴠɪᴄᴇ|{app_id}" if is_admin else f"/Buy_{app_id}" 
-                    switch_query = f"#Sᴇʀᴠɪᴄᴇ " if is_admin else ""
-                    if result_id not in used_result_ids:
-                        used_result_ids.add(result_id)
+                    result_id = str(uuid.uuid4())
+                    input_cmd = f"#Sᴇʀᴠɪᴄᴇ|{app_id}" if is_admin else f"/Buy_{app_id}"
+                    switch_query = "#Sᴇʀᴠɪᴄᴇ " if is_admin else ""
+
+                    if result_id not in used_ids:
+                        used_ids.add(result_id)
                         results.append(
                             InlineQueryResultArticle(
                                 id=result_id,
-                                title=clean_app_name.title().translate(await small_caps()),
+                                title=clean_name.title().translate(await small_caps()),
                                 description=description,
-                                thumbnail_url=f"https://smsactivate.s3.eu-central-1.amazonaws.com/assets/ico/{first_code}0.webp" if first_code else "https://img.icons8.com/color/48/000000/shop.png",
-                                input_message_content=InputTextMessageContent(input_text),
+                                thumbnail_url=(
+                                    f"https://smsactivate.s3.eu-central-1.amazonaws.com/assets/ico/{first_code}0.webp"
+                                    if first_code else
+                                    "https://img.icons8.com/color/48/000000/shop.png"
+                                ),
+                                input_message_content=InputTextMessageContent(input_cmd),
                                 reply_markup=InlineKeyboardMarkup().add(
                                     InlineKeyboardButton("🛒 Sᴇʀᴠɪᴄᴇs", switch_inline_query_current_chat=switch_query)
                                 )
@@ -551,15 +612,24 @@ class UserSearchManagement:
                     logging.error(f"Error processing app {app_name}: {e}")
                     continue
 
+            total_count = len(results)
             end_time = time.time()
             logging.info(f"Total execution time: {end_time - start_time:.3f}s")
 
+            # Save to cache
+            await cache_manager.set(
+                cache_key,
+                (results, total_count, time.time()),
+                CachePrefix.SEARCH
+            )
+
             await self.bot.answer_inline_query(
                 inline_query.id,
-                results[:50],
+                results[:CACHE_RESULTS_PER_PAGE],
                 cache_time=30,
-                next_offset=str(offset + CACHE_RESULTS_PER_PAGE) if len(results) >= CACHE_RESULTS_PER_PAGE else ""
+                next_offset=str(offset + CACHE_RESULTS_PER_PAGE) if total_count > offset + CACHE_RESULTS_PER_PAGE else ""
             )
+
         except Exception as e:
             logging.error(f"Error in query_apps: {e}")
             await self.bot.answer_inline_query(
@@ -585,87 +655,102 @@ class UserSearchManagement:
         # Further validation and sanitization logic...
         return {"valid": True, "sanitized_query": query}
 
-    async def handle_search_message(self, message: Message, app_count: str="[1 +inf]", app_price: str="[0.01 +inf]", tool_limit: int=None, sort_by: Optional[str] = None, country_name_query: Optional[str] = None):
-        """
-        Process a plain text search message.
-        If a result is at least 80% similar to the query, replace the message text with a buy command and process it.
-        Otherwise, display the top results with pagination buttons.
-        """
+    async def handle_search_message(
+        self,
+        message: Message,
+        app_count: str = "[1 +inf]",
+        app_price: str = "[0.01 +inf]",
+        tool_limit: int = None,
+        sort_by: Optional[str] = None,
+        country_name_query: Optional[str] = None
+    ) -> None:
         try:
             query_text = message.text.strip().lower()
-            print("query_text:", query_text)
-            # Validate query (must not exceed 20 characters, etc.)
             validation = await self.validate_search_query(str(message.from_user.id), query_text)
             if not validation["valid"]:
                 return
 
             query_text = validation.get("sanitized_query", query_text)
             offset = 0  # initial offset
-            start_time = time.time()
 
+            # Build cache key
+            cache_key = (
+                f"search_msg:q={query_text}|"
+                f"count={app_count}|price={app_price}|"
+                f"sort={sort_by or 'none'}|country={country_name_query or 'all'}"
+            )
+
+            # Try cache
+            cached = await cache_manager.get(cache_key, CachePrefix.SEARCH)
+            if cached:
+                return_message, return_keyboard = cached
+                await self.bot.send_message(
+                    message.chat.id,
+                    return_message,
+                    reply_markup=return_keyboard,
+                    parse_mode='HTML'
+                )
+                return
+
+            start_time = time.time()
             search_results = await self.search_advanced(
                 query=query_text,
                 offset=offset,
                 limit=tool_limit or RESULTS_PER_PAGE,
-                country_name_query=country_name_query,
                 app_count=app_count,
                 app_price=app_price,
-                sort_by=sort_by
+                sort_by=sort_by,
+                country_name_query=country_name_query,
+                tool_limit=tool_limit
             )
+
             if not search_results or not search_results.get("results"):
-                if message.chat.id != 'tool':
-                    await self.bot.send_message(
-                        message.chat.id,
-                        "No Services Found.\n\nSuggestions:\n• Check Your Spelling\n• Try General Keywords\n• Contact Support/Admin For Help.".translate(await small_caps())
-                    )
+                msg = message.chat.id
+                if msg != 'tool':
+                    result_message = (
+                        "No Services Found.\n\nSuggestions:\n"
+                        "• Check Your Spelling\n"
+                        "• Try General Keywords\n"
+                        "• Contact Support/Admin For Help."
+                    ).translate(await small_caps())
+                    await self.bot.send_message(msg, result_message)
                 else:
-                    return[]
+                    return []
                 return
 
-            # Process top search items
             search_items = list(search_results["results"].items())[:RESULTS_PER_PAGE]
             exact_match = None
             for app_name, data in search_items:
-                similarity = difflib.SequenceMatcher(None, query_text, app_name.lower()).ratio()
-                if similarity >= 0.8:
+                ratio = difflib.SequenceMatcher(None, query_text, app_name.lower()).ratio()
+                if ratio >= 0.8:
                     exact_match = (app_name, data)
                     break
 
-            # If an exact match is found, change the message text and process the buy command.
             if exact_match:
+                app_name, data = exact_match
+                app_id = str(data.get("app_id", app_name))
+                new_text = f"/Buy_{app_id}"
+                message.text = new_text
                 if message.chat.id != 'tool':
-                    app_name, data = exact_match
-                    app_id = str(data.get("app_id", app_name))
-                    message.text = f"/Buy_{app_id}"
-                    process_task = partial(country_management.process_buy_command, message)
-                    asyncio.create_task(process_task())
-                elif message.chat.id == 'tool':
-                    app_name, data = exact_match
-                    app_id = str(data.get("app_id", app_name))
-                    message.text = f"/Buy_{app_id}"
+                    task = partial(country_management.process_buy_command, message)
+                    asyncio.create_task(task())
+                else:
                     return [{"app_id": app_id, "app_name": app_name}]
                 return
 
-            # Otherwise, build the results text.
             result_text = ""
-            result = []
+            result_objs = []
             for app_name, data in search_items:
                 app_id = str(data.get("app_id", app_name))
                 total_stock = int(data.get("total_stock", 0))
                 lowest_price = float(data.get("lowest_price", 0.0)) * float(COMMISSION)
-                result.append({"app_id": app_id, "app_name": app_name, "total_stock": total_stock, "lowest_price": lowest_price})
                 result_text += await self.format_app_result(app_name, app_id, total_stock, lowest_price) + "\n\n"
-            
-            if message.chat.id == 'tool':
-                return result
-            # Build the inline keyboard based on pagination availability.
-            # (At initial search, offset==0, so no previous page.)
-            has_prev = offset > 0
-            has_next = len(search_items) >= RESULTS_PER_PAGE
 
+            has_prev = False
+            has_next = len(search_items) == RESULTS_PER_PAGE
             keyboard = InlineKeyboardMarkup()
+
             if not has_prev and not has_next:
-                # Neither previous nor next exist.
                 keyboard.row(
                     InlineKeyboardButton("⌕ Sᴇᴀʀᴄʜ", switch_inline_query_current_chat=f"{query_text}")
                 )
@@ -676,24 +761,38 @@ class UserSearchManagement:
                     InlineKeyboardButton("Nᴇxᴛ »", callback_data=f"search:next:{offset}:{query_text}")
                 )
             elif has_next:
-                # Only next exists.
                 keyboard.row(
                     InlineKeyboardButton("⌕ Sᴇᴀʀᴄʜ", switch_inline_query_current_chat=f"{query_text}"),
                     InlineKeyboardButton("Nᴇxᴛ »", callback_data=f"search:next:{offset}:{query_text}")
                 )
-            elif has_prev:
-                # Only previous exists.
+            else:
                 keyboard.row(
                     InlineKeyboardButton("« Pʀᴇᴠɪoᴜs", callback_data=f"search:prev:{offset}:{query_text}"),
                     InlineKeyboardButton("⌕ Sᴇᴀʀᴄʜ", switch_inline_query_current_chat=f"{query_text}")
                 )
 
-            await self.bot.send_message(message.chat.id, result_text, reply_markup=keyboard, parse_mode='html')
+            await self.bot.send_message(
+                message.chat.id,
+                result_text,
+                reply_markup=keyboard,
+                parse_mode='HTML'
+            )
+
+            # Save to cache
+            await cache_manager.set(
+                cache_key,
+                (result_text, keyboard),
+                CachePrefix.SEARCH
+            )
+
             end_time = time.time()
             logging.info(f"Search message processing time: {end_time - start_time:.3f}s")
         except Exception as e:
             logging.error(f"Error in handle_search_message: {e}")
-            await self.bot.send_message(message.chat.id, "An error occurred while processing your search. Please try again later.")
+            await self.bot.send_message(
+                message.chat.id,
+                "An error occurred while processing your search. Please try again later."
+            )
 
     async def handle_pagination(self, call: CallbackQuery):
         """

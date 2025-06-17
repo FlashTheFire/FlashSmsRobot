@@ -79,7 +79,10 @@ SMS_PROVIDERS = os.getenv("SMS_PROVIDERS", "default_provider")
 APP_COUNT = int(os.getenv("APP_COUNT", 5))
 
 SERVICE_INDEX = os.getenv("SERVICE_INDEX", "service_index")
-SERVICE_PREFIX = os.getenv("SERVICE_PREFIX", "service:")
+SERVICE_PREFIX = os.getenv("SERVICE_PREFIX", "service_data:")
+
+ORDER_INDEX = os.getenv("ORDER_INDEX", "order_index")
+ORDER_PREFIX = os.getenv("ORDER_PREFIX", "order_data:")
 
 # Cache Configuration with reasonable defaults
 CACHE_PREFIX = os.getenv("CACHE_PREFIX", "cache:")
