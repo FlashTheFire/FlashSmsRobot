@@ -261,11 +261,7 @@ class UserServerManagement:
         cached = await cache_manager.get(cache_key, CachePrefix.SEARCH)
         if cached:
             msg, text, kb_dict = cached
-            # Reconstruct keyboard from stored dict
-            keyboard = InlineKeyboardMarkup()
-            for row in kb_dict.get('inline_keyboard', []):
-                buttons = [InlineKeyboardButton(**btn) for btn in row]
-                keyboard.add(*buttons)
+            keyboard = InlineKeyboardMarkup(**kb_dict)
             return msg, text, keyboard
 
         # 3) Cache miss → fetch & build
@@ -360,31 +356,20 @@ class UserServerManagement:
             )
 
             # 4) Cache the result
-            kb_dict = {'inline_keyboard': []}
-            for row in keyboard.inline_keyboard:
-                kb_dict['inline_keyboard'].append([
-                    {'text': btn.text, 'callback_data': btn.callback_data, **(
-                        {'switch_inline_query_current_chat': btn.switch_inline_query_current_chat}
-                        if hasattr(btn, 'switch_inline_query_current_chat') else {}
-                    )}
-                    for btn in row
-                ])
             await cache_manager.set(
                 cache_key,
-                [message, text, kb_dict],
+                [message, text, keyboard.to_dict()],
                 CachePrefix.SEARCH
             )
 
             return message, text, keyboard
 
-        except Exception as e:
-            print(f"Error processing show servers: {e}")
+        except Exception:
             await self.bot.reply_to(
                 message,
                 "❌ Aɴ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ Wʜɪʟᴇ Fᴇᴛᴄʜɪɴɢ Sᴇʀᴠᴇʀs."
             )
             return None, None, None
-
 
     async def process_show_servers(self, call: CallbackQuery, is_admin: bool = False) -> None:
         """
@@ -567,7 +552,7 @@ class UserServerManagement:
                             parse_mode='HTML'
                         )
                     else:
-                        await self.bot.reply_to(message, "🚫 Nᴏ Sᴇʀᴠᴇʀs Aᴠᴀɪʟᴀʙʟᴇ.")
+                        await self.bot.reply_to(message, "🚫 Nᴏ Sᴇʀᴠᴇʀs Aᴠᴀɪʟᴀʙʟᴇ.", show_alert=False)
                 except Exception as e:
                     print(f"3 Error processing show servers: {e}")
                     error_message = "<blockquote><b>👨🏻‍💻Nᴏ Sᴇʀᴠᴇʀs Aᴠᴀɪʟᴀʙʟᴇ.</b>..</blockquote>"
