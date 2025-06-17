@@ -1,5 +1,5 @@
 from telebot.async_telebot import AsyncTeleBot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, Message, InlineQuery, InlineQueryResultArticle, InputTextMessageContent, InlineQueryResult
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, Message, InlineQuery, InlineQueryResultArticle, InputTextMessageContent, InlineQueryResultArticle
 from redis.commands.search.query import Query
 from utils.functions import setup_logger, small_caps, large_caps, country_flag_link
 from utils.cache_manager import cache_manager, CachePrefix
