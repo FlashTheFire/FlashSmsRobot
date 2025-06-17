@@ -29,9 +29,12 @@ class CacheManager:
 
     def __init__(self) -> None:
         self._logger = logging.getLogger(self.__class__.__name__)
-        self.redis = redis_manager.redis_client
-        if self.redis is None:
-            self._logger.error("Redis client is not initialized!")
+        self._redis = None
+
+    async def get_redis(self):
+        if self._redis is None:
+            self._redis = await redis_manager.get_client()
+        return self._redis
 
     def _full_key(self, prefix: str, key: str) -> str:
         return f"{prefix}{key}"

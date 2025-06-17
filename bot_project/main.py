@@ -11,6 +11,7 @@ import ssl
 from aiohttp import web
 from telebot.async_telebot import AsyncTeleBot
 from telebot.types import Update, InputMediaPhoto, Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from utils.cache_manager import cache_manager
 
 from utils.config import BOT_TOKEN, CHANNEL_ID, START_PAGE
 from utils.redis_manager import redis_manager
@@ -338,6 +339,7 @@ class TelegramBot:
                 logger = await get_async_logger()
                 await logger.error(f"Failed to register handler {name}: {e}")
                 success = False
+        await cache_manager.get_redis()
         return success
 
     async def start_polling(self) -> None:
