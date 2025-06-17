@@ -274,7 +274,7 @@ class AutoUpdater:
 
     async def process_app_data(
         self,
-        pipe: redis.Redis,
+        redis_conn,                          # renamed for clarity
         app: Dict[str, Any],
         server_data: Optional[Dict[str, Any]],
         country_data: Dict[str, Any],
@@ -282,61 +282,73 @@ class AutoUpdater:
         matches: List[str]
     ) -> None:
         """Process individual app data and update Redis."""
-        country_id = country_data["record_id"]
+
+        country_id   = country_data["record_id"]
         country_name = country_data["name"]
         display_flag = country_data["code"]
-        app_codes = app.get("code")
-        app_id = self.safe_str(app.get("app_id"))
-        app_price = self.safe_str(app.get("price"))
-        if isinstance(app_codes, list):
-            first_code = app_codes[0]
-        else:
-            first_code = app_codes
 
-        code_field = self.encode_for_redis(app_codes) if isinstance(app_codes, list) else self.safe_str(app_codes)
+        raw_price    = app.get("price")
+        try:
+            app_price = float(raw_price)
+        except (TypeError, ValueError):
+            self._logger.warning(f"Invalid price for app {app.get('app_id')}: {raw_price!r}; defaulting to 0.0")
+            app_price = 0.0
+
+        app_count = app.get("count", 0)
+        try:
+            app_count = int(app_count)
+        except (TypeError, ValueError):
+            app_count = 0
+
+        app_id    = self.safe_str(app.get("app_id"))
+        app_name  = self.safe_str(app.get("app_name"))
+        app_codes = app.get("code")
+        code_field = (self.encode_for_redis(app_codes)
+                      if isinstance(app_codes, list)
+                      else self.safe_str(app_codes))
+
+        first_code     = code_field if not isinstance(app_codes, list) else app_codes[0]
         server_name_val = server_data.get(first_code) if server_data else "any"
 
-            
         redis_key = f"{SERVICE_PREFIX}:{country_id}:{server_id}:{app_id}"
-        await pipe.hsetnx(redis_key, "is_show_country", "True")
-        await pipe.hsetnx(redis_key, "is_show_server",  "True")
-        await pipe.hsetnx(redis_key, "is_show_app", "True")
-        redis_data = {}
-        if matches:
-            #print(colored(f"Matches found: {matches}", "green"))
-            if str(f"{country_id}:{server_id}:{app_id}") in matches:
-                redis_data = {
-                    "country_id": self.safe_str(country_id),
-                    "country_name": self.safe_str(country_name),
-                    "country_code": self.safe_str(display_flag),
-                    "server_name": 'free',
-                    "server_id": self.safe_str(server_id),
-                    "app_id": app_id,
-                    "app_name": self.safe_str(app.get("app_name")),
-                    "app_code": self.safe_str(code_field),
-                    "app_price": 0.01,
-                    "app_count": self.safe_str(app.get("count")),
-                    "search_tags": self.safe_str(f"{app.get('app_name')}").replace(" ", "").lower()
-                }
-        else:
-            redis_data = {
-                "country_id": self.safe_str(country_id),
-                "country_name": self.safe_str(country_name),
-                "country_code": self.safe_str(display_flag),
-                "server_name": self.safe_str(server_name_val or 'any'),
-                "server_id": self.safe_str(server_id),
-                "app_id": app_id,
-                "app_name": self.safe_str(app.get("app_name")),
-                "app_code": self.safe_str(code_field),
-                "app_price": app_price,
-                "app_count": self.safe_str(app.get("count")),
-                "search_tags": self.safe_str(f"{app.get('app_name')}").replace(" ", "").lower()
-            }
-        if redis_data:
-            await self.update_price_mapping(app_id, app_price, country_id)
-            pipe.hset(redis_key, mapping=redis_data)
-            #print("The field 'is_adjustable' exist")
-        #print(colored(f"    ✓ Added: {app.get('app_name')} {app_codes} | Price: ${app_price:<6} | Stock: {app.get('count')}", "green"))
+
+        # if you only want to index some apps, guard here:
+        if matches and f"{country_id}:{server_id}:{app_id}" not in matches:
+            print(colored(f"Skipping app {app_name} ({code_field}) | Price: ${app_price:<6.2f} | Stock: {app_count}", "yellow"))
+            return
+
+        # ensure your flags exist
+        await redis_conn.hsetnx(redis_key, "is_show_country", "True")
+        await redis_conn.hsetnx(redis_key, "is_show_server",  "True")
+        await redis_conn.hsetnx(redis_key, "is_show_app",     "True")
+
+        # build the hash map
+        redis_data = {
+            "country_id":   self.safe_str(country_id),
+            "country_name": self.safe_str(country_name),
+            "country_code": self.safe_str(display_flag),
+            "server_name":  self.safe_str(server_name_val),
+            "server_id":    self.safe_str(server_id),
+            "app_id":       app_id,
+            "app_name":     app_name,
+            "app_code":     code_field,
+            "app_price":    app_price,                # now a float
+            "app_count":    app_count,                # now an int
+            "search_tags":  app_name.replace(" ", "").lower(),
+        }
+
+
+        # update any separate mapping
+        await self.update_price_mapping(app_id, app_price, country_id)
+
+        # *** critically: await this, or it never fires! ***
+        await redis_conn.hset(redis_key, mapping=redis_data)
+
+        print(colored(
+            f"    ✓ Added: {app_name} ({code_field}) | "
+            f"Price: ${app_price:<6.2f} | Stock: {app_count}",
+            "green"
+        ))
 
     async def process_server(
         self,
@@ -811,14 +823,16 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
         if not hasattr(auto_updater, 'initialized'):
             await auto_updater.initialize(bot=bot)
             redis_client = await redis_manager.get_client()
-            keys = [key async for key in redis_client.scan_iter(match='service_data:*', count=1)]
-            print(colored(f"[AutoUpdate.periodic_update] Found {'some' if keys else 'no'} service_data keys", "green"))
+            keys = [key async for key in redis_client.scan_iter(match='service_data:*', count=1000)]
+            print(colored(f"[AutoUpdate.periodic_update] Found {len(keys)} service_data keys", "green"))
             if len(keys) == 0:
                 auto_updater.initialized = True
                 logging.info("Ran one-time initial update")
                 await auto_updater.update_data()
                 logging.info("Ran one-time save cycle")
-            
+            else:
+                await auto_updater.save_data_cycle()
+                logging.info("Ran one-time save cycle")
     # Launch tasks in background
     asyncio.create_task(periodic_save_cycle(bot=bot))
     asyncio.create_task(periodic_init_update(bot=bot))
