@@ -164,7 +164,7 @@ class UserServerManagement:
             print(colored(f"Executing aggregation query: {' '.join(aggregation_query)}", "blue"))
             result = await self.user_manager._run_aggregate_cursor(aggregation_query, SERVICE_INDEX)
             print(colored(f"\n\nAggregation result: {result}\n\n", "blue"))
-            if not result or len(result) < 2:
+            if not result or len(result) < 1:
                 print(colored(f"No results found for query: {query_str}", "red"))
                 return None
 

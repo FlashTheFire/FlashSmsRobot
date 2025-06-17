@@ -369,11 +369,6 @@ class UserSearchManagement:
             # Try getting from cache
             cached_result = await cache_manager.get(cache_key, CachePrefix.SEARCH)
             if cached_result:
-                sorted_items = list(cached_result["results"].items())
-                sliced_items = dict(sorted_items[offset: (offset + limit) if limit is not None else None])
-                cached_result["results"] = sliced_items
-                cached_result["total_results"] = len(sorted_items)
-                cached_result["sliced_results"] = len(sliced_items)
                 return cached_result
 
             # Build advanced query
@@ -427,15 +422,13 @@ class UserSearchManagement:
             }
 
             # Cache the full result set
-            await cache_manager.set(cache_key, result_dict, CachePrefix.SEARCH)
-
             sorted_items = list(sorted_results.items())
             sliced_items = dict(sorted_items[offset: (offset + limit) if limit is not None else None])
             result_dict["results"] = sliced_items
             result_dict["total_results"] = len(sorted_items)
             result_dict["sliced_results"] = len(sliced_items)
             logging.debug(f"|| results {len(sorted_items)}")
-
+            await cache_manager.set(cache_key, result_dict, CachePrefix.SEARCH)
             return result_dict
 
         except RedisError as e:
