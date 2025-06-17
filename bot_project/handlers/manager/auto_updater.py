@@ -344,11 +344,11 @@ class AutoUpdater:
         # *** critically: await this, or it never fires! ***
         await redis_conn.hset(redis_key, mapping=redis_data)
 
-        print(colored(
-            f"    ✓ Added: {app_name} ({code_field}) | "
-            f"Price: ${app_price:<6.2f} | Stock: {app_count}",
-            "green"
-        ))
+        #print(colored(
+        #    f"    ✓ Added: {app_name} ({code_field}) | "
+        #    f"Price: ${app_price:<6.2f} | Stock: {app_count}",
+        #    "green"
+        #))
 
     async def process_server(
         self,
