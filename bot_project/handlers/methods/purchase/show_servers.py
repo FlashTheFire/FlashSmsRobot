@@ -377,7 +377,8 @@ class UserServerManagement:
 
             return message, text, keyboard
 
-        except Exception:
+        except Exception as e:
+            print(f"Error processing show servers: {e}")
             await self.bot.reply_to(
                 message,
                 "❌ Aɴ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ Wʜɪʟᴇ Fᴇᴛᴄʜɪɴɢ Sᴇʀᴠᴇʀs."

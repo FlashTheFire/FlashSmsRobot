@@ -123,7 +123,7 @@ class UserCountryManagement:
                 "SORTBY", "2", "@MIN_PRICE", sort_by,
                 "LIMIT", "0", str(limit)
             ]
-
+            print(''.join(aggregation_query))
             # Run and get rows
             rows = await self.user_manager._run_aggregate_cursor(aggregation_query, SERVICE_INDEX)
             if not rows:
@@ -197,7 +197,7 @@ class UserCountryManagement:
             return result
 
         except Exception as e:
-            logging.error(f"Aggregation query error in country_search: {e}")
+            print(f"Aggregation query error in country_search: {e}")
             return None
 
     async def generate_buttons(
