@@ -52,9 +52,6 @@ class CacheManager:
         return int((min(midnight, noon) - now).total_seconds())
 
     async def get(self, key: str, prefix: str = "") -> Any:
-        """
-        Retrieve a single cache entry. Returns parsed data or an empty dict.
-        """
         if not self.redis:
             return {}
         full_key = self._full_key(prefix, key)
@@ -62,7 +59,6 @@ class CacheManager:
             raw = await self.redis.get(full_key)
             if not raw:
                 return {}
-            # decode and parse
             payload = raw.decode() if isinstance(raw, (bytes, bytearray)) else raw
             entry = json.loads(payload)
             return entry.get("data", {})
@@ -80,9 +76,6 @@ class CacheManager:
         prefix: str = "",
         expire: Optional[int] = None,
     ) -> bool:
-        """
-        Set one cache entry with JSON wrapping, returns True on success.
-        """
         if not self.redis:
             return False
         full_key = self._full_key(prefix, key)

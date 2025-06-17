@@ -207,30 +207,27 @@ class UserCountryManagement:
         country_id: Optional[str] = None,
         is_admin: bool = False
     ) -> Optional[Tuple[InlineKeyboardMarkup, List[str]]]:
-        """
-        1) Try to load buttons+metadata from cache.
-        2) If not found, build the InlineKeyboardMarkup and [app_id, app_name].
-        3) Cache it for next time and return.
-        """
-        cache_key = f"gen_btns:{search_result.get('query_hash','')}:{page}:{per_page_items}:{country_id or ''}:{int(is_admin)}"
+        # Build cache key
+        cache_key = (
+            f"gen_btns:{search_result.get('query_hash','')}:{page}:{per_page_items}"
+            f":{country_id or ''}:{int(is_admin)}"
+        )
 
-        # 1) try cache
+        # 1) Try to load from cache
         cached = await cache_manager.get(cache_key, prefix=CachePrefix.BUTTONS)
         if cached:
-            data = cached
-            markup_dict = data.get("markup", {})
-            # reconstruct from dict
-            markup = InlineKeyboardMarkup(inline_keyboard=markup_dict.get("inline_keyboard", []))
-            return markup, data.get("meta", [])
+            markup_dict = cached["markup"]
+            meta = cached["meta"]
+            markup = InlineKeyboardMarkup(inline_keyboard=markup_dict["inline_keyboard"])
+            return markup, meta
 
-        # 2) build fresh
+        # 2) Build fresh markup
         docs = search_result.get('docs', [])
         if not docs:
             return None
 
         app_id = docs[0]['app_id']
         app_name = docs[0].get('app_name', 'Unknown Service')
-        meta: List[str] = [str(app_id), app_name]
         markup = InlineKeyboardMarkup()
 
         total = len(docs)
@@ -243,7 +240,7 @@ class UserCountryManagement:
         for doc in docs[start:end]:
             code = doc['country_code']
             name = doc['country_name'][:12]
-            price = float(doc['app_price']) * float(COMMISSION)
+            price = float(doc['app_price']) * COMMISSION
             cid = doc['country_id']
 
             if is_admin:
@@ -273,45 +270,53 @@ class UserCountryManagement:
                 )
                 markup.add(btn)
 
-        # navigation buttons
+        # Navigation and utility buttons
         nav_prev, nav_next, select, search = [], [], [], []
         app_code = str(app_id).translate(await small_caps())
 
         if page > 1:
-            prev_cb = f"{'admin_' if is_admin else ''}country:{page-1}:{app_id}"
+            prev_cb = f"{'admin_country' if is_admin else 'country'}:{page-1}:{app_id}"
             nav_prev.append(InlineKeyboardButton("« Pʀᴇᴠɪᴏᴜs", callback_data=prev_cb))
         if end < total:
-            next_cb = f"{'admin_' if is_admin else ''}country:{page+1}:{app_id}"
+            next_cb = f"{'admin_country' if is_admin else 'country'}:{page+1}:{app_id}"
             nav_next.append(InlineKeyboardButton("Nᴇxᴛ »", callback_data=next_cb))
 
-        search.append(
-            InlineKeyboardButton(
-                "⌕ Search Countries",
-                switch_inline_query_current_chat=f"#{'AdminAppId:' if is_admin else 'AppId:'}{app_code} "
-            )
-        )
+        # Search and select
+        if is_admin:
+            search.append(InlineKeyboardButton("⋮ Mᴏᴅɪғʏ", callback_data=f"#modify_data:{app_id}"))
+            search.append(InlineKeyboardButton(
+                "⌕ Cᴏᴜɴᴛʀɪᴇs",
+                switch_inline_query_current_chat=f"#AᴅᴍɪɴAᴘᴘIᴅ:{app_code} "
+            ))
+        else:
+            search.append(InlineKeyboardButton(
+                "⌕ Sᴇᴀʀᴄʜ Cᴏᴜɴᴛʀɪᴇs",
+                switch_inline_query_current_chat=f"#AᴘᴘIᴅ:{app_code} "
+            ))
 
         key_sel = (country_id is None and page == 1) or (end >= total)
-        sel_cb = f"{'admin_' if is_admin else ''}servers:{app_id}:{22 if key_sel else docs[end-1]['country_id'] or 22}:{page}"
-        select.append(
-            InlineKeyboardButton(
-                f"• {'Sᴇʟᴇᴄᴛ' if key_sel else 'Dᴇsᴇʟᴇᴄᴛ'} [{docs[0]['country_code']}]",
-                callback_data=sel_cb
-            )
-        )
+        sel_cb = f"{'admin_servers' if is_admin else 'servers'}:{app_id}:22:{page}" if key_sel else f"{'admin_servers' if is_admin else 'servers'}:{app_id}:{docs[end-1]['country_id']}:{page}"
+        select.append(InlineKeyboardButton(
+            f"• {'Sᴇʟᴇᴄᴛ' if key_sel else 'Dᴇsᴇʟᴇᴄᴛ'} [🇮🇳]", callback_data=sel_cb
+        ))
 
-        # assemble rows
-        rows = [*nav_prev, *nav_next, *select]
-        if rows:
-            markup.add(*rows)
+        # Assemble rows
+        if nav_prev:
+            markup.row(*nav_prev)
+        if select:
+            markup.row(*select)
+        if nav_next:
+            markup.row(*nav_next)
         if search:
-            markup.add(*search)
+            markup.row(*search)
 
-        # 3) cache it
-        to_cache = {"markup": markup.to_dict(), "meta": meta}
-        await cache_manager.set(cache_key, to_cache, prefix=CachePrefix.BUTTONS)
+        # 3) Cache result
+        meta = [app_id, app_name]
+        button_data = {"markup": markup.to_dict(), "meta": meta}
+        await cache_manager.set(cache_key, button_data, prefix=CachePrefix.BUTTONS)
 
         return markup, meta
+
 
     async def get_country_data(self, country_id: str = None) -> dict:
         """Get country data from Redis."""
