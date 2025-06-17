@@ -73,6 +73,7 @@ async def expire_old_codes():
             if cursor == b"0": break
         except Exception as e:
             print(f"Error expiring old codes: {e}")
+            break
 
 
 
