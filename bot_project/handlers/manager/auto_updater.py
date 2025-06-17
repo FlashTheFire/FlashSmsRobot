@@ -797,7 +797,7 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
         if not hasattr(auto_updater, 'initialized'):
             await auto_updater.initialize(bot=bot)
             redis_client = await redis_manager.get_client()
-            keys = [key async for key in redis_client.scan_iter(match='service_data:22:1:*', count=1000)]
+            keys = [key async for key in redis_client.scan_iter(match='service_data:*', count=1000)]
             print(colored(f"[AutoUpdate.periodic_update] Found {len(keys)} service_data keys", "green"))
             if len(keys) == 0:
                 await auto_updater.recover_data(url="https://temp.sh/DKsdK/flashsms.json")
