@@ -261,7 +261,7 @@ class UserServerManagement:
         cached = await cache_manager.get(cache_key, CachePrefix.SEARCH)
         if cached:
             msg, text, kb_dict = cached
-            keyboard = InlineKeyboardMarkup(**kb_dict)
+            keyboard = InlineKeyboardMarkup(inline_keyboard=kb_dict["inline_keyboard"])
             return msg, text, keyboard
 
         # 3) Cache miss → fetch & build
