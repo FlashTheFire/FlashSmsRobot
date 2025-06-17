@@ -260,14 +260,16 @@ class UserServerManagement:
         # 2) Try cache
         cached = await cache_manager.get(cache_key, prefix=CachePrefix.BUTTONS)
         if cached:
+            # Reconstruct the keyboard
             markup_dict = cached["markup"]
-            meta = cached["meta"]
             keyboard = InlineKeyboardMarkup([
                 [InlineKeyboardButton(**btn) for btn in row]
                 for row in markup_dict["inline_keyboard"]
             ])
-            msg, text = cached["meta"]
-            return msg, text, keyboard
+
+            # Unpack exactly [message, text]
+            text = cached["text"]
+            return text, keyboard
 
         # 3) Cache miss → fetch & build
         try:
@@ -337,7 +339,7 @@ class UserServerManagement:
             # no servers → user feedback
             if not keyboard.keyboard:
                 await self.bot.reply_to(message, "❌ Nᴏ Aᴠᴀɪʟᴀʙʟᴇ Sᴇʀᴠᴇʀs Wɪᴛʜ Sᴛᴏᴄᴋ.")
-                return None, None, None
+                return None, None
 
             # optional “deselect” & “countries” row
             if country_id:
@@ -361,10 +363,10 @@ class UserServerManagement:
             )
 
             # 4) Cache the result
-            meta = [text, keyboard]
-            button_data = {"markup": keyboard.to_dict(), "meta": meta}
+            meta = text
+            button_data = {"markup": keyboard.to_dict(), "text": meta}
             await cache_manager.set(cache_key, button_data, prefix=CachePrefix.BUTTONS)
-            return message, text, keyboard
+            return text, keyboard
 
         except Exception:
             await self.bot.reply_to(
@@ -398,9 +400,9 @@ class UserServerManagement:
                 try:
                     country_data = await self.get_country_data(country_id)
                     country_code = country_data.get('country_code', None)
-                    msg, text, keyboard = await self.show_server(call.message, app_id, country_id, country_code, page, is_admin)
-                    print(msg, text, keyboard)
-                    if msg and text and keyboard:
+                    text, keyboard = await self.show_server(call.message, app_id, country_id, country_code, page, is_admin)
+                    print(text, keyboard)
+                    if text and keyboard:
                          await self.bot.edit_message_text(
                             chat_id=call.message.chat.id,
                             message_id=call.message.message_id,
@@ -472,8 +474,8 @@ class UserServerManagement:
                     ##print(t)
                     country_data = await self.get_country_data(country_id)
                     country_code = country_data.get('country_code', None)
-                    msg, text, keyboard = await self.show_server(call.message, app_id, country_id, country_code, page, is_admin)
-                    if msg and text and keyboard:
+                    text, keyboard = await self.show_server(call.message, app_id, country_id, country_code, page, is_admin)
+                    if text and keyboard:
                          await self.bot.edit_message_text(
                             chat_id=call.message.chat.id,
                             message_id=call.message.message_id,
@@ -545,8 +547,8 @@ class UserServerManagement:
                 try:
                     country_data = await self.get_country_data(country_id)
                     country_code = country_data.get('country_code', None)
-                    msg, text, keyboard = await self.show_server(message, app_id, country_id, country_code, "1", is_admin)
-                    if msg and text and keyboard:
+                    text, keyboard = await self.show_server(message, app_id, country_id, country_code, "1", is_admin)
+                    if text and keyboard:
                         await self.bot.send_message(
                             chat_id=message.chat.id,
                             text=text,
