@@ -301,6 +301,7 @@ class AutoUpdater:
         await pipe.hsetnx(redis_key, "is_show_country", "True")
         await pipe.hsetnx(redis_key, "is_show_server",  "True")
         await pipe.hsetnx(redis_key, "is_show_app", "True")
+        redis_data = {}
         if matches:
             #print(colored(f"Matches found: {matches}", "green"))
             if str(f"{country_id}:{server_id}:{app_id}") in matches:
