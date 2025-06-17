@@ -263,68 +263,55 @@ class UserSearchManagement:
         country_name_query: Optional[str] = None
     ) -> List[Tuple[str, Dict[str, Any]]]:
         """
-        Search the Redis index using a custom FT.AGGREGATE query.
+        Ultra-fast, non-blocking FT.AGGREGATE search with caching.
         """
-        # Construct cache key
-        cache_key_parts = [
-            pattern,
-            app_price or "default_price",
-            str(tool_limit),
-            sort_by or "default_sort",
-            country_name_query or "all"
-        ]
-        cache_key = "search:" + "|".join(cache_key_parts)
+        # 1) cache key
+        parts = [pattern, app_count or 'any_count', app_price or 'any_price', str(tool_limit), sort_by or 'nosort', country_name_query or 'all']
+        cache_key = 'search:' + '|'.join(parts)
+        cached = await cache_manager.get(cache_key, CachePrefix.SEARCH)
+        if cached:
+            return cached
 
-        # Try to get from cache
-        cache_data = await cache_manager.get(cache_key, CachePrefix.SEARCH)
-        if cache_data:
-            return cache_data
-
-        # Build query string
-        query_str = f'{pattern} @is_show_server:(True) @is_show_app:(True) @is_show_country:(True)'
+        # 2) build query
+        tags = f"{pattern} @is_show_server:(True) @is_show_app:(True) @is_show_country:(True)"
         if country_name_query:
-            query_str += f" @country_name:(%%{country_name_query}%%|{country_name_query}*|{country_name_query})"
-        query_str += f" @app_price:{app_price or '[0.01 +inf]'}"
+            tags += f" @country_name:(%{country_name_query}%|{country_name_query}*|{country_name_query})"
+        tags += f" @app_price:{app_price or '[0.01 +inf]'}"
 
-        # Build Redis query
-        redis_query = [
-            'FT.AGGREGATE', SERVICE_INDEX,
-            query_str,
+        cmd = [
+            'FT.AGGREGATE', SERVICE_INDEX, tags,
             'LOAD', '3', '@app_name', '@app_code', '@app_price',
             'GROUPBY', '1', '@app_name',
             'REDUCE', 'MIN', '1', '@app_price', 'AS', 'MinPrice',
             'REDUCE', 'SUM', '1', '@app_count', 'AS', 'Total',
             'REDUCE', 'FIRST_VALUE', '4', '@app_id', 'BY', '@app_price', 'ASC', 'AS', 'app_id',
-            'REDUCE', 'FIRST_VALUE', '1', '@app_code', 'AS', 'app_code',
+            'REDUCE', 'FIRST_VALUE', '1', '@app_code', 'AS', 'app_code'
         ]
-        if sort_by is not None:
-            redis_query += ['SORTBY', '2', '@MinPrice', sort_by]
+        if sort_by:
+            cmd.extend(['SORTBY', '2', '@MinPrice', sort_by.upper()])
 
-        # Execute and retrieve rows
+        # 3) execute
         try:
-            rows = await self.user_manager._run_aggregate_cursor(redis_query, SERVICE_INDEX)
-        except Exception as e:
-            logging.error(f"Error executing search pattern with pattern {pattern}: {e}")
+            rows = await self.user_manager._run_aggregate_cursor(cmd, SERVICE_INDEX)
+        except Exception:
             return []
 
-        # Process rows
-        items: List[Tuple[str, Dict[str, Any]]] = []
-        for rec in rows:  # iterate all returned rows
+        # 4) parse
+        results: List[Tuple[str, Dict[str, Any]]] = []
+        for rec in rows:
             try:
-                app_name = rec[1]
-                items.append((app_name, {
-                    "lowest_price": float(rec[3]),
-                    "total_stock": int(rec[5]),
-                    "app_id": rec[7],
-                    "app_code": rec[9]
+                results.append((rec[1], {
+                    'lowest_price': float(rec[3]),
+                    'total_stock': int(rec[5]),
+                    'app_id': rec[7],
+                    'app_code': rec[9]
                 }))
-            except Exception as e:
-                logging.error(f"Error processing record: {rec} with error: {e}")
+            except:
                 continue
 
-        # Cache and return
-        await cache_manager.set(cache_key, items, CachePrefix.SEARCH)
-        return items
+        # 5) cache
+        await cache_manager.set(cache_key, results, CachePrefix.SEARCH)
+        return results
 
     async def search_advanced(
         self,
@@ -337,89 +324,62 @@ class UserSearchManagement:
         country_name_query: Optional[str] = None,
         tool_limit: Optional[int] = 1500
     ) -> Dict[str, Any]:
-        try:
-            # Construct a detailed cache key for the advanced search
-            cache_key_parts = [
-                f"q={query}",
-                f"app_count={app_count or 'any'}",
-                f"app_price={app_price or 'any'}",
-                f"sort={sort_by or 'none'}",
-                f"country={country_name_query or 'all'}",
-                f"limit={tool_limit or '1500'}"
-            ]
-            cache_key = "search_advanced:" + "|".join(cache_key_parts)
+        """
+        Ultra-fast, parallelized advanced search with slicing and caching.
+        """
+        # 1) cache key
+        parts = [f'q={query}', f'off={offset}', f'lim={limit or tool_limit}', f'ac={app_count or "any"}', 
+                 f'ap={app_price or "any"}', f'so={sort_by or "none"}', f'cn={country_name_query or "all"}']
+        cache_key = 'adv:' + '|'.join(parts)
+        cached = await cache_manager.get(cache_key, CachePrefix.SEARCH)
+        if cached:
+            return cached
 
-            # Try getting from cache
-            cached_result = await cache_manager.get(cache_key, CachePrefix.SEARCH)
-            if cached_result:
-                return cached_result
+        # 2) build patterns list (could add more patterns)
+        main_pattern = await self.build_simple_advanced_query(query)
+        patterns = [main_pattern]
 
-            # Build advanced query
-            advanced_query = await self.build_simple_advanced_query(query)
-            logging.debug(f"Advanced query: {advanced_query}")
+        # 3) run all patterns in parallel
+        tasks = [
+            self._search_pattern(p, app_count=app_count, app_price=app_price,
+                                  tool_limit=tool_limit, sort_by=sort_by,
+                                  country_name_query=country_name_query)
+            for p in patterns
+        ]
+        results_list = await asyncio.gather(*tasks)
 
-            pattern_configs = [("advanced", advanced_query)]
-            tasks = [
-                self._search_pattern(
-                    pattern,
-                    app_count=app_count,
-                    app_price=app_price,
-                    sort_by=sort_by,
-                    tool_limit=tool_limit,
-                    country_name_query=country_name_query
-                ) for _, pattern in pattern_configs
-            ]
-            results_by_pattern = await asyncio.gather(*tasks)
+        # 4) merge & prioritize
+        priority = {'exact':0,'prefix':1,'substring':2,'suffix':3,'other':4}
+        unified: Dict[str, Dict[str, Any]] = {}
+        for pat_idx, res in enumerate(results_list):
+            for name, data in res:
+                cat = self.categorize(name, query) if len(query)>1 else 'prefix'
+                if name in unified:
+                    if priority[cat] < priority[unified[name]['category']]:
+                        unified[name]['category'] = cat
+                else:
+                    if str(data.get('app_id','')).isdigit():
+                        unified[name] = {**data, 'app_name': name, 'category': cat}
 
-            priority = {"exact": 0, "prefix": 1, "substring": 2, "suffix": 3, "other": 4}
-            processed_results: Dict[str, Dict[str, Any]] = {}
+        # 5) sort
+        sorted_items = sorted(
+            unified.values(),
+            key=lambda d: (priority[d['category']], d['app_name'].lower())
+        )
 
-            for (cat_hint, _), pattern_results in zip(pattern_configs, results_by_pattern):
-                if isinstance(pattern_results, Exception):
-                    logging.error(f"Error processing pattern '{cat_hint}': {pattern_results}")
-                    continue
+        total = len(sorted_items)
+        sliced = sorted_items[offset: offset + (limit or tool_limit)]
 
-                for app_name, data in pattern_results:
-                    new_cat = self.categorize(app_name, query) if len(query.strip()) > 1 else "prefix"
-                    if app_name in processed_results:
-                        current_priority = priority.get(processed_results[app_name]['category'], 5)
-                        new_priority = priority.get(new_cat, 5)
-                        if new_priority < current_priority:
-                            processed_results[app_name]['category'] = new_cat
-                    else:
-                        app_id = data.get('app_id', app_name)
-                        if app_id.isdigit():
-                            data['category'] = new_cat
-                            data['app_name'] = app_name
-                            processed_results[app_name] = data
+        # 6) result dict
+        result = {
+            'total_results': total,
+            'results': {d['app_name']: d for d in sliced},
+            'cached_at': datetime.now().timestamp()
+        }
 
-            sorted_results = dict(sorted(
-                processed_results.items(),
-                key=lambda x: (priority.get(x[1]['category'], 5), x[0].lower())
-            ))
-
-            result_dict = {
-                "total_results": len(sorted_results),
-                "results": sorted_results,
-                "cached_at": datetime.now().timestamp()
-            }
-
-            # Cache the full result set
-            sorted_items = list(sorted_results.items())
-            sliced_items = dict(sorted_items[offset: (offset + limit) if limit is not None else None])
-            result_dict["results"] = sliced_items
-            result_dict["total_results"] = len(sorted_items)
-            result_dict["sliced_results"] = len(sliced_items)
-            logging.debug(f"|| results {len(sorted_items)}")
-            await cache_manager.set(cache_key, result_dict, CachePrefix.SEARCH)
-            return result_dict
-
-        except RedisError as e:
-            logging.error(f"Redis error in search_advanced: {e}")
-        except Exception as e:
-            logging.error(f"Error in search_advanced: {e}")
-
-        return {"total_results": 0, "results": {}, "cached_at": datetime.now().timestamp()}
+        # 7) cache
+        await cache_manager.set(cache_key, result, CachePrefix.SEARCH)
+        return result
 
     async def validate_inline_query(self, user_id: str, query: str) -> Dict[str, Any]:
         try:
@@ -431,197 +391,188 @@ class UserSearchManagement:
 
     async def query_apps(self, inline_query, is_admin: bool = False) -> None:
         try:
-            if not is_admin:
-                query_text = inline_query.query.strip().lower()
-            else:
-                query_text = inline_query.query.strip().lower().removeprefix("#sᴇʀᴠɪᴄᴇ").strip()
+            raw_query = inline_query.query.strip().lower()
+            query_text = raw_query.removeprefix("#sᴇʀᴠɪᴄᴇ").strip() if is_admin else raw_query
+            offset = int(inline_query.offset or "0")
 
-            offset = int(inline_query.offset) if inline_query.offset else 0
-
-            # Build deterministic cache key
-            cache_key = (
-                f"query_apps:"
-                f"q={query_text}|"
-                f"admin={int(is_admin)}|"
-                f"off={offset}"
-            )
-
-            # Attempt to load from cache
+            cache_key = f"query_apps:q={query_text}|admin={int(is_admin)}|off={offset}"
             cached_blob = await cache_manager.get(cache_key, CachePrefix.SEARCH)
             if cached_blob:
-                results, total_count, cached_at = cached_blob
+                results = [
+                    InlineQueryResultArticle(
+                        id=item["id"],
+                        title=item["title"],
+                        description=item["description"],
+                        thumbnail_url=item["thumb"],
+                        input_message_content=InputTextMessageContent(message_text=item["input_cmd"]),
+                        reply_markup=InlineKeyboardMarkup().add(
+                            InlineKeyboardButton("🛒 Sᴇʀᴠɪᴄᴇs", switch_inline_query_current_chat=item["switch"])
+                        ) if item["switch"] else None
+                    ) for item in cached_blob["items"]
+                ]
                 await self.bot.answer_inline_query(
                     inline_query.id,
                     results,
                     cache_time=30,
-                    next_offset=str(offset + CACHE_RESULTS_PER_PAGE) if total_count > offset + CACHE_RESULTS_PER_PAGE else ""
+                    next_offset=str(offset + CACHE_RESULTS_PER_PAGE) if cached_blob["total"] > offset + CACHE_RESULTS_PER_PAGE else ""
                 )
                 return
 
             start_time = time.time()
-
             validation = await self.validate_inline_query(str(inline_query.from_user.id), query_text)
             if not validation["valid"]:
+                error_text = validation["error"]
                 await self.bot.answer_inline_query(
                     inline_query.id,
-                    [
-                        InlineQueryResultArticle(
-                            id="error",
-                            title="Error",
-                            description=validation["error"],
-                            thumbnail_url="https://img.freepik.com/free-vector/bird-colorful-logo-gradient-vector_343694-1365.jpg",
-                            input_message_content=InputTextMessageContent(message_text=validation["error"])
-                        )
-                    ],
+                    [InlineQueryResultArticle(
+                        id="error",
+                        title="Error",
+                        description=error_text,
+                        thumbnail_url="https://img.freepik.com/free-vector/bird-colorful-logo-gradient-vector_343694-1365.jpg",
+                        input_message_content=InputTextMessageContent(message_text=error_text)
+                    )],
                     cache_time=5
                 )
                 return
 
             query_text = validation.get("sanitized_query", "")
-            search_results = await self.search_advanced(
+            search_data = await self.search_advanced(
                 query=query_text,
-                offset=offset,
-                limit=CACHE_RESULTS_PER_PAGE,
+                offset=0,
+                limit=None,
                 app_count=None,
                 app_price=None,
                 sort_by=None,
                 country_name_query=None,
                 tool_limit=None
             )
+            apps = list(search_data.get("results", {}).items())
+            total_count = len(apps)
+            page_data = apps[offset:offset + CACHE_RESULTS_PER_PAGE]
 
-            if not search_results or not search_results.get("results"):
-                keyboard = InlineKeyboardMarkup()
-                keyboard.add(
+            if not page_data:
+                keyboard = InlineKeyboardMarkup().add(
                     InlineKeyboardButton("⌕ Contact Support", url="https://t.me/udaysupport")
                 )
                 await self.bot.answer_inline_query(
                     inline_query.id,
-                    [
-                        InlineQueryResultArticle(
-                            id="not_found",
-                            title=" Nᴏ Sᴇʀᴠɪᴄᴇs Aᴠᴀɪʟᴀʙʟᴇ",
-                            description="Wᴇ'ʀᴇ ᴄᴏɴsᴛᴀɴᴛʟʏ ᴜᴘᴅᴀᴛɪɴɢ ᴏᴜʀ sᴇʀᴠɪᴄᴇs. Tʀʏ ᴀɴᴏᴛʜᴇʀ sᴇᴀʀᴄʜ ᴏʀ ᴄᴏɴᴛᴀᴄᴛ sᴜᴘᴘᴏʀᴛ!",
-                            thumbnail_url="https://img.freepik.com/free-vector/bird-colorful-logo-gradient-vector_343694-1365.jpg",
-                            reply_markup=keyboard,
-                            input_message_content=InputTextMessageContent(
-                                message_text=(
-                                    " *Nᴏ Sᴇʀᴠɪᴄᴇs Fᴏᴜɴᴅ*\n\n"
-                                    " Yᴏᴜʀ Sᴇᴀʀᴄʜ Dɪᴅɴ'ᴛ Mᴀᴛᴄʜ Aɴʏ Aᴠᴀɪʟᴀʙʟᴇ Sᴇʀᴠɪᴄᴇs.\n"
-                                    " Sᴜɢɢᴇsᴛɪᴏɴs:\n"
-                                    "• Cʜᴇᴄᴋ Yᴏᴜʀ Sᴘᴇʟʟɪɴɢ\n"
-                                    "• Tʀʏ Mᴏʀᴇ Gᴇɴᴇʀᴀʟ Kᴇʏᴡᴏʀᴅs\n"
-                                    "• Cᴏɴᴛᴀᴄᴛ Oᴜʀ Sᴜᴘᴘᴏʀᴛ Tᴇᴀᴍ Fᴏʀ Assɪsᴛᴀɴᴄᴇ\n\n"
-                                    " Wᴇ'ʀᴇ Cᴏɴsᴛᴀɴᴛʟʏ Aᴅᴅɪɴɢ Nᴇᴡ Sᴇʀᴠɪᴄᴇs!"
-                                ),
-                                parse_mode="Markdown"
-                            )
+                    [InlineQueryResultArticle(
+                        id="not_found",
+                        title=" Nᴏ Sᴇʀᴠɪᴄᴇs Aᴠᴀɪʟᴀʙʟᴇ",
+                        description="Wᴇ'ʀᴇ ᴄᴏɴsᴛᴀɴᴛʟʏ ᴜᴘᴅᴀᴛɪɴɢ ᴏᴜʀ sᴇʀᴠɪᴄᴇs. Tʀʏ ᴀɴᴏᴛʜᴇʀ sᴇᴀʀᴄʜ ᴏʀ ᴄᴏɴᴛᴀᴄᴛ sᴜᴘᴘᴏʀᴛ!",
+                        thumbnail_url="https://img.freepik.com/free-vector/bird-colorful-logo-gradient-vector_343694-1365.jpg",
+                        reply_markup=keyboard,
+                        input_message_content=InputTextMessageContent(
+                            message_text=(
+                                "*Nᴏ Sᴇʀᴠɪᴄᴇs Fᴏᴜɴᴅ*\n\n"
+                                "Yᴏᴜʀ Sᴇᴀʀᴄʜ Dɪᴅɴ'ᴛ Mᴀᴛᴄʜ Aɴʏ Aᴠᴀɪʟᴀʙʟᴇ Sᴇʀᴠɪᴄᴇs.\n"
+                                "Sᴜɢɢᴇsᴛɪᴏɴs:\n"
+                                "• Cʜᴇᴄᴋ Yᴏᴜʀ Sᴘᴇʟʟɪɴɢ\n"
+                                "• Tʀʏ Mᴏʀᴇ Gᴇɴᴇʀᴀʟ Kᴇʏᴡᴏʀᴅs\n"
+                                "• Cᴏɴᴛᴀᴄᴛ Oᴜʀ Sᴜᴘᴘᴏʀᴛ Tᴇᴀᴍ\n\n"
+                                "Wᴇ'ʀᴇ Cᴏɴsᴛᴀɴᴛʟʏ Aᴅᴅɪɴɢ Nᴇᴡ Sᴇʀᴠɪᴄᴇs!"
+                            ),
+                            parse_mode="Markdown"
                         )
-                    ],
+                    )],
                     cache_time=30
                 )
                 return
 
-            results = []
-            used_ids = set()
             price_country = await self.redis_client.json().get('main_data:price-country') or {}
             country_data = await self.redis_client.json().get('main_data:details:country_data') or {}
+            results, raw_items = [], []
 
-            for app_name, data in search_results["results"].items():
+            for app_name, data in page_data:
                 try:
-                    app_id = str(data.get('app_id', app_name))
-                    clean_name = self.input_validator.sanitize_text(app_name)
+                    app_id = str(data.get("app_id", app_name))
+                    clean_name = self.input_validator.sanitize_text(app_name).title().translate(await small_caps())
                     total_stock = int(data.get("total_stock", 0))
                     lowest_price = float(data.get("lowest_price", 0.0)) * float(COMMISSION)
                     app_code = data.get("app_code", "")
                     first_code = app_code.split(",")[0].strip().lower() if "," in app_code else app_code.lower()
 
-                    app_price_data = price_country.get(app_id, {})
-                    country_prices = {}
-                    for price_str, cid in app_price_data.items():
+                    app_prices = price_country.get(app_id, {})
+                    countries = {}
+                    for p_str, cid in app_prices.items():
                         try:
-                            price = float(price_str)
-                            if price <= 0:
-                                continue
-                            prev = country_prices.get(cid)
-                            if prev is None or price < prev:
-                                country_prices[cid] = price
-                        except Exception:
+                            price = float(p_str)
+                            if price > 0 and (cid not in countries or price < countries[cid]):
+                                countries[cid] = price
+                        except:
                             continue
 
-                    countries = [
-                        cid for cid, _ in sorted(country_prices.items(), key=lambda x: x[1])[:4]
+                    top_countries = sorted(countries.items(), key=lambda x: x[1])[:4]
+                    has_more = len(countries) > 3
+                    display_countries = [
+                        country_data.get(cid, {}).get("country_code", "") for cid, _ in top_countries[:3]
                     ]
-                    has_more = len(country_prices) > 3
-                    country_codes_display = [
-                        country_data.get(cid, {}).get('country_code', '')
-                        for cid in countries[:3]
-                    ]
-                    top_country_display = f"[{', '.join(country_codes_display)}{',...' if has_more else ''}]"
+                    top_display = f"[{', '.join(display_countries)}{',...' if has_more else ''}]"
 
-                    description = "".join([
-                        f"❯ Tʜᴇ Sᴛᴀʀᴛɪɴɢ Pʀɪᴄᴇ Is Oɴʟʏ {lowest_price:.2f} Pᴏɪɴᴛ's.\n",
-                        f"• Aᴠᴀɪʟᴀʙʟᴇ Aᴄʀᴏss » {top_country_display}\n",
+                    description = (
+                        f"❯ Tʜᴇ Sᴛᴀʀᴛɪɴɢ Pʀɪᴄᴇ Is Oɴʟʏ {lowest_price:.2f} Pᴏɪɴᴛ's.\n"
+                        f"• Aᴠᴀɪʟᴀʙʟᴇ Aᴄʀᴏss » {top_display}\n"
                         f"• Tᴏᴛᴀʟ Sᴛᴏᴄᴋ » {await self.format_number_to_text(total_stock)}"
-                    ])
+                    )
 
-                    result_id = str(uuid.uuid4())
                     input_cmd = f"#Sᴇʀᴠɪᴄᴇ|{app_id}" if is_admin else f"/Buy_{app_id}"
                     switch_query = "#Sᴇʀᴠɪᴄᴇ " if is_admin else ""
 
-                    if result_id not in used_ids:
-                        used_ids.add(result_id)
-                        results.append(
-                            InlineQueryResultArticle(
-                                id=result_id,
-                                title=clean_name.title().translate(await small_caps()),
-                                description=description,
-                                thumbnail_url=(
-                                    f"https://smsactivate.s3.eu-central-1.amazonaws.com/assets/ico/{first_code}0.webp"
-                                    if first_code else
-                                    "https://img.icons8.com/color/48/000000/shop.png"
-                                ),
-                                input_message_content=InputTextMessageContent(input_cmd),
-                                reply_markup=InlineKeyboardMarkup().add(
-                                    InlineKeyboardButton("🛒 Sᴇʀᴠɪᴄᴇs", switch_inline_query_current_chat=switch_query)
-                                )
+                    item = {
+                        "id": str(uuid.uuid4()),
+                        "title": clean_name,
+                        "description": description,
+                        "thumb": (
+                            f"https://smsactivate.s3.eu-central-1.amazonaws.com/assets/ico/{first_code}0.webp"
+                            if first_code else
+                            "https://img.icons8.com/color/48/000000/shop.png"
+                        ),
+                        "input_cmd": input_cmd,
+                        "switch": switch_query
+                    }
+                    raw_items.append(item)
+                    results.append(
+                        InlineQueryResultArticle(
+                            id=item["id"],
+                            title=item["title"],
+                            description=item["description"],
+                            thumbnail_url=item["thumb"],
+                            input_message_content=InputTextMessageContent(message_text=item["input_cmd"]),
+                            reply_markup=InlineKeyboardMarkup().add(
+                                InlineKeyboardButton("🛒 Sᴇʀᴠɪᴄᴇs", switch_inline_query_current_chat=item["switch"])
                             )
                         )
+                    )
                 except Exception as e:
-                    logging.error(f"Error processing app {app_name}: {e}")
+                    logging.error(f"App error: {e}")
                     continue
 
-            total_count = len(results)
-            end_time = time.time()
-            logging.info(f"Total execution time: {end_time - start_time:.3f}s")
-
-            # Save to cache
             await cache_manager.set(
                 cache_key,
-                (results, total_count, time.time()),
+                {"items": raw_items, "total": total_count, "ts": time.time()},
                 CachePrefix.SEARCH
             )
 
             await self.bot.answer_inline_query(
                 inline_query.id,
-                results[:CACHE_RESULTS_PER_PAGE],
+                results,
                 cache_time=30,
                 next_offset=str(offset + CACHE_RESULTS_PER_PAGE) if total_count > offset + CACHE_RESULTS_PER_PAGE else ""
             )
 
         except Exception as e:
-            logging.error(f"Error in query_apps: {e}")
+            logging.error(f"query_apps failed: {e}")
             await self.bot.answer_inline_query(
                 inline_query.id,
-                [
-                    InlineQueryResultArticle(
-                        id="error",
-                        title="Error",
-                        description="An error occurred while processing your request",
-                        input_message_content=InputTextMessageContent(message_text="Error: Please try again later")
-                    )
-                ],
+                [InlineQueryResultArticle(
+                    id="error",
+                    title="Error",
+                    description="An error occurred. Please try again.",
+                    input_message_content=InputTextMessageContent(message_text="Error occurred. Please try again.")
+                )],
                 cache_time=5
             )
+
 
     async def handle_inline_query(self, inline_query, is_admin=False) -> None:
         """Handle an incoming inline query by processing it."""
