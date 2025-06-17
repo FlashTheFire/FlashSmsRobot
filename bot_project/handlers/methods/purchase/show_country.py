@@ -219,11 +219,10 @@ class UserCountryManagement:
         # 1) try cache
         cached = await cache_manager.get(cache_key, prefix=CachePrefix.BUTTONS)
         if cached:
-            # cached is stored as {"markup": json_markup, "meta": [app_id, app_name]}
             data = cached
-            # restore markup
+            # restore markup correctly
             markup_dict = data["markup"]
-            markup = InlineKeyboardMarkup(**markup_dict)
+            markup = InlineKeyboardMarkup(markup_dict["inline_keyboard"])
             return markup, data["meta"]
 
         # 2) build fresh
