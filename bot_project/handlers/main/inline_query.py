@@ -520,7 +520,11 @@ class UserSearchManagement:
                         await small_caps()
                     )
                     stock = int(data.get("total_stock", 0))
-                    lowp = float(data.get("lowest_price", 0.0)) * float(COMMISSION)
+                    raw_price = data.get("lowest_price")
+                    try:
+                        lowp = float(raw_price) * float(COMMISSION) if raw_price is not None else 0.0
+                    except (TypeError, ValueError):
+                        lowp = 0.0
                     code = data.get("app_code", "")
                     first = code.split(",")[0].strip().lower() if "," in code else code.lower()
 
@@ -713,7 +717,11 @@ class UserSearchManagement:
             for app_name, data in search_items:
                 app_id = str(data.get("app_id", app_name))
                 total_stock = int(data.get("total_stock", 0))
-                lowest_price = float(data.get("lowest_price", 0.0)) * float(COMMISSION)
+                raw_price = data.get("lowest_price")
+                try:
+                    lowest_price = float(raw_price) * float(COMMISSION) if raw_price is not None else 0.0
+                except (TypeError, ValueError):
+                    lowest_price = 0.0
                 result_text += await self.format_app_result(app_name, app_id, total_stock, lowest_price) + "\n\n"
 
             has_prev = False
@@ -798,7 +806,11 @@ class UserSearchManagement:
             for app_name, data in search_items:
                 app_id = str(data.get("app_id", app_name))
                 total_stock = int(data.get("total_stock", 0))
-                lowest_price = float(data.get("lowest_price", 0.0)) * float(COMMISSION)
+                raw_price = data.get("lowest_price")
+                try:
+                    lowest_price = float(raw_price) * float(COMMISSION) if raw_price is not None else 0.0
+                except (TypeError, ValueError):
+                    lowest_price = 0.0
                 result_text += await self.format_app_result(app_name, app_id, total_stock, lowest_price) + "\n\n"
 
             # Determine pagination availability.
