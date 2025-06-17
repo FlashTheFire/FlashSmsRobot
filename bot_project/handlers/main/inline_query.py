@@ -316,7 +316,7 @@ class UserSearchManagement:
         print(colored(redis_query, 'blue'))
 
         try:
-            result = await self.user_manager._run_aggregate_cursor(*redis_query, index=SERVICE_INDEX)
+            result = await self.user_manager._run_aggregate_cursor(redis_query, SERVICE_INDEX)
         except Exception as e:
             logging.error(f"Error executing search pattern with pattern {pattern}: {e}")
             return []
