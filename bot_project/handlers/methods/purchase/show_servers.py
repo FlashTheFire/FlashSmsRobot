@@ -125,133 +125,116 @@ class UserServerManagement:
         sort_by: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         try:
+            # Construct cache key
             cache_key = f"{app_id}:{country_id or ''}:{country_name or ''}:{is_inline}:{is_admin}:{app_count or ''}:{app_price or ''}:{limit or ''}:{sort_by or ''}"
             cache_data = await cache_manager.get(cache_key, CachePrefix.COUNTRY)
             if cache_data:
                 return cache_data
+
+            # Build base query
             query_str = f"@app_id:{app_id}"
             if country_id:
                 query_str += f" @country_id:{country_id}"
             if country_name:
                 query_str += f" @country_name:(%%{country_name}%%|{country_name}*|{country_name})"
-            query_str += f" @app_price:{app_price} "
+            query_str += f" @app_price:{app_price}"
             if not is_admin:
-                query_str += f"@is_show_server:(True) @is_show_country:(True) @is_show_app:(True)" #@app_count:{app_count} 
+                query_str += " @is_show_server:(True) @is_show_country:(True) @is_show_app:(True)"
 
-            groupby_fields = ["@server_id", "@app_name", "@country_id"]
+            # Set groupby
+            fields = ["@server_id", "@app_name", "@country_id"]
+            groupby_num = "4" if is_admin else "3"
             if is_admin:
-                groupby_fields.append("@is_show_server")
-                groupby_num = "4"
-            else:
-                groupby_num = "3"
+                fields.append("@is_show_server")
 
+            # Build aggregation command
             aggregation_query = [
                 "FT.AGGREGATE", SERVICE_INDEX, query_str,
-                "GROUPBY", groupby_num, *groupby_fields,
+                "GROUPBY", groupby_num, *fields,
                 "REDUCE", "MIN", "1", "@app_price", "AS", "MIN_PRICE",
                 "REDUCE", "SUM", "1", "@app_count", "AS", "TOTAL_STOCK"
             ]
-
             if sort_by:
-                aggregation_query.extend([
-                    "SORTBY", "2", "@MIN_PRICE", sort_by.upper()
-                ])
-
+                aggregation_query += ["SORTBY", "2", "@MIN_PRICE", sort_by.upper()]
             if limit:
-                aggregation_query.extend([
-                    "LIMIT", "0", str(limit)
-                ])
-            print(colored(f"Executing aggregation query: {' '.join(aggregation_query)}", "blue"))
+                aggregation_query += ["LIMIT", "0", str(limit)]
+
+            # Execute aggregation
             result = await self.user_manager._run_aggregate_cursor(aggregation_query, SERVICE_INDEX)
-            print(colored(f"\n\nAggregation result: {result}\n\n", "blue"))
-            if not result or len(result) < 1:
-                print(colored(f"No results found for query: {query_str}", "red"))
+            if not result:
                 return None
 
+            # Load country metadata
             whole_country_data = await redis_client.json().get('main_data:details:country_data') or {}
-            servers_data = {}
-            all_countries = {}
-            global_app_name = None
+            servers_data: Dict[str, Any] = {}
+            all_countries: Dict[str, float] = {}
+            global_app_name: Optional[str] = None
 
-            for row in result[1:]:
-                flat_row = []
-                for item in row:
-                    if isinstance(item, bytes):
-                        flat_row.append(item.decode('utf-8'))
-                    else:
-                        flat_row.append(str(item))
-                row_dict = {}
-                for i in range(0, len(flat_row), 2):
-                    if i + 1 < len(flat_row):
-                        row_dict[flat_row[i]] = flat_row[i + 1]
+            # Process every returned row (including the first)
+            for row in result:
+                # Decode row to strings
+                flat = [item.decode() if isinstance(item, bytes) else str(item) for item in row]
+                row_dict = {flat[i]: flat[i+1] for i in range(0, len(flat), 2) if i+1 < len(flat)}
 
                 server = row_dict.get("server_id")
                 app_name_val = row_dict.get("app_name", "Unknown Service")
-                cid = row_dict.get("country_id", "0")  # Use country_id directly as unique key
-                # Get the country code from the country data using cid
-                country = whole_country_data.get(cid, {}).get('country_code', '')
-                if is_admin:
-                    show_server = row_dict.get("is_show_server", False)
-                if not server or not country:
-                    #print(f"Skipping row due to missing server or country: {row_dict}")
+                cid = row_dict.get("country_id", "0")
+                country_code = whole_country_data.get(cid, {}).get('country_code', '')
+                if not server or not country_code:
                     continue
 
                 try:
                     price = float(row_dict.get("MIN_PRICE", 0))
                     stock = int(float(row_dict.get("TOTAL_STOCK", 0)))
-                except ValueError as e:
-                    #print(f"Error parsing aggregated fields for row {row_dict}: {e}")
+                except ValueError:
                     continue
 
                 global_app_name = app_name_val
+                # Track overall country minimums
                 all_countries[cid] = min(all_countries.get(cid, float('inf')), price)
-    
+
+                # Build server-specific data
                 if server not in servers_data:
-                    server_data = {
+                    servers_data[server] = {
                         "countries": {cid: price},
                         "min_price": price,
-                        "total_stock": stock,
+                        "total_stock": stock
                     }
                     if is_admin:
-                        server_data["is_show_server"] = show_server
+                        servers_data[server]["is_show_server"] = row_dict.get("is_show_server")
                     if is_inline:
-                        server_data["prices"] = {}
-                        # Save the inline price data with country_id as the key
-                        server_data["prices"][cid] = price
-                    servers_data[server] = server_data
+                        servers_data[server]["prices"] = {cid: price}
                 else:
                     srv = servers_data[server]
                     srv["countries"][cid] = min(srv["countries"].get(cid, float('inf')), price)
                     srv["min_price"] = min(srv["min_price"], price)
                     srv["total_stock"] += stock
                     if is_admin:
-                        srv["is_show_server"] = show_server
+                        srv["is_show_server"] = row_dict.get("is_show_server")
                     if is_inline:
                         srv["prices"][cid] = min(srv["prices"].get(cid, float('inf')), price)
 
             if not servers_data:
-                print(colored("No valid server data found after aggregation", "red"))
                 return None
 
+            # Determine top 3 countries overall
             top_countries = sorted(all_countries.items(), key=lambda x: (x[1], x[0]))[:3]
             top_country_ids = [cid for cid, _ in top_countries]
 
-            # For each server, sort the country ids by price
-            for server in servers_data:
-                srv_countries = servers_data[server]["countries"]
-                sorted_srv_countries = sorted(srv_countries.items(), key=lambda x: x[1])
-                servers_data[server]["countries"] = [cid for cid, _ in sorted_srv_countries]
+            # Sort each server's country list by price
+            for srv in servers_data.values():
+                sorted_list = sorted(srv["countries"].items(), key=lambda x: x[1])
+                srv["countries"] = [cid for cid, _ in sorted_list]
 
             data = {
                 "servers": servers_data,
                 "app_name": global_app_name,
-                "all_countries": top_country_ids,
+                "all_countries": top_country_ids
             }
             await cache_manager.set(cache_key, data, CachePrefix.COUNTRY)
             return data
 
-        except Exception as e:
-            #print(f"Error fetching server data: {e}")
+        except Exception:
             return None
 
     async def show_server(
