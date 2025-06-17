@@ -397,14 +397,14 @@ class UserSearchManagement:
                 raw_query.removeprefix("#sᴇʀᴠɪᴄᴇ").strip()
                 if is_admin else raw_query
             )
-            offset = int(inline_query.offset or "0")
+            offset = int(inline_query.offset or int(0)) or 0
 
             # ─── 2) Try cache
             cache_key = f"query_apps:q={query_text}|admin={int(is_admin)}|off={offset}"
             cached = await cache_manager.get(cache_key, CachePrefix.SEARCH)
             if cached:
                 items = cached.get("items", [])
-                total = int(cached.get("total", 0))
+                total = int(cached.get("total", 0)) or 0
 
                 # Reconstruct results
                 articles = []
@@ -776,7 +776,7 @@ class UserSearchManagement:
 
             direction, current_offset, query_text = parts[1], int(parts[2]), parts[3]
             if direction == "next":
-                offset = int(current_offset) + RESULTS_PER_PAGE
+                offset = int(current_offset) + int(RESULTS_PER_PAGE)
             elif direction == "prev":
                 offset = max(current_offset - RESULTS_PER_PAGE, 0)
             else:
@@ -792,7 +792,7 @@ class UserSearchManagement:
                 )
                 return
 
-            search_items = list(search_results["results"].items())[:RESULTS_PER_PAGE]
+            search_items = list(search_results["results"].items())[:int(RESULTS_PER_PAGE)]
             result_text = ""
             for app_name, data in search_items:
                 app_id = str(data.get("app_id", app_name))
