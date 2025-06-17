@@ -29,12 +29,12 @@ class CacheManager:
 
     def __init__(self) -> None:
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._redis = None
+        self.redis = None
 
     async def get_redis(self):
-        if self._redis is None:
-            self._redis = await redis_manager.get_client()
-        return self._redis
+        if self.redis is None:
+            self.redis = await redis_manager.get_client()
+        return self.redis
 
     def _full_key(self, prefix: str, key: str) -> str:
         return f"{prefix}{key}"
