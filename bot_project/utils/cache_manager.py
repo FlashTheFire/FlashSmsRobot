@@ -44,7 +44,7 @@ class CacheManager:
         """Retrieve from Redis cache with prefix support"""
         full_key = self._build_key(prefix, key)
         try:
-            data = await self.redis_client.get(full_key)
+            data = await self.redis_client.get(full_key) or {}
             if not data:
                 return {}
 
@@ -52,10 +52,15 @@ class CacheManager:
                 data = data.decode('utf-8')
 
             parsed = json.loads(data)
-            return parsed.get("data", {})
+            return parsed.get("data")
 
         except json.JSONDecodeError as e:
             self._logger.error(f"JSON decode error for key {full_key}: {e}")
+        except AttributeError as e:
+            if "object has no attribute 'get'" in str(e):
+                self._logger.error(f"Redis get error for key {full_key}: {e}")
+            else:
+                raise
         except Exception as e:
             self._logger.error(f"Redis get error for key {full_key}: {e}")
         return {}
