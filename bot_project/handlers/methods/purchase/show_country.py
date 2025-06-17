@@ -316,11 +316,13 @@ class UserCountryManagement:
             markup.add(*search)
 
         # 3) cache it
-        to_cache = {
-            "markup": markup.to_dict(),
-            "meta": [app_id, app_name]
-        }
+        if isinstance(button_data, InlineKeyboardMarkup):
+           to_cache = button_data.to_dict()
+        else:
+            to_cache = button_data
+
         await cache_manager.set(cache_key, to_cache, prefix=CachePrefix.BUTTONS)
+
 
         return markup, [app_id, app_name]
     
