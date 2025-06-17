@@ -240,7 +240,7 @@ class UserCountryManagement:
         for doc in docs[start:end]:
             code = doc['country_code']
             name = doc['country_name'][:12]
-            price = float(doc['app_price']) * COMMISSION
+            price = float(doc['app_price']) * float(COMMISSION)
             cid = doc['country_id']
 
             if is_admin:
