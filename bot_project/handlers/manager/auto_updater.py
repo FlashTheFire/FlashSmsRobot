@@ -812,7 +812,7 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
             redis_client = await redis_manager.get_client()
             keys = [key async for key in redis_client.scan_iter(match='service_data:*', count=1000)]
             print(colored(f"[AutoUpdate.periodic_update] Found {len(keys)} service_data keys", "green"))
-            if len(keys) == 0:
+            if len(keys) == 1:
                 auto_updater.initialized = True
                 logging.info("Ran one-time initial update")
                 await auto_updater.update_data()
