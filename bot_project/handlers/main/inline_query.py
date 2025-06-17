@@ -272,8 +272,6 @@ class UserSearchManagement:
         :param sort_by: Optional field to sort the results by. Defaults to None.
         :return: List of tuples containing the app_id and a dictionary of app data.
         """
-        redis_client = self.redis_client
-
         # Construct cache key
         cache_key_parts = [
             pattern,
@@ -319,6 +317,7 @@ class UserSearchManagement:
 
         try:
             result = await self.user_manager._run_aggregate_cursor(redis_query, SERVICE_INDEX)
+            print(colored(result, 'red'))
         except Exception as e:
             logging.error(f"Error executing search pattern with pattern {pattern}: {e}")
             return []
