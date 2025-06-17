@@ -567,21 +567,12 @@ class AutoUpdater:
 
     async def dump_redis_data(self) -> Dict[str, Any]:
         """
-        Asynchronously scan & dump only:
-          - user_data:*
-          - order_data:info:*
-          - deposit_data:info:*
-          - free_numbers:*
-          - image_data:*
-          - secure_data:*
-          - main_data:* 
-        into a { key: {"type": t, "value": v} } dict,
-        yielding back to the event loop at each stage.
+        Non-blocking scan & dump specific key patterns.
+        Yields control after each Redis call to avoid blocking.
         """
         r = await redis_manager.get_client()
         result: Dict[str, Any] = {}
 
-        # all positive prefixes
         prefixes = (
             "user_data:",
             "order_data:info:",
@@ -592,103 +583,66 @@ class AutoUpdater:
         )
 
         async def should_include(key: str) -> bool:
-            # include any matching prefix
             if any(key.startswith(pref) for pref in prefixes):
                 return True
-            # include main_data:* but skip the exact dump key
             if key.startswith("main_data:"):
                 return True
             return False
 
-        async def process_batch(batch: List[str]):
-            # 1) pipeline to fetch types
-            pipe = r.pipeline()
-            for k in batch:
-                pipe.type(k)
-            types = await pipe.execute()
+        # Process one key at a time, fully non-blocking
+        async def process_key(k: str):
+            # get type
+            t = await r.type(k)
             await asyncio.sleep(0)
 
-            # 2) pipeline to fetch values
-            pipe = r.pipeline()
-            for idx, k in enumerate(batch):
-                t = types[idx]
-                if isinstance(t, bytes):
-                    t = t.decode()
-                if t == "string":
-                    pipe.get(k)
-                elif t == "list":
-                    pipe.lrange(k, 0, -1)
-                elif t == "set":
-                    pipe.smembers(k)
-                elif t == "hash":
-                    pipe.hgetall(k)
-                elif t == "zset":
-                    pipe.zrange(k, 0, -1, "WITHSCORES")
-                elif t in ("ReJSON", "ReJSON-RL"):
-                    pipe.execute_command("JSON.GET", k)
-                else:
-                    pipe.ping()
-            values = await pipe.execute()
+            # fetch value based on type
+            if t == b'string' or t == 'string':
+                raw = await r.get(k)
+            elif t == b'list' or t == 'list':
+                raw = await r.lrange(k, 0, -1)
+            elif t == b'set' or t == 'set':
+                raw = await r.smembers(k)
+            elif t == b'hash' or t == 'hash':
+                raw = await r.hgetall(k)
+            elif t == b'zset' or t == 'zset':
+                raw = await r.zrange(k, 0, -1, withscores=True)
+            elif t in (b'ReJSON', b'ReJSON-RL', 'ReJSON', 'ReJSON-RL'):
+                raw = await r.execute_command('JSON.GET', k)
+            else:
+                return
+
             await asyncio.sleep(0)
 
-            # 3) decode & stash
-            for idx, k in enumerate(batch):
-                t = types[idx]
-                if isinstance(t, bytes):
-                    t = t.decode()
-                raw = values[idx]
-                if t == "string":
-                    v = raw.decode() if isinstance(raw, bytes) else raw
-                elif t in ("list", "set"):
-                    v = [x.decode() if isinstance(x, bytes) else x for x in raw]
-                elif t == "hash":
-                    v = {
-                        (bk.decode() if isinstance(bk, bytes) else bk):
-                        (bv.decode() if isinstance(bv, bytes) else bv)
-                        for bk, bv in raw.items()
-                    }
-                elif t == "zset":
-                    v = [(m.decode() if isinstance(m, bytes) else m, s) for m, s in raw]
-                elif t in ("ReJSON", "ReJSON-RL"):
-                    # r.json().get() will already return a Python object,
-                    # so just use it directly if it's not bytes/str:
-                    if isinstance(raw, (bytes, bytearray, str)):
-                        # only decode+loads if we really have text
-                        js = raw.decode() if isinstance(raw, (bytes, bytearray)) else raw
-                        try:
-                            v = json.loads(js)
-                        except json.JSONDecodeError:
-                            v = js
-                    else:
-                        # already a dict/list
-                        v = raw
-                else:
-                    continue
+            # decode raw
+            if isinstance(raw, (bytes, bytearray)):
+                try:
+                    v = raw.decode()
+                except:
+                    v = raw
+            elif isinstance(raw, list):
+                v = [item.decode() if isinstance(item, (bytes, bytearray)) else item for item in raw]
+            elif isinstance(raw, dict):
+                v = {
+                    (bk.decode() if isinstance(bk, (bytes, bytearray)) else bk):
+                    (bv.decode() if isinstance(bv, (bytes, bytearray)) else bv)
+                    for bk, bv in raw.items()
+                }
+            else:
+                v = raw
 
-                result[k] = {"type": t, "value": v}
+            # record
+            t_str = t.decode() if isinstance(t, (bytes, bytearray)) else str(t)
+            result[k] = {'type': t_str, 'value': v}
 
-        # 0) SCAN loop
-        cursor = b"0"
-        to_process: List[str] = []
-
+        # iterate all matching keys
+        cursor = b'0'
         while cursor != 0:
             cursor, keys = await r.scan(cursor=cursor, count=self.SCAN_COUNT)
             for raw in keys:
-                k = raw.decode() if isinstance(raw, bytes) else raw
+                k = raw.decode() if isinstance(raw, (bytes, bytearray)) else raw
                 if await should_include(k):
-                    to_process.append(k)
-
-            # when we have enough, process a batch
-            while len(to_process) >= self.BATCH_SIZE:
-                batch = to_process[: self.BATCH_SIZE]
-                to_process = to_process[self.BATCH_SIZE :]
-                await process_batch(batch)
-
+                    await process_key(k)
             await asyncio.sleep(0)
-
-        # leftover
-        if to_process:
-            await process_batch(to_process)
 
         logging.info(f"[AutoUpdate.dump_redis_data] Dumped {len(result)} keys")
         return result
