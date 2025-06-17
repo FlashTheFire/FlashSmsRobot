@@ -218,7 +218,10 @@ class UserCountryManagement:
         if cached:
             markup_dict = cached["markup"]
             meta = cached["meta"]
-            markup = InlineKeyboardMarkup(inline_keyboard=markup_dict["inline_keyboard"])
+            markup = InlineKeyboardMarkup([
+                [InlineKeyboardButton(**btn) for btn in row]
+                for row in markup_dict["inline_keyboard"]
+            ])
             return markup, meta
 
         # 2) Build fresh markup
