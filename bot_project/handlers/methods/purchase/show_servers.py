@@ -258,7 +258,7 @@ class UserServerManagement:
         cache_key = "show_srv:" + "|".join(key_parts)
 
         # 2) Try cache
-        cached = await cache_manager.get(cache_key, CachePrefix.SEARCH)
+        cached = await cache_manager.get(cache_key, CachePrefix.BUTTONS)
         if cached:
             # cached is stored as {"markup": json_markup, "meta": [app_id, app_name]}
             data = cached
