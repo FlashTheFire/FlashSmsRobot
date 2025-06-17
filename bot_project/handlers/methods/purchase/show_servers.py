@@ -258,14 +258,15 @@ class UserServerManagement:
         cache_key = "show_srv:" + "|".join(key_parts)
 
         # 2) Try cache
-        cached = await cache_manager.get(cache_key, CachePrefix.BUTTONS)
+        cached = await cache_manager.get(cache_key, prefix=CachePrefix.BUTTONS)
         if cached:
-            # cached is stored as {"markup": json_markup, "meta": [app_id, app_name]}
-            data = cached
-            # restore markup
-            markup_dict = data["markup"]
-            keyboard = InlineKeyboardMarkup(**markup_dict)
-            msg, text = data["meta"]
+            markup_dict = cached["markup"]
+            meta = cached["meta"]
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton(**btn) for btn in row]
+                for row in markup_dict["inline_keyboard"]
+            ])
+            msg, text = cached["meta"]
             return msg, text, keyboard
 
         # 3) Cache miss → fetch & build
@@ -360,12 +361,9 @@ class UserServerManagement:
             )
 
             # 4) Cache the result
-            to_cache = {
-                "markup": keyboard.to_dict(),
-                "meta": [message, text]
-            }
-            await cache_manager.set(cache_key, to_cache, prefix=CachePrefix.BUTTONS)
-
+            meta = [text, keyboard]
+            button_data = {"markup": keyboard.to_dict(), "meta": meta}
+            await cache_manager.set(cache_key, button_data, prefix=CachePrefix.BUTTONS)
             return message, text, keyboard
 
         except Exception:
