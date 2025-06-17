@@ -818,9 +818,7 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
                 logging.info("Ran one-time initial update")
                 await auto_updater.update_data()
                 logging.info("Ran one-time save cycle")
-            else:
-                await auto_updater.save_data_cycle()
-                logging.info("Ran one-time save cycle")
+            
     # Launch tasks in background
     asyncio.create_task(periodic_save_cycle(bot=bot))
     asyncio.create_task(periodic_init_update(bot=bot))
