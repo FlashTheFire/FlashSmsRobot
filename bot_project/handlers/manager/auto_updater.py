@@ -17,7 +17,7 @@ from termcolor import colored
 from colorama import Fore, Style, init as colorama_init
 import redis.asyncio as redis
 from utils.redis_manager import RedisManager, redis_manager
-from utils.config import  WEBHOOK_HOST as FIVE_SIM_URL
+from utils.config import  WEBHOOK_HOST as FIVE_SIM_URL, URL
 from handlers.manager.operation import (
     FiveSimManagement, FastSmsManagement, SmsHubManagement, GrizzlySmsManagement,
     SmsBowerManagement, VakSmsManagement, TigerSmsManagement, SmsActivateManagement
@@ -800,7 +800,7 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
             keys = [key async for key in redis_client.scan_iter(match='service_data:*', count=1000)]
             print(colored(f"[AutoUpdate.periodic_update] Found {len(keys)} service_data keys", "green"))
             if len(keys) == 0:
-                await auto_updater.recover_data(url="https://temp.sh/DKsdK/flashsms.json")
+                await auto_updater.recover_data(url=URL)
                 auto_updater.initialized = True
                 logging.info("Ran one-time initial update")
                 await auto_updater.update_data()

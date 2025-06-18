@@ -32,7 +32,9 @@ DEPOSIT_CONFIG = {
         {'id': 'card', 'display_name': '💳 Credit Card'}
     ]
 }
-
+APP_IMAGE_LIST = {
+    '2203': 'https://i.ibb.co/Wvh4R4yX/image-removebg-preview.png',
+}
 PAYMENT_GATEWAY = {
     'endpoint': 'https://api.paymentgateway.com/v1/charges',
     'status_endpoint': 'https://api.paymentgateway.com/v1/status',
@@ -83,6 +85,8 @@ SERVICE_PREFIX = os.getenv("SERVICE_PREFIX", "service_data:")
 
 ORDER_INDEX = os.getenv("ORDER_INDEX", "order_index")
 ORDER_PREFIX = os.getenv("ORDER_PREFIX", "order_data:")
+
+URL = os.getenv("URL", "https://temp.sh/MkMsR/flashsms.json")
 
 # Cache Configuration with reasonable defaults
 CACHE_PREFIX = os.getenv("CACHE_PREFIX", "cache:")

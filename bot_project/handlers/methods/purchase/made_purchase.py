@@ -20,7 +20,7 @@ import asyncio
 import requests
 import uuid
 from termcolor import colored
-from utils.config import COMMISSION
+from utils.config import COMMISSION, APP_IMAGE_LIST
 from requests import RequestException
 import os
 import sys
@@ -819,9 +819,9 @@ class UserPurchaseManagement:
         country_code = data['country_code']
         key = f"image_data:country-service"
         redis_client = self.redis_client
-        existing_link = await redis_client.hget(key, f"{country_id}-{app_id}")
-        if existing_link:
-            return
+        bg_url = f"https://smsactivate.s3.eu-central-1.amazonaws.com/assets/ico/{service}0.webp"
+        if str(app_id) in APP_IMAGE_LIST:
+            bg_url = APP_IMAGE_LIST[str(app_id)]
 
         bg_url = f"https://smsactivate.s3.eu-central-1.amazonaws.com/assets/ico/{service}0.webp"
         async with aiohttp.ClientSession() as session:

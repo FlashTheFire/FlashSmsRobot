@@ -4,6 +4,7 @@ from handlers.security import RateLimiter
 from utils.redis_manager import redis_manager
 from handlers.manager.operation import UserManagement
 from utils.functions import small_caps
+from utils.config import ADMIN_ID, APP_IMAGE_LIST
 import asyncio
 import os
 import random
@@ -612,6 +613,11 @@ class TopServiceManager:
                     "country_url": flag_url,
                     "purchased": 1
                 }
+                
+                bg_url = f"https://smsactivate.s3.eu-central-1.amazonaws.com/assets/ico/{service_code}0.webp"
+                if str(app_id) in APP_IMAGE_LIST:
+                    bg_url = APP_IMAGE_LIST[str(app_id)]
+                service_data[f"{app_id}:{country_id}:{server_id}"]["logo_url"] = bg_url
                 #logger.info(f"Created new service entry for {app_id}")
 
             await self.redis_client.json().set('main_data:details:service_data', '$', service_data)
