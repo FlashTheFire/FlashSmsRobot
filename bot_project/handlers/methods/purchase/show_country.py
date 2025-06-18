@@ -16,7 +16,6 @@ from utils.cache_manager import cache_manager, CachePrefix
 from functools import partial
 from utils.redis_keys import RedisKeys
 
-#import logging
 SERVICE_PREFIX = "service_data"
 
 class UserCountryManagement:
@@ -33,7 +32,7 @@ class UserCountryManagement:
     async def init_managers(self, user_mgr: UserManagement, bot: Optional[AsyncTeleBot] = None) -> bool:
         try:
             if not user_mgr or not bot:
-                #logging.error("User manager and bot instance are required")
+                print("User manager and bot instance are required")
                 return False
 
             self.user_manager = user_mgr
@@ -48,15 +47,14 @@ class UserCountryManagement:
                     ('input_validator', self.input_validator),
                     ('transaction_guard', self.transaction_guard)
                 ] if not comp]
-                #logging.error(f"Missing required components: {', '.join(missing)}")
+                print(f"Missing required components: {', '.join(missing)}")
                 return False
 
             self._initialized = True
-            #logging.info("|| show_countries handler managers initialized successfully")
             return True
 
         except Exception as e:
-            #logging.error(f"Error initializing managers: {e}")
+            print(f"Error initializing managers: {e}")
             return False
 
     async def validate_country_request(self, user_id: str, app_id: str, server_id: str, page: int = 1) -> Dict[str, Any]:
@@ -67,7 +65,7 @@ class UserCountryManagement:
             return {"valid": True}
 
         except Exception as e:
-            #logging.error(f"Validation error: {e}")
+            print(f"Validation error: {e}")
             return {"valid": False, "error": "🔒 Iɴᴛᴇʀɴᴀʟ Vᴀʟɪᴅᴀᴛɪᴏɴ Eʀʀᴏʀ"}
 
     async def country_search(
@@ -197,7 +195,7 @@ class UserCountryManagement:
             return result
 
         except Exception as e:
-            logging.error(f"Aggregation query error in country_search: {e}")
+            print(f"Aggregation query error in country_search: {e}")
             return None
 
     async def generate_buttons(
@@ -243,7 +241,7 @@ class UserCountryManagement:
         # helper to safely truncate callback data
         def safe_cb(cb: str) -> Optional[str]:
             if len(cb) > 64:
-                print(f"callback too long ({len(cb)}), skipping")
+                #print(f"callback too long ({len(cb)}), skipping")
                 return None
             return cb
 
@@ -364,7 +362,7 @@ class UserCountryManagement:
                 finally:
                     await guard.release_lock(transaction_key)
             
-            print(f"Country ID: {country_id}\nPage: {page}\nApp ID: {app_id}")
+            #print(f"Country ID: {country_id}\nPage: {page}\nApp ID: {app_id}")
             try:
                 page = int(page)
             except ValueError:
@@ -428,7 +426,7 @@ class UserCountryManagement:
                 finally:
                     await guard.release_lock(transaction_key)
             
-            print(f"Country ID: {country_id}\nPage: {page}\nApp ID: {app_id}")
+            #print(f"Country ID: {country_id}\nPage: {page}\nApp ID: {app_id}")
             try:
                 page = int(page)
             except ValueError:
@@ -468,7 +466,7 @@ class UserCountryManagement:
             parts = call.data.split(":")
             user_id = call.message.chat.id
             if len(parts) not in (3, 4):
-                print(f"1 Invalid callback data: {call.data}")
+                #print(f"1 Invalid callback data: {call.data}")
                 await self.bot.answer_callback_query(call.id, "⚠️ Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ", show_alert=True)
                 return
             if len(parts) == 3:
@@ -481,7 +479,7 @@ class UserCountryManagement:
                 if not await self._acquire_transaction_lock(guard, transaction_key, call):
                     return
                 try:
-                    print(f"Country ID: {country_id}\nPage: {page}\nApp ID: {app_id}")
+                    #print(f"Country ID: {country_id}\nPage: {page}\nApp ID: {app_id}")
                     try:
                         page = int(page)
                     except ValueError:
@@ -563,7 +561,7 @@ class UserCountryManagement:
             parts = call.data.split(":")
             user_id = call.message.chat.id
             if len(parts) not in (3, 4, 5):
-                print(f"2 Invalid callback data: {call.data}")
+                #print(f"2 Invalid callback data: {call.data}")
                 await self.bot.answer_callback_query(call.id, "⚠️ Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ", show_alert=True)
                 return
             if len(parts) == 3:
@@ -580,7 +578,7 @@ class UserCountryManagement:
                 if not await self._acquire_transaction_lock(guard, transaction_key, call):
                     return
                 try:
-                    print(f"Country ID: {country_id}\nPage: {page}\nApp ID: {app_id}")
+                    #print(f"Country ID: {country_id}\nPage: {page}\nApp ID: {app_id}")
                     try:
                         page = int(page)
                     except ValueError:
@@ -645,19 +643,11 @@ class UserCountryManagement:
             """Update app name."""
             if app_name in data:
                 data[new_value] = data.pop(app_name)
-                print(f"App name changed from '{app_name}' to '{new_value}'")
-            else:
-                print(f"App '{app_name}' not found!")
         elif str(field) == 'app_code':
             """Update app code."""
             app_code = new_value.replace(" ", "").split(',') if ',' in new_value else new_value
             if app_name in data:
                 data[app_name]["code"] = app_code
-                print(f"Code for '{app_name}' updated to {new_value}")
-            else:
-                print(f"App '{app_name}' not found!")
-        else:
-            print(f"field Not Found: {field}")
         return data
 
     async def handle_modify_data(
@@ -1026,7 +1016,7 @@ class UserCountryManagement:
             except ValueError:
                 asyncio.create_task(bot.send_message(message.chat.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", parse_mode='html'))
             except Exception as e:
-                #logging.error(f"Callback error: {e}")
+                print(f"Callback error: {e}")
                 asyncio.create_task(bot.send_message(message.chat.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ...", parse_mode='html'))
         
         @bot.message_handler(regexp=r'^#Sᴇʀᴠɪᴄᴇ\|(\d+)$')
@@ -1037,7 +1027,7 @@ class UserCountryManagement:
             except ValueError:
                 asyncio.create_task(bot.send_message(message.chat.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", parse_mode='html'))
             except Exception as e:
-                #logging.error(f"Callback error: {e}")
+                print(f"Callback error: {e}")
                 asyncio.create_task(bot.send_message(message.chat.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ...", parse_mode='html'))
 
         @bot.callback_query_handler(func=lambda call: call.data.startswith("country:"))
@@ -1048,7 +1038,7 @@ class UserCountryManagement:
             except ValueError:
                 asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", show_alert=True))
             except Exception as e:
-                #logging.error(f"Callback error: {e}")
+                print(f"Callback error: {e}")
                 asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ", show_alert=True))
             
         @bot.callback_query_handler(func=lambda call: call.data.startswith("admin_country:"))
@@ -1059,7 +1049,7 @@ class UserCountryManagement:
             except ValueError:
                 asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", show_alert=True))
             except Exception as e:
-                #logging.error(f"Callback error: {e}")
+                print(f"Callback error: {e}")
                 asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ", show_alert=True))
 
         @bot.callback_query_handler(func=lambda call: call.data.startswith("admin_is_country:"))
@@ -1070,7 +1060,7 @@ class UserCountryManagement:
             except ValueError:
                 asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", show_alert=True))
             except Exception as e:
-                #logging.error(f"Callback error: {e}")
+                print(f"Callback error: {e}")
                 asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ", show_alert=True))
             
         @bot.callback_query_handler(func=lambda call: call.data.startswith("#modify_data:"))
@@ -1081,7 +1071,7 @@ class UserCountryManagement:
             except ValueError:
                 asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", show_alert=True))
             except Exception as e:
-                #logging.error(f"Callback error: {e}")
+                print(f"Callback error: {e}")
                 asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ", show_alert=True))
 
         @bot.callback_query_handler(func=lambda call: call.data.startswith("is_adjustable:"))
@@ -1092,7 +1082,7 @@ class UserCountryManagement:
             except ValueError:
                 asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", show_alert=True))
             except Exception as e:
-                #logging.error(f"Callback error: {e}")
+                print(f"Callback error: {e}")
                 asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ", show_alert=True))
 
         @bot.callback_query_handler(func=lambda call: call.data.startswith("is_server_off:"))
@@ -1103,7 +1093,7 @@ class UserCountryManagement:
             except ValueError:
                 asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", show_alert=True))
             except Exception as e:
-                #logging.error(f"Callback error: {e}")
+                print(f"Callback error: {e}")
                 asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ", show_alert=True))
 
         @bot.callback_query_handler(func=lambda call: call.data.startswith("update_data:"))
@@ -1114,7 +1104,7 @@ class UserCountryManagement:
             except ValueError:
                 asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", show_alert=True))
             except Exception as e:
-                #logging.error(f"Callback error: {e}")
+                print(f"Callback error: {e}")
                 asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ", show_alert=True))
             
         @bot.message_handler(func=lambda message: message.reply_to_message and message.reply_to_message.text.startswith("❯ Pʟᴇᴀsᴇ Eɴᴛᴇʀ"))
@@ -1125,7 +1115,7 @@ class UserCountryManagement:
             except ValueError:
                 asyncio.create_task(bot.send_message(message.chat.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", parse_mode='html'))
             except Exception as e:
-                #logging.error(f"Callback error: {e}")
+                print(f"Callback error: {e}")
                 asyncio.create_task(bot.send_message(message.chat.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ...", parse_mode='html'))
 
 

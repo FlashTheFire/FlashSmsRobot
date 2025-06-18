@@ -12,7 +12,6 @@ from termcolor import colored
 from pydantic import BaseModel, Field, validator
 from utils.redis_keys import RedisKeys
 
-#import await logging
 import json
 import asyncio
 from functools import lru_cache, partial
@@ -31,7 +30,7 @@ class UserServerManagement:
     async def init_managers(self, user_mgr: UserManagement, bot: Optional[AsyncTeleBot] = None) -> bool:
         try:
             if not user_mgr or not bot:
-                #await logging.error("User manager and bot instance are required")
+                print("User manager and bot instance are required")
                 return False
 
             self.user_manager = user_mgr
@@ -46,20 +45,19 @@ class UserServerManagement:
                     ('input_validator', self.input_validator),
                     ('transaction_guard', self.transaction_guard)
                 ] if not comp]
-                #await logging.error(f"Missing required components: {', '.join(missing)}")
+                print(f"Missing required components: {', '.join(missing)}")
                 return False
 
             self._initialized = True
-            #await logging.info("||show_servers handler managers initialized successfully")
             return True
 
         except Exception as e:
-            #await logging.error(f"Error initializing managers: {e}")
+            print(f"Error initializing managers: {e}")
             return False
 
     async def ensure_managers_initialized(self) -> bool:
         if not self._initialized:
-            #await logging.error("Security components not properly initialized")
+            print("Security components not properly initialized")
             return False
         return True
     
@@ -401,7 +399,7 @@ class UserServerManagement:
                     country_data = await self.get_country_data(country_id)
                     country_code = country_data.get('country_code', None)
                     text, keyboard = await self.show_server(call.message, app_id, country_id, country_code, page, is_admin)
-                    print(text, keyboard)
+                    #print(text, keyboard)
                     if text and keyboard:
                          await self.bot.edit_message_text(
                             chat_id=call.message.chat.id,
@@ -525,7 +523,7 @@ class UserServerManagement:
             else:
                 parts = message.text.split('|')
             
-            print(f"Parts: {parts}")
+            #print(f"Parts: {parts}")
             user_id = message.from_user.id
             app_id = parts[1]
             country_id = parts[2] if len(parts) > 2 else None
@@ -645,10 +643,10 @@ class UserServerManagement:
                 if inline_query.id != "tool":
                     await self.bot.answer_inline_query(inline_query.id, '[]')
                 else:
-                    print(colored(
-                        f"No servers found for app_id: {app_id} and country_filter: {country_filter}",
-                        "red"
-                    ))
+                    #print(colored(
+                    #    f"No servers found for app_id: {app_id} and country_filter: {country_filter}",
+                    #    "red"
+                    #))
                     return []
                 return
 
@@ -770,11 +768,11 @@ class UserServerManagement:
             whole_country_data = await self.redis_client.json().get('main_data:details:country_data') or {}
             if country_id:
                 return whole_country_data.get(country_id, {})
-            ###print('country data')
-            ###print(whole_country_data)
+            #print('country data')
+            #print(whole_country_data)
             return whole_country_data
         except Exception as e:
-            ###print(f"Error fetching country data: {e}")
+            print(f"Error fetching country data: {e}")
             return {}
 
     async def register_handlers(self, bot: AsyncTeleBot) -> None:
@@ -783,7 +781,7 @@ class UserServerManagement:
             try:
                 await self._handle_app_id_inline(inline_query)
             except Exception as e:
-                ###print(f"Error processing inline query: {e}")
+                print(f"Error processing inline query: {e}")
                 await self.bot.answer_inline_query(inline_query.id, [])
         
         @bot.inline_handler(func=lambda query: query.query.startswith('#AᴅᴍɪɴAᴘᴘIᴅ'))
@@ -791,7 +789,7 @@ class UserServerManagement:
             try:
                 await self._handle_app_id_inline(inline_query, is_admin=True)
             except Exception as e:
-                ###print(f"Error processing inline query: {e}")
+                print(f"Error processing inline query: {e}")
                 await self.bot.answer_inline_query(inline_query.id, [])
         
                     
@@ -803,7 +801,7 @@ class UserServerManagement:
             except ValueError:
                 asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", show_alert=True))
             except Exception as e:
-                #logging.error(f"Callback error: {e}")
+                print(f"Callback error: {e}")
                 asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ", show_alert=True))
 
         @bot.callback_query_handler(func=lambda call: call.data.startswith("admin_servers:"))
@@ -814,7 +812,7 @@ class UserServerManagement:
             except ValueError:
                 asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", show_alert=True))
             except Exception as e:
-                #logging.error(f"Callback error: {e}")
+                print(f"Callback error: {e}")
                 asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ", show_alert=True))
 
         @bot.callback_query_handler(func=lambda call: call.data.startswith("admin_is_server:"))
@@ -825,7 +823,7 @@ class UserServerManagement:
             except ValueError:
                 asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", show_alert=True))
             except Exception as e:
-                #logging.error(f"Callback error: {e}")
+                print(f"Callback error: {e}")
                 asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ", show_alert=True))
 
         @bot.message_handler(regexp=r'^/Buy_\d+_\d+$')
@@ -836,7 +834,7 @@ class UserServerManagement:
             except ValueError:
                 asyncio.create_task(bot.send_message(message.chat.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", parse_mode='html'))
             except Exception as e:
-                #logging.error(f"Callback error: {e}")
+                print(f"Callback error: {e}")
                 asyncio.create_task(bot.send_message(message.chat.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ...", parse_mode='html'))
 
         @bot.message_handler(regexp=r'^#Sᴇʀᴠɪᴄᴇ\|\d+\|\d+$')
@@ -847,7 +845,7 @@ class UserServerManagement:
             except ValueError:
                 asyncio.create_task(bot.send_message(message.chat.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", parse_mode='html'))
             except Exception as e:
-                #logging.error(f"Callback error: {e}")
+                print(f"Callback error: {e}")
                 asyncio.create_task(bot.send_message(message.chat.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ...", parse_mode='html'))
 
 # ---------------------------------------------------------------------------
