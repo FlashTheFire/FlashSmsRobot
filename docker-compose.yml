@@ -1,0 +1,57 @@
+services:
+  redis:
+    image: redis/redis-stack-server:latest
+    container_name: flashsms-redis
+    command: ["redis-server","/usr/local/etc/redis/redis.conf"]
+    ports:
+      - "0.0.0.0:6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+    restart: unless-stopped
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD","redis-cli","ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    container_name: flashsms-redisinsight
+    ports:
+      - "0.0.0.0:5540:5540"
+    environment:
+      - RIPORT=5540
+    restart: unless-stopped
+    networks:
+      - backend
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  bot:
+    build:
+      context: ./FlashSmsRobot
+    container_name: flashsms-bot
+    env_file:
+      - ./FlashSmsRobot/.env
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - backend
+
+volumes:
+  redis-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /data/redis
+
+networks:
+  backend:
+    driver: bridge
