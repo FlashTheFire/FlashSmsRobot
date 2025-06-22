@@ -678,12 +678,16 @@ class UserSearchManagement:
             cached = await cache_manager.get(cache_key, CachePrefix.SEARCH)
             if cached:
                 return_message, return_keyboard = cached
-                await self.bot.send_message(
-                    message.chat.id,
-                    return_message,
-                    reply_markup=return_keyboard,
-                    parse_mode='HTML'
-                )
+                msg = message.chat.id
+                if msg != 'tool':
+                    await self.bot.send_message(
+                        message.chat.id,
+                        return_message,
+                        reply_markup=return_keyboard,
+                        parse_mode='HTML'
+                    )
+                else:
+                    return [return_message, return_keyboard]
                 return
 
             start_time = time.time()
