@@ -56,6 +56,7 @@ class DataTransformer:
         self.redis_client = redis_client
         self.app_mapping = {}
         self.country_map = []
+        self.SCAN_COUNT = 1_000
 
     async def initialize(self):
         """Initialize Redis client and load mappings."""
@@ -272,147 +273,154 @@ class AutoUpdater:
             self.price_country_mapping[app_id] = {}
         self.price_country_mapping[app_id][price] = country_id
 
-    async def process_app_data(
+    async def queue_app(
         self,
-        redis_conn,                          # renamed for clarity
+        pipe: Redis.pipeline,
         app: Dict[str, Any],
         server_data: Optional[Dict[str, Any]],
         country_data: Dict[str, Any],
         server_id: int,
         matches: List[str]
     ) -> None:
-        """Process individual app data and update Redis."""
-
+        """Parse & sanitize, then queue HSETNX/HSET into pipe without executing."""
+        # — parse & sanitize exactly as before —
         country_id   = country_data["record_id"]
-        country_name = country_data["name"]
-        display_flag = country_data["code"]
-
+        app_id       = self.safe_str(app.get("app_id"))
+        app_name     = self.safe_str(app.get("app_name"))
         raw_price    = app.get("price")
         try:
             app_price = float(raw_price)
         except (TypeError, ValueError):
-            self._logger.warning(f"Invalid price for app {app.get('app_id')}: {raw_price!r}; defaulting to 0.0")
+            self._logger.warning(f"Invalid price for app {app_id!r}: {raw_price!r}; defaulting to 0.0")
             app_price = 0.0
 
-        app_count = app.get("count", 0)
         try:
-            app_count = int(app_count)
+            app_count = int(app.get("count", 0))
         except (TypeError, ValueError):
             app_count = 0
 
-        app_id    = self.safe_str(app.get("app_id"))
-        app_name  = self.safe_str(app.get("app_name"))
-        app_codes = app.get("code")
-        code_field = (self.encode_for_redis(app_codes)
-                      if isinstance(app_codes, list)
-                      else self.safe_str(app_codes))
-
-        first_code     = code_field if not isinstance(app_codes, list) else app_codes[0]
+        codes = app.get("code")
+        code_field = (
+            self.encode_for_redis(codes)
+            if isinstance(codes, list)
+            else self.safe_str(codes)
+        )
+        first_code = codes[0] if isinstance(codes, list) and codes else code_field
         server_name_val = server_data.get(first_code) if server_data else "any"
 
         redis_key = f"{SERVICE_PREFIX}:{country_id}:{server_id}:{app_id}"
 
-        # if you only want to index some apps, guard here:
+        # optional skip
         if matches and f"{country_id}:{server_id}:{app_id}" in matches:
-            print(colored(f"Skipping app {app_name} ({code_field}) | Price: ${app_price:<6.2f} | Stock: {app_count}", "yellow"))
+            self._logger.info(f"Skipping app {app_name} ({code_field})")
             return
 
-        # ensure your flags exist
-        await redis_conn.hsetnx(redis_key, "is_show_country", "True")
-        await redis_conn.hsetnx(redis_key, "is_show_server",  "True")
-        await redis_conn.hsetnx(redis_key, "is_show_app",     "True")
+        # queue flag‐sets
+        pipe.hsetnx(redis_key, "is_show_country", "True")
+        pipe.hsetnx(redis_key, "is_show_server",  "True")
+        pipe.hsetnx(redis_key, "is_show_app",     "True")
 
-        # build the hash map
-        redis_data = {
+        # build the hash and queue it
+        mapping = {
             "country_id":   self.safe_str(country_id),
-            "country_name": self.safe_str(country_name),
-            "country_code": self.safe_str(display_flag),
-            "server_name":  self.safe_str(server_name_val),
+            "country_name": self.safe_str(country_data["name"]),
+            "country_code": self.safe_str(country_data["code"]),
             "server_id":    self.safe_str(server_id),
+            "server_name":  self.safe_str(server_name_val),
             "app_id":       app_id,
             "app_name":     app_name,
             "app_code":     code_field,
-            "app_price":    app_price,                # now a float
-            "app_count":    app_count,                # now an int
+            "app_price":    app_price,
+            "app_count":    app_count,
             "search_tags":  app_name.replace(" ", "").lower(),
         }
+        pipe.hset(redis_key, mapping=mapping)
 
-
-        # update any separate mapping
+        # still update your external price mapping immediately
         await self.update_price_mapping(app_id, app_price, country_id)
-
-        # *** critically: await this, or it never fires! ***
-        await redis_conn.hset(redis_key, mapping=redis_data)
-
-        #print(colored(
-        #    f"    ✓ Added: {app_name} ({code_field}) | "
-        #    f"Price: ${app_price:<6.2f} | Stock: {app_count}",
-        #    "green"
-        #))
 
     async def process_server(
         self,
-        pipe: redis.Redis,
+        pipe: Redis.pipeline,
         server: Dict[str, Any],
         country_data: Dict[str, Any],
         matches: List[str]
     ) -> None:
-        """Process server data and update Redis."""
+        """Queue up all app‐level writes for this server into the provided pipeline."""
         server_id = int(server["server_id"])
         server_data = None
         
-        if int(server_id) == int(1):
+        if server_id == 1:
             five_sim = FiveSimManagement()
             server_data = await five_sim.get_servers(country_data["record_id"])
-            #print(colored(f"Server data: {len(server_data)}", "red"))
         
-        tasks = []
         for app in server["apps"]:
-            tasks.append(self.process_app_data(pipe, app, server_data, country_data, server_id, matches))
-        
-        await asyncio.gather(*tasks)
-        await pipe.execute()
+            await self.queue_app(pipe, app, server_data, country_data, server_id, matches)
 
     async def insert_data(self, data: List[Dict[str, Any]]) -> None:
-        """Insert transformed data into Redis asynchronously."""
+        """Insert transformed data into Redis using one pipeline per country‐batch."""
         print(colored("\n\n=== Starting Data Insertion ===", "cyan"))
         await self.load_price_mapping(self.redis_client)
-        pattern = re.compile(r'^free_numbers:(.+):free$')
-        matches = []    
-        
-        async for key in self.redis_client.scan_iter(match='free_numbers:*', count=1000):
+
+        # pre‐compute matches
+        pattern = re.compile(rf"^{SERVICE_PREFIX}:(.+):free$")
+        matches = []
+        async for key in self.redis_client.scan_iter(match=f"{SERVICE_PREFIX}:*:free", count=1_000):
             m = pattern.match(key)
             if m:
-                # group(1) is the “60:1:659” par
                 matches.append(m.group(1))
         print(colored(f"Matches found: {matches}", "green"))
-        batches = list(self.chunker(data, 1))
-        
-        for batch_index, batch in enumerate(batches, start=1):
-            tasks = []
-            country_id = batch[0].get("record_id")
-            print(colored(f"Processing batch {batch_index}/{len(batches)} for country {country_id}", "blue"))
-            if country_id is None:
-                print(f"Error in update_data: missing country_id in {batch[0].get('record_id')}")
 
-            keys = await self.redis_client.keys(f"{SERVICE_PREFIX}:{country_id}:*")
-            if keys:
-                print(colored(f"Clearing {len(keys)} existing records...", "yellow"))
-                await self.redis_client.delete(*keys)
-            print(colored("Existing records cleared successfully!", "green"))
+        # split into country‐batches of N=1 (change N if you want larger batches)
+        batches = list(chunked(data, 1))
+
+        for idx, batch in enumerate(batches, 1):
+            country_id = batch[0].get("record_id")
+            print(colored(f"\n--- Batch {idx}/{len(batches)}: country {country_id} ---", "blue"))
+
+            # non‐blocking delete of old keys
+            old_keys = []
+            async for key in self.redis_client.scan_iter(match=f"{SERVICE_PREFIX}:{country_id}:*", count=1_000):
+                old_keys.append(key)
+            if old_keys:
+                print(colored(f"Unlinking {len(old_keys)} old keys …", "yellow"))
+                # UNLINK frees in background
+                await self.redis_client.unlink(*old_keys)
+                print(colored("Old keys unlinked.", "green"))
+
+            # create one pipeline for this batch
+            pipe = self.redis_client.pipeline()
+
+            # queue all servers/apps
+            tasks = []
             for country_data in batch:
                 for server in country_data["servers"]:
-                    tasks.append(self.process_server(pipe=self.redis_client.pipeline(), server=server, country_data=country_data, matches=matches))
-                                
+                    tasks.append(
+                        self.process_server(
+                            pipe=pipe,
+                            server=server,
+                            country_data=country_data,
+                            matches=matches
+                        )
+                    )
+
+            # run through all queue_app calls (they’ll in turn await any price‐map updates)
             await asyncio.gather(*tasks)
-            print(colored(f"\n=== Completed Batch {batch_index}/{len(batches)} ===", "cyan"))
-                
-            # Update persistent data
+
+            # execute the entire batch pipeline in one go
+            try:
+                await pipe.execute()
+                print(colored(f"Executed pipeline for batch {idx}", "green"))
+            except Exception as e:
+                print(colored(f"Pipeline failed on batch {idx}: {e}", "red"))
+
+            # persist your price mappings
             await self.save_price_mapping(self.redis_client)
-            
-            if batch_index < len(batches):
-                await asyncio.sleep(0.001)
-    
+
+            # give control back to the event loop
+            if idx < len(batches):
+                await asyncio.sleep(0)
+
         print(colored("\n=== Data Insertion Complete ===", "cyan"))
 
     async def fetch_transform_data(self):
@@ -537,58 +545,65 @@ class AutoUpdater:
             logging.error(f"[AutoUpdate.load_old_data_from_url] Error fetching or parsing JSON: {e}")
 
         return {}
+    async def import_redis_dump(self, url: str, chunk_size: int = 1000) -> None:
+        """
+        Download a dump from URL and recreate the keys in Redis.
 
-    async def import_redis_dump(self, url: str) -> None:
-        """Download a dump from URL and recreate the keys in Redis."""
+        :param url: URL to download from
+        :param chunk_size: Number of records to process at once (default: 1000)
+        """
         data = await self.load_old_data_from_url(url)
         if not data:
-            logging.warning(f"[AutoUpdate.import_redis_dump] No data from {url}")
+            logging.warning(f"[AutoUpdate] No data from {url}")
             return
 
         r = await redis_manager.get_client()
-        for key, record in data.items():
-            t = record.get("type")
-            val = record.get("value")
+        total = len(data)
+        restored = 0
+
+        # Helper to enqueue the right command for each record
+        def enqueue(pipe, key, rec):
+            t, val = rec.get("type"), rec.get("value")
+            if t == "string":
+                pipe.set(key, val)
+            elif t == "list" and isinstance(val, list):
+                pipe.rpush(key, *val)
+            elif t == "set" and isinstance(val, list):
+                pipe.sadd(key, *val)
+            elif t == "hash" and isinstance(val, dict):
+                pipe.hset(key, mapping=val)
+            elif t == "zset" and isinstance(val, list):
+                # .zadd takes score/member pairs
+                mapping = {m: s for m, s in val}
+                pipe.zadd(key, mapping)
+            elif t in ("ReJSON","ReJSON-RL"):
+                payload = json.dumps(val)
+                pipe.execute_command("JSON.SET", key, "$", payload)
+            else:
+                logging.warning(f"[AutoUpdate] Skipping unsupported type '{t}' for '{key}'")
+
+        # Process in chunks
+        for batch in chunked(data.items(), chunk_size):
+            pipe = r.pipeline()
+            for key, record in batch:
+                enqueue(pipe, key, record)
+
             try:
-                if t == "string":
-                    await r.set(key, val)
-
-                elif t == "list":
-                    if isinstance(val, list):
-                        await r.rpush(key, *val)
-
-                elif t == "set":
-                    if isinstance(val, list):
-                        await r.sadd(key, *val)
-
-                elif t == "hash":
-                    if isinstance(val, dict):
-                        await r.hset(key, mapping=val)
-
-                elif t == "zset":
-                    if isinstance(val, list):
-                        await r.zadd(key, *{m: s for m, s in val}.items())
-
-                elif t in ("ReJSON-RL", "ReJSON"):
-                    payload = json.dumps(val)
-                    await r.execute_command("JSON.SET", key, "$", payload)
-
-                else:
-                    logging.warning(f"[AutoUpdate.import_redis_dump] Skipped unsupported type '{t}' for '{key}'")
-                    continue
-
-                logging.info(f"[AutoUpdate.import_redis_dump] Restored '{key}' as {t}")
-
+                await pipe.execute()
+                restored += len(batch)
+                logging.info(f"[AutoUpdate] Restored {restored}/{total} keys")
             except Exception as e:
-                logging.error(f"[AutoUpdate.import_redis_dump] Failed to restore '{key}': {e}")
+                logging.error(f"[AutoUpdate] Pipeline failed on batch ending at key '{batch[-1][0]}': {e}")
 
-        logging.info(f"[AutoUpdate.import_redis_dump] Completed import of {len(data)} keys")
+            # Optional: tiny sleep to prevent hammering Redis
+            await asyncio.sleep(0.01)
 
+        logging.info(f"[AutoUpdate] Completed import of {total} keys")
 
     async def dump_redis_data(self) -> Dict[str, Any]:
         """
-        Non-blocking scan & dump specific key patterns.
-        Yields control after each Redis call to avoid blocking.
+        Non-blocking bulk dump of keys matching certain prefixes,
+        batching into pipelines so Redis never blocks or slows down.
         """
         r = await redis_manager.get_client()
         result: Dict[str, Any] = {}
@@ -600,68 +615,80 @@ class AutoUpdater:
             "free_numbers:",
             "image_data:",
             "secure_data:",
+            "main_data:",
         )
 
-        async def should_include(key: str) -> bool:
-            if any(key.startswith(pref) for pref in prefixes):
-                return True
-            if key.startswith("main_data:"):
-                return True
-            return False
+        def should_include(key: str) -> bool:
+            return any(key.startswith(pref) for pref in prefixes)
 
-        # Process one key at a time, fully non-blocking
-        async def process_key(k: str):
-            # get type
-            t = await r.type(k)
-            await asyncio.sleep(0)
+        # 1) collect all candidate keys via scan_iter
+        keys: List[str] = []
+        async for raw in r.scan_iter(count=self.SCAN_COUNT):
+            k = raw.decode() if isinstance(raw, (bytes, bytearray)) else raw
+            if should_include(k):
+                keys.append(k)
 
-            # fetch value based on type
-            if t == b'string' or t == 'string':
-                raw = await r.get(k)
-            elif t == b'list' or t == 'list':
-                raw = await r.lrange(k, 0, -1)
-            elif t == b'set' or t == 'set':
-                raw = await r.smembers(k)
-            elif t == b'hash' or t == 'hash':
-                raw = await r.hgetall(k)
-            elif t == b'zset' or t == 'zset':
-                raw = await r.zrange(k, 0, -1, withscores=True)
-            elif t in (b'ReJSON', b'ReJSON-RL', 'ReJSON', 'ReJSON-RL'):
-                raw = await r.execute_command('JSON.GET', k)
-            else:
-                return
+        # 2) process in chunks
+        for i in range(0, len(keys), self.SCAN_COUNT):
+            batch = keys[i : i + self.SCAN_COUNT]
 
-            await asyncio.sleep(0)
+            # 2a) pipeline #1: fetch types for the whole batch
+            pipe = r.pipeline()
+            for k in batch:
+                pipe.type(k)
+            types = await pipe.execute()
 
-            # decode raw
-            if isinstance(raw, (bytes, bytearray)):
-                try:
-                    v = raw.decode()
-                except:
+            # 2b) pipeline #2: fetch values based on type
+            pipe = r.pipeline()
+            for k, t_raw in zip(batch, types):
+                # normalize to str
+                t = t_raw.decode() if isinstance(t_raw, (bytes, bytearray)) else str(t_raw)
+                if t == "string":
+                    pipe.get(k)
+                elif t == "list":
+                    pipe.lrange(k, 0, -1)
+                elif t == "set":
+                    pipe.smembers(k)
+                elif t == "hash":
+                    pipe.hgetall(k)
+                elif t == "zset":
+                    pipe.zrange(k, 0, -1, withscores=True)
+                elif t in ("ReJSON", "ReJSON-RL"):
+                    pipe.execute_command("JSON.GET", k)
+                else:
+                    # unsupported → queue a placeholder
+                    pipe.execute_command("PING")
+            raws = await pipe.execute()
+
+            # 2c) decode & record
+            for k, t_raw, raw in zip(batch, types, raws):
+                t = t_raw.decode() if isinstance(t_raw, (bytes, bytearray)) else str(t_raw)
+
+                # skip if we had a placeholder PING
+                if raw == b"PONG":
+                    continue
+
+                # normalize raw → Python
+                if isinstance(raw, (bytes, bytearray)):
+                    try:
+                        v = raw.decode()
+                    except UnicodeError:
+                        v = raw
+                elif isinstance(raw, list):
+                    v = [item.decode() if isinstance(item, (bytes, bytearray)) else item
+                         for item in raw]
+                elif isinstance(raw, dict):
+                    v = {
+                        (bk.decode() if isinstance(bk, (bytes, bytearray)) else bk):
+                        (bv.decode() if isinstance(bv, (bytes, bytearray)) else bv)
+                        for bk, bv in raw.items()
+                    }
+                else:
                     v = raw
-            elif isinstance(raw, list):
-                v = [item.decode() if isinstance(item, (bytes, bytearray)) else item for item in raw]
-            elif isinstance(raw, dict):
-                v = {
-                    (bk.decode() if isinstance(bk, (bytes, bytearray)) else bk):
-                    (bv.decode() if isinstance(bv, (bytes, bytearray)) else bv)
-                    for bk, bv in raw.items()
-                }
-            else:
-                v = raw
 
-            # record
-            t_str = t.decode() if isinstance(t, (bytes, bytearray)) else str(t)
-            result[k] = {'type': t_str, 'value': v}
+                result[k] = {"type": t, "value": v}
 
-        # iterate all matching keys
-        cursor = b'0'
-        while cursor != 0:
-            cursor, keys = await r.scan(cursor=cursor, count=self.SCAN_COUNT)
-            for raw in keys:
-                k = raw.decode() if isinstance(raw, (bytes, bytearray)) else raw
-                if await should_include(k):
-                    await process_key(k)
+            # 2d) give other tasks a chance
             await asyncio.sleep(0)
 
         logging.info(f"[AutoUpdate.dump_redis_data] Dumped {len(result)} keys")
