@@ -1386,14 +1386,22 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
         print(msg.text)
         pattern = re.compile(
             r"""
-            🔥\s*TG\s*TECH\s*RECEIVER\s*✨\s*\n+        # Flexible header line
-            ⏰\s*Time:\s*(?P<time>[^\n\r]+)\s*\n+       # Time line
-            🌍\s*Country:\s*(?P<country>[^\n\r]+)\s*\n+ # Country line
-            ⚙️\s*Service:\s*(?P<service>[^\n\r]+)\s*\n+ # Service line
-            ☎️\s*Number:\s*(?P<number>[^\n\r]+)\s*\n+   # Number line
-            🔑\s*OTP:\s*(?P<otp>[^\n\r]+)               # OTP line
+            🔥\s*TG\s*TECH\s*RECEIVER\s*✨\s*        # Header
+            \n+\s*
+            ⏰\s*Time:\s*(?P<time>[^\n]+)\s*         # Time
+            \n+
+            🌍\s*Country:\s*(?P<country>[^\n]+)\s*   # Country
+            \n+
+            ⚙️\s*Service:\s*(?P<service>[^\n]+)\s*   # Service
+            \n+
+            ☎️\s*Number:\s*(?P<number>[^\n]+)\s*     # Number
+            \n+
+            🔑\s*OTP:\s*(?P<otp>[^\n]+)\s*           # OTP
+            \n+
+            📩\s*Full\s*Message:\s*\n                # Full Message label
+            (?P<full_message>.*)                     # Capture everything else
             """,
-            re.VERBOSE | re.IGNORECASE | re.MULTILINE
+            re.VERBOSE | re.IGNORECASE | re.MULTILINE | re.DOTALL
         )
 
         def parse_fields(text: str) -> Optional[Dict[str, Any]]:
