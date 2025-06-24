@@ -341,7 +341,7 @@ class AutoUpdater:
 
     async def process_server(
         self,
-        pipe: Redis.pipeline,
+        pipe: redis.Redis.pipeline,
         server: Dict[str, Any],
         country_data: Dict[str, Any],
         matches: List[str]
