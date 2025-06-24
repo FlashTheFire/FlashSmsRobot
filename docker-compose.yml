@@ -16,6 +16,11 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "2"
 
   redisinsight:
     image: redislabs/redisinsight:latest
@@ -30,11 +35,19 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "2"
+
 
   bot:
     build:
       context: ./FlashSmsRobot
     container_name: flashsms-bot
+    ports:
+      - "0.0.0.0:8443:8443"
     env_file:
       - ./FlashSmsRobot/.env
     depends_on:
@@ -43,6 +56,11 @@ services:
     restart: unless-stopped
     networks:
       - backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "2"
 
 volumes:
   redis-data:
