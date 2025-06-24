@@ -86,7 +86,7 @@ SERVICE_PREFIX = os.getenv("SERVICE_PREFIX", "service_data:")
 ORDER_INDEX = os.getenv("ORDER_INDEX", "order_index")
 ORDER_PREFIX = os.getenv("ORDER_PREFIX", "order_data:")
 
-URL = os.getenv("URL", "https://temp.sh/rWEfC/flashsms.json")
+URL = "http://temp.sh/ePGDP/flashsms.json" #os.getenv("URL", "https://temp.sh/rWEfC/flashsms.json")
 
 # Cache Configuration with reasonable defaults
 CACHE_PREFIX = os.getenv("CACHE_PREFIX", "cache:")
