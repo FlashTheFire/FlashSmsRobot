@@ -17,6 +17,7 @@ from termcolor import colored
 from colorama import Fore, Style, init as colorama_init
 import redis.asyncio as redis
 from utils.redis_manager import RedisManager, redis_manager
+from more_itertools import chunked
 from utils.config import  WEBHOOK_HOST as FIVE_SIM_URL, URL
 from handlers.manager.operation import (
     FiveSimManagement, FastSmsManagement, SmsHubManagement, GrizzlySmsManagement,
