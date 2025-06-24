@@ -275,7 +275,7 @@ class AutoUpdater:
 
     async def queue_app(
         self,
-        pipe: Redis.pipeline,
+        pipe: redis.Redis.pipeline,
         app: Dict[str, Any],
         server_data: Optional[Dict[str, Any]],
         country_data: Dict[str, Any],
