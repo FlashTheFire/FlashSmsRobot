@@ -1,0 +1,9116 @@
+{
+    "Dosi": {
+      "code": "bx",
+      "app_id": 1
+    },
+    "2dehands": {
+      "code": "apd",
+      "app_id": 2
+    },
+    "3fun": {
+      "code": "auw",
+      "app_id": 3
+    },
+    "888casino": {
+      "code": "ll",
+      "app_id": 4
+    },
+    "Adda52": {
+      "code": "a52",
+      "app_id": 5
+    },
+    "Probo": {
+      "code": "aa",
+      "app_id": 6
+    },
+    "Daraz": {
+      "code": [
+        "aad",
+        "bjc"
+      ],
+      "app_id": 7
+    },
+    "Watcho": {
+      "code": [
+        "aao",
+        "bdz"
+      ],
+      "app_id": 8
+    },
+    "Bearwww": {
+      "code": "aar",
+      "app_id": 9
+    },
+    "Rocketreach": {
+      "code": "aau",
+      "app_id": 10
+    },
+    "Boyaa": {
+      "code": "aax",
+      "app_id": 11
+    },
+    "Ozan": {
+      "code": "aaz",
+      "app_id": 12
+    },
+    "Lootably": {
+      "code": [
+        "ab",
+        "gr_ab"
+      ],
+      "app_id": 13
+    },
+    "Rappi": {
+      "code": "aba",
+      "app_id": 14
+    },
+    "Abastece-aí": {
+      "code": "anb",
+      "app_id": 15
+    },
+    "Coca-cola": {
+      "code": "abb",
+      "app_id": 16
+    },
+    "Abbott": {
+      "code": "ags",
+      "app_id": 17
+    },
+    "Foodora": {
+      "code": "abe",
+      "app_id": 18
+    },
+    "Gmx": {
+      "code": "abk",
+      "app_id": 19
+    },
+    "Upwork": {
+      "code": "abq",
+      "app_id": 20
+    },
+    "Playerzpot": {
+      "code": "abs",
+      "app_id": 21
+    },
+    "Doordash": {
+      "code": "ac",
+      "app_id": 22
+    },
+    "Spark Driver": {
+      "code": "acb",
+      "app_id": 23
+    },
+    "Tata Neu": {
+      "code": [
+        "ace",
+        "xxo"
+      ],
+      "app_id": 24
+    },
+    "Razer": {
+      "code": "acm",
+      "app_id": 25
+    },
+    "Tata Cliq Palette": {
+      "code": "acs",
+      "app_id": 26
+    },
+    "Airtime": {
+      "code": "acy",
+      "app_id": 27
+    },
+    "Playojo": {
+      "code": "adc",
+      "app_id": 28
+    },
+    "Tradingleagues": {
+      "code": "adl",
+      "app_id": 29
+    },
+    "Adverts": {
+      "code": "agw",
+      "app_id": 30
+    },
+    "Myglo": {
+      "code": "ae",
+      "app_id": 31
+    },
+    "Hungrypanda": {
+      "code": "aea",
+      "app_id": 32
+    },
+    "Allofresh": {
+      "code": "aeo",
+      "app_id": 33
+    },
+    "Google, Gmail, Youtube": {
+      "code": [
+        "aes",
+        "go",
+        "gr_go"
+      ],
+      "app_id": 34
+    },
+    "Thefork": {
+      "code": "aeu",
+      "app_id": 35
+    },
+    "Galaxywin": {
+      "code": "af",
+      "app_id": 36
+    },
+    "Truefan": {
+      "code": "afa",
+      "app_id": 37
+    },
+    "Astra Otoshop": {
+      "code": "afd",
+      "app_id": 38
+    },
+    "Publi24": {
+      "code": "aga",
+      "app_id": 39
+    },
+    "Oneforma": {
+      "code": [
+        "agg",
+        "ofm"
+      ],
+      "app_id": 40
+    },
+    "Uralairlines": {
+      "code": "agt",
+      "app_id": 41
+    },
+    "Donedeal": {
+      "code": "agv",
+      "app_id": 42
+    },
+    "Meiqfashion": {
+      "code": "agx",
+      "app_id": 43
+    },
+    "Jiva Petani": {
+      "code": "agz",
+      "app_id": 44
+    },
+    "Ubisoft": {
+      "code": "ahb",
+      "app_id": 45
+    },
+    "Openphone": {
+      "code": "ahd",
+      "app_id": 46
+    },
+    "Daki": {
+      "code": "ahi",
+      "app_id": 47
+    },
+    "Maxim": {
+      "code": "ahl",
+      "app_id": 48
+    },
+    "Eureka": {
+      "code": "ahm",
+      "app_id": 49
+    },
+    "Upland": {
+      "code": "aho",
+      "app_id": 50
+    },
+    "This Fate": {
+      "code": "ahr",
+      "app_id": 51
+    },
+    "Five Surveys": {
+      "code": [
+        "aig",
+        "fvss"
+      ],
+      "app_id": 52
+    },
+    "Afreecatv": {
+      "code": "aip",
+      "app_id": 53
+    },
+    "Tiptip": {
+      "code": "air",
+      "app_id": 54
+    },
+    "Air India": {
+      "code": "atz",
+      "app_id": 55
+    },
+    "Feetfinder": {
+      "code": "ait",
+      "app_id": 56
+    },
+    "Move It": {
+      "code": "aix",
+      "app_id": 57
+    },
+    "Rebtel": {
+      "code": "ajj",
+      "app_id": 58
+    },
+    "Myvalue": {
+      "code": "ajq",
+      "app_id": 59
+    },
+    "Getplus": {
+      "code": "ajs",
+      "app_id": 60
+    },
+    "Paybis": {
+      "code": "akc",
+      "app_id": 61
+    },
+    "Prenagen Club": {
+      "code": "akh",
+      "app_id": 62
+    },
+    "Dagangan": {
+      "code": "akk",
+      "app_id": 63
+    },
+    "Ryde": {
+      "code": "ako",
+      "app_id": 64
+    },
+    "Panvel": {
+      "code": "akz",
+      "app_id": 65
+    },
+    "Alfagift": {
+      "code": "bn",
+      "app_id": 66
+    },
+    "Alfamidi": {
+      "code": "bgt",
+      "app_id": 67
+    },
+    "Lion Parcel": {
+      "code": "alh",
+      "app_id": 68
+    },
+    "Spotify": {
+      "code": [
+        "alj",
+        "sf"
+      ],
+      "app_id": 69
+    },
+    "Remotasks": {
+      "code": "aln",
+      "app_id": 70
+    },
+    "Mera Gaon": {
+      "code": "alp",
+      "app_id": 71
+    },
+    "Segari": {
+      "code": "alt",
+      "app_id": 72
+    },
+    "Bebeclub": {
+      "code": "aly",
+      "app_id": 73
+    },
+    "Amazon": {
+      "code": "am",
+      "app_id": 74
+    },
+    "Teamoru": {
+      "code": "ami",
+      "app_id": 75
+    },
+    "M Panels": {
+      "code": "amj",
+      "app_id": 76
+    },
+    "Punjab Citizen": {
+      "code": "amm",
+      "app_id": 77
+    },
+    "Adidas": {
+      "code": "an",
+      "app_id": 78
+    },
+    "Cadbury": {
+      "code": "anh",
+      "app_id": 79
+    },
+    "Talabat": {
+      "code": [
+        "ani",
+        "gr_ta"
+      ],
+      "app_id": 80
+    },
+    "Damanbet": {
+      "code": "ann",
+      "app_id": 81
+    },
+    "Premmia": {
+      "code": "anw",
+      "app_id": 82
+    },
+    "Авто.ру": {
+      "code": [
+        "ao",
+        "gr_ao"
+      ],
+      "app_id": 83
+    },
+    "Sahicoin": {
+      "code": "aoc",
+      "app_id": 84
+    },
+    "Pln Mobile": {
+      "code": "aoy",
+      "app_id": 85
+    },
+    "Classpass": {
+      "code": "app",
+      "app_id": 86
+    },
+    "Apple": {
+      "code": "wx",
+      "app_id": 87
+    },
+    "Skelbiu": {
+      "code": "aps",
+      "app_id": 88
+    },
+    "Lic Games": {
+      "code": [
+        "apu",
+        "lic"
+      ],
+      "app_id": 89
+    },
+    "Glovo": {
+      "code": "aq",
+      "app_id": 90
+    },
+    "Coze": {
+      "code": "aqf",
+      "app_id": 91
+    },
+    "Publix": {
+      "code": "aqg",
+      "app_id": 92
+    },
+    "Mpstats": {
+      "code": "aqq",
+      "app_id": 93
+    },
+    "Doorverse": {
+      "code": "aqv",
+      "app_id": 94
+    },
+    "Sapo": {
+      "code": "aqy",
+      "app_id": 95
+    },
+    "Wondermart": {
+      "code": "ar",
+      "app_id": 96
+    },
+    "Seated": {
+      "code": "are",
+      "app_id": 97
+    },
+    "Ggpoker": {
+      "code": "aro",
+      "app_id": 98
+    },
+    "Presto": {
+      "code": "ary",
+      "app_id": 99
+    },
+    "Cineplex": {
+      "code": "arz",
+      "app_id": 100
+    },
+    "Yuewen 阅文集团": {
+      "code": "asb",
+      "app_id": 101
+    },
+    "Asdarewards": {
+      "code": "hs",
+      "app_id": 102
+    },
+    "Srgame": {
+      "code": "asm",
+      "app_id": 103
+    },
+    "Boletomovil": {
+      "code": "asn",
+      "app_id": 104
+    },
+    "Bilderlings": {
+      "code": "asv",
+      "app_id": 105
+    },
+    "Fore Coffee": {
+      "code": "asy",
+      "app_id": 106
+    },
+    "Atlas Earth": {
+      "code": "awq",
+      "app_id": 107
+    },
+    "Deepseek": {
+      "code": "atw",
+      "app_id": 108
+    },
+    "Haraj": {
+      "code": [
+        "au",
+        "gr_au"
+      ],
+      "app_id": 109
+    },
+    "Chipper Cash": {
+      "code": "aum",
+      "app_id": 110
+    },
+    "Morinaga": {
+      "code": "aun",
+      "app_id": 111
+    },
+    "Livu": {
+      "code": "auy",
+      "app_id": 112
+    },
+    "Avito": {
+      "code": "av",
+      "app_id": 113
+    },
+    "Aws Amazon": {
+      "code": [
+        "aw",
+        "gr_aw"
+      ],
+      "app_id": 114
+    },
+    "Eventbrite": {
+      "code": "axq",
+      "app_id": 115
+    },
+    "Axscom": {
+      "code": "bgk",
+      "app_id": 116
+    },
+    "Shopback": {
+      "code": "axx",
+      "app_id": 117
+    },
+    "Radquest": {
+      "code": "ayk",
+      "app_id": 118
+    },
+    "Think Academy": {
+      "code": "ayu",
+      "app_id": 119
+    },
+    "Citybase": {
+      "code": [
+        "az",
+        "gr_az"
+      ],
+      "app_id": 120
+    },
+    "Toyou": {
+      "code": "azx",
+      "app_id": 121
+    },
+    "Badoo": {
+      "code": "qv",
+      "app_id": 122
+    },
+    "Snkrdunk": {
+      "code": "bai",
+      "app_id": 123
+    },
+    "Batball11": {
+      "code": "bal",
+      "app_id": 124
+    },
+    "Band": {
+      "code": "hl",
+      "app_id": 125
+    },
+    "Leolist": {
+      "code": "bav",
+      "app_id": 126
+    },
+    "Lazypay": {
+      "code": "bb",
+      "app_id": 127
+    },
+    "Hubble": {
+      "code": [
+        "bbe",
+        "brnc"
+      ],
+      "app_id": 128
+    },
+    "Lionsgateplay": {
+      "code": "bbz",
+      "app_id": 129
+    },
+    "Beccric": {
+      "code": "bcc",
+      "app_id": 130
+    },
+    "Pyaterochka": {
+      "code": "bd",
+      "app_id": 131
+    },
+    "Benjamin": {
+      "code": "bdx",
+      "app_id": 132
+    },
+    "Сбермегамаркет": {
+      "code": "be",
+      "app_id": 133
+    },
+    "Becharge": {
+      "code": "biz",
+      "app_id": 134
+    },
+    "Bet365": {
+      "code": "ie",
+      "app_id": 135
+    },
+    "Buff.163": {
+      "code": [
+        "bf",
+        "bff",
+        "gr_bf"
+      ],
+      "app_id": 136
+    },
+    "Emag": {
+      "code": "bfg",
+      "app_id": 137
+    },
+    "Dott": {
+      "code": "bfr",
+      "app_id": 138
+    },
+    "Bajaj Finserv": {
+      "code": [
+        "agq",
+        "bfs"
+      ],
+      "app_id": 139
+    },
+    "Bigbasket": {
+      "code": [
+        "aqj",
+        "bgb"
+      ],
+      "app_id": 140
+    },
+    "Kopi Kenangan": {
+      "code": "bha",
+      "app_id": 141
+    },
+    "Appen": {
+      "code": "bhh",
+      "app_id": 142
+    },
+    "Biedronka": {
+      "code": "zn",
+      "app_id": 143
+    },
+    "Bigo Live": {
+      "code": [
+        "bigl",
+        "bl",
+        "gr_bl"
+      ],
+      "app_id": 144
+    },
+    "Bilibili": {
+      "code": "zs",
+      "app_id": 145
+    },
+    "Binbin": {
+      "code": "uv",
+      "app_id": 146
+    },
+    "Bisu": {
+      "code": "el",
+      "app_id": 147
+    },
+    "Bitso": {
+      "code": "ht",
+      "app_id": 148
+    },
+    "Vitajekspress": {
+      "code": "bj",
+      "app_id": 149
+    },
+    "Monster Energy": {
+      "code": "bjx",
+      "app_id": 150
+    },
+    "Jeevansathi": {
+      "code": "bjz",
+      "app_id": 151
+    },
+    "Poparide": {
+      "code": "bkk",
+      "app_id": 152
+    },
+    "Blablacar": {
+      "code": "ua",
+      "app_id": 153
+    },
+    "Blibli": {
+      "code": "fk",
+      "app_id": 154
+    },
+    "Ari10": {
+      "code": "blq",
+      "app_id": 155
+    },
+    "Qpon": {
+      "code": "bnu",
+      "app_id": 156
+    },
+    "Suno": {
+      "code": "bny",
+      "app_id": 157
+    },
+    "Shell Go": {
+      "code": "bob",
+      "app_id": 158
+    },
+    "Footsms": {
+      "code": "boi",
+      "app_id": 159
+    },
+    "Bonnysrosasrewards": {
+      "code": "bonnysrosas",
+      "app_id": 160
+    },
+    "Casino Plus": {
+      "code": [
+        "boo",
+        "wd"
+      ],
+      "app_id": 161
+    },
+    "Botim": {
+      "code": [
+        "aup",
+        "gr_ob",
+        "xxs"
+      ],
+      "app_id": 162
+    },
+    "Gofundme": {
+      "code": "bp",
+      "app_id": 163
+    },
+    "Adani": {
+      "code": "bq",
+      "app_id": 164
+    },
+    "Lottomatica": {
+      "code": "bqe",
+      "app_id": 165
+    },
+    "Planet Fans": {
+      "code": "brj",
+      "app_id": 166
+    },
+    "Mobile De": {
+      "code": "bry",
+      "app_id": 167
+    },
+    "Web3auth": {
+      "code": "bsk",
+      "app_id": 168
+    },
+    "Battle": {
+      "code": [
+        "bt",
+        "btt"
+      ],
+      "app_id": 169
+    },
+    "Blackbird": {
+      "code": "btf",
+      "app_id": 170
+    },
+    "Monobankindia": {
+      "code": "bu",
+      "app_id": 171
+    },
+    "Metro": {
+      "code": "bv",
+      "app_id": 172
+    },
+    "Parenteam": {
+      "code": "bvh",
+      "app_id": 173
+    },
+    "Salams": {
+      "code": "bvi",
+      "app_id": 174
+    },
+    "Signal": {
+      "code": [
+        "bw",
+        "gr_sg"
+      ],
+      "app_id": 175
+    },
+    "Fetchrewards": {
+      "code": "xxc",
+      "app_id": 176
+    },
+    "Bazar-store": {
+      "code": [
+        "bz",
+        "gr_bz"
+      ],
+      "app_id": 177
+    },
+    "Bazos": {
+      "code": "cb",
+      "app_id": 178
+    },
+    "Cadbury Perk": {
+      "code": "cbp",
+      "app_id": 179
+    },
+    "Quipp": {
+      "code": "cc",
+      "app_id": 180
+    },
+    "Cokfiight": {
+      "code": "ccf",
+      "app_id": 181
+    },
+    "Spothit": {
+      "code": "cd",
+      "app_id": 182
+    },
+    "Mosru": {
+      "code": "ce",
+      "app_id": 183
+    },
+    "Yocket": {
+      "code": "cec",
+      "app_id": 184
+    },
+    "Stars Coffee": {
+      "code": [
+        "cf",
+        "gr_cf"
+      ],
+      "app_id": 185
+    },
+    "Gemgala": {
+      "code": "cg",
+      "app_id": 186
+    },
+    "Redbus": {
+      "code": "ci",
+      "app_id": 187
+    },
+    "Bereal": {
+      "code": "ck",
+      "app_id": 188
+    },
+    "Cardekho": {
+      "code": "ckh",
+      "app_id": 189
+    },
+    "Clickentregas": {
+      "code": [
+        "gr_en",
+        "xxb"
+      ],
+      "app_id": 190
+    },
+    "Cloudbet": {
+      "code": "jn",
+      "app_id": 191
+    },
+    "Clubhouse": {
+      "code": "et",
+      "app_id": 192
+    },
+    "Кошелек": {
+      "code": "cm",
+      "app_id": 193
+    },
+    "Fiverr": {
+      "code": [
+        "cn",
+        "gr_cn"
+      ],
+      "app_id": 194
+    },
+    "Casino Online": {
+      "code": "co",
+      "app_id": 195
+    },
+    "Iyc": {
+      "code": [
+        "coc",
+        "gr_yc"
+      ],
+      "app_id": 196
+    },
+    "Communitygaming": {
+      "code": "zx",
+      "app_id": 197
+    },
+    "Uklon": {
+      "code": [
+        "1cp",
+        "cp"
+      ],
+      "app_id": 198
+    },
+    "Mercado": {
+      "code": "cq",
+      "app_id": 199
+    },
+    "Tenchat": {
+      "code": "cr",
+      "app_id": 200
+    },
+    "Classicrummy": {
+      "code": "crm",
+      "app_id": 201
+    },
+    "Cryptocom": {
+      "code": "ti",
+      "app_id": 202
+    },
+    "Vfcity": {
+      "code": "ctv",
+      "app_id": 203
+    },
+    "Okcupid": {
+      "code": "vm",
+      "app_id": 204
+    },
+    "Washxpress": {
+      "code": "cv",
+      "app_id": 205
+    },
+    "Paddypower": {
+      "code": "cw",
+      "app_id": 206
+    },
+    "Icrypex": {
+      "code": [
+        "cx",
+        "gr_cx"
+      ],
+      "app_id": 207
+    },
+    "Rsa": {
+      "code": "cy",
+      "app_id": 208
+    },
+    "Mts Cashback": {
+      "code": "da",
+      "app_id": 209
+    },
+    "Dana": {
+      "code": "fr",
+      "app_id": 210
+    },
+    "Ezbuy": {
+      "code": "db",
+      "app_id": 211
+    },
+    "Yikyak": {
+      "code": "dc",
+      "app_id": 212
+    },
+    "Karusel": {
+      "code": "de",
+      "app_id": 213
+    },
+    "Детский Мир": {
+      "code": "rj",
+      "app_id": 214
+    },
+    "Dewupoizon": {
+      "code": "lx",
+      "app_id": 215
+    },
+    "Mercari": {
+      "code": "dg",
+      "app_id": 216
+    },
+    "Ebay-kleinanzeigen": {
+      "code": [
+        "dh",
+        "gr_dh"
+      ],
+      "app_id": 217
+    },
+    "Pairs": {
+      "code": "dk",
+      "app_id": 218
+    },
+    "Lazada": {
+      "code": "dl",
+      "app_id": 219
+    },
+    "Maxidom": {
+      "code": [
+        "dm",
+        "gr_dm"
+      ],
+      "app_id": 220
+    },
+    "Dominate11": {
+      "code": "dnt",
+      "app_id": 221
+    },
+    "Leboncoin": {
+      "code": "do",
+      "app_id": 222
+    },
+    "Protonmail": {
+      "code": "dp",
+      "app_id": 223
+    },
+    "Discord": {
+      "code": [
+        "ds",
+        "gr_ds"
+      ],
+      "app_id": 224
+    },
+    "Snapdeal": {
+      "code": "dsa",
+      "app_id": 225
+    },
+    "Winds": {
+      "code": [
+        "akw",
+        "dsw"
+      ],
+      "app_id": 226
+    },
+    "Delivery Club": {
+      "code": "dt",
+      "app_id": 227
+    },
+    "Nobroker": {
+      "code": [
+        "dv",
+        "nbk"
+      ],
+      "app_id": 228
+    },
+    "Divar": {
+      "code": "dw",
+      "app_id": 229
+    },
+    "Powerkredite": {
+      "code": "dx",
+      "app_id": 230
+    },
+    "Zomato": {
+      "code": "dy",
+      "app_id": 231
+    },
+    "Dominos Pizza": {
+      "code": "dz",
+      "app_id": 232
+    },
+    "Dunzo": {
+      "code": "dzu",
+      "app_id": 233
+    },
+    "Jamesdelivery": {
+      "code": "ea",
+      "app_id": 234
+    },
+    "Betadda": {
+      "code": "eae",
+      "app_id": 235
+    },
+    "Easypay": {
+      "code": "rz",
+      "app_id": 236
+    },
+    "Zebpay": {
+      "code": "xxq",
+      "app_id": 237
+    },
+    "Rummy Culture": {
+      "code": "ec",
+      "app_id": 238
+    },
+    "99acres": {
+      "code": [
+        "eca",
+        "fw"
+      ],
+      "app_id": 239
+    },
+    "Gamer": {
+      "code": "ed",
+      "app_id": 240
+    },
+    "Cred": {
+      "code": [
+        "azq",
+        "edd"
+      ],
+      "app_id": 241
+    },
+    "Twilio": {
+      "code": "ee",
+      "app_id": 242
+    },
+    "Happygame": {
+      "code": "eem",
+      "app_id": 243
+    },
+    "Oreo": {
+      "code": "eeo",
+      "app_id": 244
+    },
+    "Steemit": {
+      "code": "stt",
+      "app_id": 245
+    },
+    "Efood": {
+      "code": "te",
+      "app_id": 246
+    },
+    "Taksheel": {
+      "code": "ei",
+      "app_id": 247
+    },
+    "Gamerji": {
+      "code": "eia",
+      "app_id": 248
+    },
+    "Elite Ludo": {
+      "code": "eit",
+      "app_id": 249
+    },
+    "Unacademy": {
+      "code": "unc",
+      "app_id": 250
+    },
+    "Kgen": {
+      "code": "ekk",
+      "app_id": 251
+    },
+    "Elante": {
+      "code": "elt",
+      "app_id": 252
+    },
+    "Hermes": {
+      "code": "en",
+      "app_id": 253
+    },
+    "Eneba": {
+      "code": "uf",
+      "app_id": 254
+    },
+    "Teenpattiwinpro": {
+      "code": "enp",
+      "app_id": 255
+    },
+    "Qoo10": {
+      "code": "eq",
+      "app_id": 256
+    },
+    "Earneasy": {
+      "code": [
+        "adl",
+        "err"
+      ],
+      "app_id": 257
+    },
+    "Iqiyi": {
+      "code": "es",
+      "app_id": 258
+    },
+    "Livescore": {
+      "code": "eu",
+      "app_id": 259
+    },
+    "Mobilev": {
+      "code": [
+        "ev",
+        "pic"
+      ],
+      "app_id": 260
+    },
+    "Nike": {
+      "code": "ew",
+      "app_id": 261
+    },
+    "Ewargames": {
+      "code": "ewr",
+      "app_id": 262
+    },
+    "Miloan": {
+      "code": "ey",
+      "app_id": 263
+    },
+    "Facebook": {
+      "code": "fb",
+      "app_id": 264
+    },
+    "Friendsclub": {
+      "code": [
+        "fc",
+        "gr_fc"
+      ],
+      "app_id": 265
+    },
+    "Cliqq": {
+      "code": "fe",
+      "app_id": 266
+    },
+    "Edufund": {
+      "code": "fee",
+      "app_id": 267
+    },
+    "Switchere": {
+      "code": [
+        "se",
+        "ws"
+      ],
+      "app_id": 268
+    },
+    "Freedomfinance": {
+      "code": [
+        "ff",
+        "fff"
+      ],
+      "app_id": 269
+    },
+    "Fyda": {
+      "code": "ffa",
+      "app_id": 270
+    },
+    "Fanfight": {
+      "code": "fft",
+      "app_id": 271
+    },
+    "Indianoil": {
+      "code": "fg",
+      "app_id": 272
+    },
+    "Fiegame": {
+      "code": "fgm",
+      "app_id": 273
+    },
+    "Lalamove": {
+      "code": "fh",
+      "app_id": 274
+    },
+    "Thefiniko": {
+      "code": "fi",
+      "app_id": 275
+    },
+    "Potato Chat": {
+      "code": [
+        "fj",
+        "lq"
+      ],
+      "app_id": 276
+    },
+    "Rummyloot": {
+      "code": [
+        "fl",
+        "gr_fl",
+        "hk"
+      ],
+      "app_id": 277
+    },
+    "Touchance": {
+      "code": "fm",
+      "app_id": 278
+    },
+    "Farmcare": {
+      "code": "fmc",
+      "app_id": 279
+    },
+    "Quikr": {
+      "code": "fn",
+      "app_id": 280
+    },
+    "Fun88": {
+      "code": "fnn",
+      "app_id": 281
+    },
+    "Mobikwik": {
+      "code": "fo",
+      "app_id": 282
+    },
+    "With Iyc": {
+      "code": [
+        "gr_iy",
+        "iy"
+      ],
+      "app_id": 283
+    },
+    "Гулливер": {
+      "code": [
+        "gr_gu",
+        "gu"
+      ],
+      "app_id": 284
+    },
+    "Fortunask": {
+      "code": "xg",
+      "app_id": 285
+    },
+    "Fotocasa": {
+      "code": "kq",
+      "app_id": 286
+    },
+    "Freelancercom": {
+      "code": "gq",
+      "app_id": 287
+    },
+    "Freenow": {
+      "code": "zb",
+      "app_id": 288
+    },
+    "Fruitz": {
+      "code": "mv",
+      "app_id": 289
+    },
+    "Şikayet Var": {
+      "code": "fs",
+      "app_id": 290
+    },
+    "Fan2play": {
+      "code": "ftp",
+      "app_id": 291
+    },
+    "Snapchat": {
+      "code": "fu",
+      "app_id": 292
+    },
+    "Vidio": {
+      "code": "fv",
+      "app_id": 293
+    },
+    "Fiewin": {
+      "code": "fwn",
+      "app_id": 294
+    },
+    "Pgbonus": {
+      "code": [
+        "fx",
+        "gr_fx"
+      ],
+      "app_id": 295
+    },
+    "Mylove": {
+      "code": "fy",
+      "app_id": 296
+    },
+    "Kfc": {
+      "code": "fz",
+      "app_id": 297
+    },
+    "Frizza": {
+      "code": [
+        "adh",
+        "fza"
+      ],
+      "app_id": 298
+    },
+    "Roposo": {
+      "code": "ga",
+      "app_id": 299
+    },
+    "Gghasia": {
+      "code": "gag",
+      "app_id": 300
+    },
+    "Gamekit": {
+      "code": "pa",
+      "app_id": 301
+    },
+    "Vegascasino": {
+      "code": "gas",
+      "app_id": 302
+    },
+    "Youstar": {
+      "code": "gb",
+      "app_id": 303
+    },
+    "Gcxmemberservices": {
+      "code": "gcxmember",
+      "app_id": 304
+    },
+    "Surveytime": {
+      "code": "gd",
+      "app_id": 305
+    },
+    "Paytm": {
+      "code": "ge",
+      "app_id": 306
+    },
+    "Googlevoice": {
+      "code": "gf",
+      "app_id": 307
+    },
+    "Gg": {
+      "code": "qe",
+      "app_id": 308
+    },
+    "Gmngjourney": {
+      "code": "ggm",
+      "app_id": 309
+    },
+    "Hotline": {
+      "code": "gi",
+      "app_id": 310
+    },
+    "Carousell": {
+      "code": "gj",
+      "app_id": 311
+    },
+    "Aptekaru": {
+      "code": "gk",
+      "app_id": 312
+    },
+    "Swagbucks": {
+      "code": [
+        "gkb",
+        "gr_sw"
+      ],
+      "app_id": 313
+    },
+    "Globaltel": {
+      "code": "gl",
+      "app_id": 314
+    },
+    "Gemini": {
+      "code": [
+        "anj",
+        "gmn"
+      ],
+      "app_id": 315
+    },
+    "Gamezy": {
+      "code": "gmz",
+      "app_id": 316
+    },
+    "Google,youtube,gmail": {
+      "code": "go",
+      "app_id": 317
+    },
+    "Astropay": {
+      "code": [
+        "gr",
+        "gr_gr"
+      ],
+      "app_id": 318
+    },
+    "Grabtaxi": {
+      "code": "jg",
+      "app_id": 319
+    },
+    "Grindr": {
+      "code": "yw",
+      "app_id": 320
+    },
+    "Gullyrummy": {
+      "code": "grm",
+      "app_id": 321
+    },
+    "Groupme": {
+      "code": "xs",
+      "app_id": 322
+    },
+    "Samsungshop": {
+      "code": [
+        "gr_gs",
+        "gs"
+      ],
+      "app_id": 323
+    },
+    "Gett": {
+      "code": "gt",
+      "app_id": 324
+    },
+    "Gyftr": {
+      "code": [
+        "gh",
+        "gtr"
+      ],
+      "app_id": 325
+    },
+    "Gurubets": {
+      "code": "ik",
+      "app_id": 326
+    },
+    "Humta": {
+      "code": "gv",
+      "app_id": 327
+    },
+    "Yarabodega": {
+      "code": "gyo",
+      "app_id": 328
+    },
+    "Lyka": {
+      "code": "gz",
+      "app_id": 329
+    },
+    "My11circle": {
+      "code": "ha",
+      "app_id": 330
+    },
+    "Healthandglow": {
+      "code": "hag",
+      "app_id": 331
+    },
+    "Momo": {
+      "code": "hc",
+      "app_id": 332
+    },
+    "Mewt": {
+      "code": "he",
+      "app_id": 333
+    },
+    "Cleartrip": {
+      "code": [
+        "air",
+        "hf"
+      ],
+      "app_id": 334
+    },
+    "Switips": {
+      "code": "hg",
+      "app_id": 335
+    },
+    "Jungleerummy": {
+      "code": [
+        "gr_hi",
+        "hi"
+      ],
+      "app_id": 336
+    },
+    "Hinge": {
+      "code": "vz",
+      "app_id": 337
+    },
+    "Stoloto": {
+      "code": [
+        "hj",
+        "wd"
+      ],
+      "app_id": 338
+    },
+    "Globus": {
+      "code": "hm",
+      "app_id": 339
+    },
+    "1688": {
+      "code": [
+        "hn",
+        "ta1"
+      ],
+      "app_id": 340
+    },
+    "Cathay": {
+      "code": "ho",
+      "app_id": 341
+    },
+    "Hopbike": {
+      "code": "ru",
+      "app_id": 342
+    },
+    "Hopper": {
+      "code": [
+        "bnb",
+        "pph"
+      ],
+      "app_id": 343
+    },
+    "Meesho": {
+      "code": [
+        "gr_hp",
+        "hp"
+      ],
+      "app_id": 344
+    },
+    "Jkf": {
+      "code": "hr",
+      "app_id": 345
+    },
+    "Ukrnet": {
+      "code": "hu",
+      "app_id": 346
+    },
+    "Parlayplay": {
+      "code": [
+        "gr_pp",
+        "pp"
+      ],
+      "app_id": 347
+    },
+    "Alipay/alibaba/1688": {
+      "code": "hw",
+      "app_id": 348
+    },
+    "Aliexpress": {
+      "code": "hx",
+      "app_id": 349
+    },
+    "Ininal": {
+      "code": "hy",
+      "app_id": 350
+    },
+    "Drom": {
+      "code": "hz",
+      "app_id": 351
+    },
+    "Socios": {
+      "code": "ia",
+      "app_id": 352
+    },
+    "Immowelt": {
+      "code": "ib",
+      "app_id": 353
+    },
+    "Icicidirect": {
+      "code": "icd",
+      "app_id": 354
+    },
+    "Magicbricks": {
+      "code": [
+        "hq",
+        "icm"
+      ],
+      "app_id": 355
+    },
+    "Idealista": {
+      "code": "kk",
+      "app_id": 356
+    },
+    "Khiladi": {
+      "code": "idi",
+      "app_id": 357
+    },
+    "Indibet": {
+      "code": "iei",
+      "app_id": 358
+    },
+    "Ifood": {
+      "code": "pd",
+      "app_id": 359
+    },
+    "Instagram+threads": {
+      "code": "ig",
+      "app_id": 360
+    },
+    "Teenpattistarpro": {
+      "code": "ih",
+      "app_id": 361
+    },
+    "Cashkaro": {
+      "code": "ii",
+      "app_id": 362
+    },
+    "Panelstation": {
+      "code": "iii",
+      "app_id": 363
+    },
+    "Sikka": {
+      "code": "iik",
+      "app_id": 364
+    },
+    "Revolut": {
+      "code": "ij",
+      "app_id": 365
+    },
+    "Iqos": {
+      "code": "il",
+      "app_id": 366
+    },
+    "Justdial": {
+      "code": [
+        "bdy",
+        "jdl"
+      ],
+      "app_id": 367
+    },
+    "Imo Messenger": {
+      "code": [
+        "gr_im",
+        "im"
+      ],
+      "app_id": 368
+    },
+    "Indiaplays": {
+      "code": [
+        "inp",
+        "zq"
+      ],
+      "app_id": 369
+    },
+    "Internetopros": {
+      "code": [
+        "gr_io",
+        "io"
+      ],
+      "app_id": 370
+    },
+    "Burger King": {
+      "code": [
+        "gr_ip",
+        "ip",
+        "qjp"
+      ],
+      "app_id": 371
+    },
+    "Icq": {
+      "code": "iq",
+      "app_id": 372
+    },
+    "Chispadatinglatinos": {
+      "code": "ir",
+      "app_id": 373
+    },
+    "Bykea": {
+      "code": "iu",
+      "app_id": 374
+    },
+    "Inboxlv": {
+      "code": "iv",
+      "app_id": 375
+    },
+    "Global24": {
+      "code": "iz",
+      "app_id": 376
+    },
+    "Wing Money": {
+      "code": "jb",
+      "app_id": 377
+    },
+    "Iviru": {
+      "code": [
+        "jc",
+        "js"
+      ],
+      "app_id": 378
+    },
+    "Paysafecard": {
+      "code": "jq",
+      "app_id": 379
+    },
+    "Jeet11": {
+      "code": "jet",
+      "app_id": 380
+    },
+    "Pingpong": {
+      "code": "jh",
+      "app_id": 381
+    },
+    "Monobank": {
+      "code": "ji",
+      "app_id": 382
+    },
+    "Jiomart": {
+      "code": [
+        "aay",
+        "jim"
+      ],
+      "app_id": 383
+    },
+    "Aitu": {
+      "code": "jj",
+      "app_id": 384
+    },
+    "Junglee Ludo": {
+      "code": [
+        "gr_jl",
+        "jl"
+      ],
+      "app_id": 385
+    },
+    "Mzadqatar": {
+      "code": "jm",
+      "app_id": 386
+    },
+    "Samokat": {
+      "code": "jr",
+      "app_id": 387
+    },
+    "Indomaret": {
+      "code": "ju",
+      "app_id": 388
+    },
+    "Justdating": {
+      "code": "pu",
+      "app_id": 389
+    },
+    "Swiggy": {
+      "code": "jx",
+      "app_id": 390
+    },
+    "Sorare": {
+      "code": "jy",
+      "app_id": 391
+    },
+    "Пятерочка": {
+      "code": [
+        "gr_ka",
+        "ka"
+      ],
+      "app_id": 392
+    },
+    "Kaggle": {
+      "code": [
+        "gr_zo",
+        "zo"
+      ],
+      "app_id": 393
+    },
+    "Kufarby": {
+      "code": "kb",
+      "app_id": 394
+    },
+    "Kopilkaclub": {
+      "code": [
+        "gr_kc",
+        "kc"
+      ],
+      "app_id": 395
+    },
+    "Эльдорадо": {
+      "code": "ke",
+      "app_id": 396
+    },
+    "Weibo": {
+      "code": "kf",
+      "app_id": 397
+    },
+    "Bukalapak": {
+      "code": "kh",
+      "app_id": 398
+    },
+    "Khelraja": {
+      "code": "khj",
+      "app_id": 399
+    },
+    "Кикшеринг": {
+      "code": [
+        "gr_ki",
+        "ki"
+      ],
+      "app_id": 400
+    },
+    "Kisma": {
+      "code": "kis",
+      "app_id": 401
+    },
+    "Starquik": {
+      "code": "kkc",
+      "app_id": 402
+    },
+    "Kolesa.kz/krisha.kz": {
+      "code": "kl",
+      "app_id": 403
+    },
+    "Rozetka": {
+      "code": "km",
+      "app_id": 404
+    },
+    "Verse": {
+      "code": "kn",
+      "app_id": 405
+    },
+    "Hq Trivia": {
+      "code": "kp",
+      "app_id": 406
+    },
+    "Киносервисы": {
+      "code": "ks",
+      "app_id": 407
+    },
+    "Kakaotalk": {
+      "code": "kt",
+      "app_id": 408
+    },
+    "Royalwin": {
+      "code": "ku",
+      "app_id": 409
+    },
+    "Rush": {
+      "code": "kv",
+      "app_id": 410
+    },
+    "Foody": {
+      "code": "kw",
+      "app_id": 411
+    },
+    "Kwai": {
+      "code": "vp",
+      "app_id": 412
+    },
+    "Ssoidnet": {
+      "code": [
+        "gr_la",
+        "la"
+      ],
+      "app_id": 413
+    },
+    "Ezmall": {
+      "code": "lam",
+      "app_id": 414
+    },
+    "Alles Bonus": {
+      "code": [
+        "gr_sb",
+        "sb"
+      ],
+      "app_id": 415
+    },
+    "Mailru Group": {
+      "code": "lb",
+      "app_id": 416
+    },
+    "Locoff": {
+      "code": "lcf",
+      "app_id": 417
+    },
+    "Cashmine": {
+      "code": "ld",
+      "app_id": 418
+    },
+    "E Bike Gewinnspiel": {
+      "code": [
+        "gr_le",
+        "le"
+      ],
+      "app_id": 419
+    },
+    "Tiktok/douyin": {
+      "code": "lf",
+      "app_id": 420
+    },
+    "Medibuddy": {
+      "code": "lg",
+      "app_id": 421
+    },
+    "Baidu": {
+      "code": "li",
+      "app_id": 422
+    },
+    "Lidl": {
+      "code": "pz",
+      "app_id": 423
+    },
+    "Pureplatfrom": {
+      "code": "lk",
+      "app_id": 424
+    },
+    "Lakme": {
+      "code": "lke",
+      "app_id": 425
+    },
+    "Grofers": {
+      "code": "ln",
+      "app_id": 426
+    },
+    "Pocket Ludo": {
+      "code": "lot",
+      "app_id": 427
+    },
+    "Loveru": {
+      "code": "oj",
+      "app_id": 428
+    },
+    "Algida": {
+      "code": "lp",
+      "app_id": 429
+    },
+    "Okta": {
+      "code": "lr",
+      "app_id": 430
+    },
+    "Careem": {
+      "code": "ls",
+      "app_id": 431
+    },
+    "Bitclout": {
+      "code": [
+        "gr_lt",
+        "lt",
+        "rd"
+      ],
+      "app_id": 432
+    },
+    "Crickpe": {
+      "code": [
+        "gr_lu",
+        "lu"
+      ],
+      "app_id": 433
+    },
+    "Megogo": {
+      "code": [
+        "gr_lv",
+        "lv"
+      ],
+      "app_id": 434
+    },
+    "Mrgreen": {
+      "code": "lw",
+      "app_id": 435
+    },
+    "Olacabs": {
+      "code": [
+        "gr_ly",
+        "ly",
+        "wmpl"
+      ],
+      "app_id": 436
+    },
+    "Lybrate": {
+      "code": "xxf",
+      "app_id": 437
+    },
+    "Localbitcoins": {
+      "code": [
+        "gr_lb",
+        "lb",
+        "ma"
+      ],
+      "app_id": 438
+    },
+    "Yahoo": {
+      "code": "mb",
+      "app_id": 439
+    },
+    "Mobileconnect.panel": {
+      "code": [
+        "gr_mc",
+        "mc"
+      ],
+      "app_id": 440
+    },
+    "Mcdonalds": {
+      "code": "ry",
+      "app_id": 441
+    },
+    "Banki": {
+      "code": "md",
+      "app_id": 442
+    },
+    "Line Messenger (private)": {
+      "code": [
+        "gr_me",
+        "me"
+      ],
+      "app_id": 443
+    },
+    "Meliuz": {
+      "code": "uy",
+      "app_id": 444
+    },
+    "More": {
+      "code": "mer",
+      "app_id": 445
+    },
+    "Meta": {
+      "code": [
+        "gr_vy",
+        "vy"
+      ],
+      "app_id": 446
+    },
+    "Myfab11": {
+      "code": "mfb",
+      "app_id": 447
+    },
+    "Мираторг": {
+      "code": [
+        "gr_mg",
+        "mg"
+      ],
+      "app_id": 448
+    },
+    "Zupee": {
+      "code": [
+        "gr_mi",
+        "mi"
+      ],
+      "app_id": 449
+    },
+    "Miravia": {
+      "code": "yr",
+      "app_id": 450
+    },
+    "Zalo": {
+      "code": "mj",
+      "app_id": 451
+    },
+    "Joymall": {
+      "code": "mjo",
+      "app_id": 452
+    },
+    "My Jar": {
+      "code": "mjr",
+      "app_id": 453
+    },
+    "Microsoft": {
+      "code": "mm",
+      "app_id": 454
+    },
+    "Timesprime": {
+      "code": "mme",
+      "app_id": 455
+    },
+    "Rummymodern": {
+      "code": "mmm",
+      "app_id": 456
+    },
+    "Holyrummy": {
+      "code": "mmt",
+      "app_id": 457
+    },
+    "Rummyvip": {
+      "code": "mmv",
+      "app_id": 458
+    },
+    "Rrsa": {
+      "code": "mn",
+      "app_id": 459
+    },
+    "Bumble": {
+      "code": [
+        "gr_mo",
+        "mo"
+      ],
+      "app_id": 460
+    },
+    "Mpl": {
+      "code": "xq",
+      "app_id": 461
+    },
+    "Fastmail": {
+      "code": "mr",
+      "app_id": 462
+    },
+    "Novaposhta": {
+      "code": "ms",
+      "app_id": 463
+    },
+    "Steam": {
+      "code": "mt",
+      "app_id": 464
+    },
+    "Mantrimall": {
+      "code": "mtm",
+      "app_id": 465
+    },
+    "Mymusictaste": {
+      "code": [
+        "gr_mu",
+        "mu"
+      ],
+      "app_id": 466
+    },
+    "Mvideo": {
+      "code": [
+        "gr_tk",
+        "mv",
+        "tk"
+      ],
+      "app_id": 467
+    },
+    "Caixa": {
+      "code": "my",
+      "app_id": 468
+    },
+    "Roz Rummy": {
+      "code": [
+        "mzm",
+        "qrr"
+      ],
+      "app_id": 469
+    },
+    "Nana": {
+      "code": "na",
+      "app_id": 470
+    },
+    "Vernyj": {
+      "code": "nb",
+      "app_id": 471
+    },
+    "Egopensooq": {
+      "code": "nd",
+      "app_id": 472
+    },
+    "Coindcx": {
+      "code": "ne",
+      "app_id": 473
+    },
+    "Netflix": {
+      "code": "nf",
+      "app_id": 474
+    },
+    "Magicpin": {
+      "code": [
+        "ade",
+        "ngc"
+      ],
+      "app_id": 475
+    },
+    "Nhseven": {
+      "code": "nh7",
+      "app_id": 476
+    },
+    "Gojek": {
+      "code": "ni",
+      "app_id": 477
+    },
+    "Gittigidiyor": {
+      "code": "nk",
+      "app_id": 478
+    },
+    "Nykaa": {
+      "code": [
+        "hj",
+        "nkn"
+      ],
+      "app_id": 479
+    },
+    "Myntra": {
+      "code": "nl",
+      "app_id": 480
+    },
+    "Thisshop": {
+      "code": "nm",
+      "app_id": 481
+    },
+    "Noon": {
+      "code": "tf",
+      "app_id": 482
+    },
+    "Siply": {
+      "code": "np",
+      "app_id": 483
+    },
+    "Tosla": {
+      "code": "nr",
+      "app_id": 484
+    },
+    "Bajajmarkets": {
+      "code": "nre",
+      "app_id": 485
+    },
+    "Sravni": {
+      "code": [
+        "gr_sr",
+        "nt"
+      ],
+      "app_id": 486
+    },
+    "Naver": {
+      "code": "nv",
+      "app_id": 487
+    },
+    "Bitcoinbon": {
+      "code": "ny",
+      "app_id": 488
+    },
+    "Foodpanda": {
+      "code": "nz",
+      "app_id": 489
+    },
+    "Coinfantasy": {
+      "code": [
+        "amo",
+        "cf_id",
+        "oay"
+      ],
+      "app_id": 490
+    },
+    "Onlinerby": {
+      "code": "ob",
+      "app_id": 491
+    },
+    "Dealshare": {
+      "code": "oc",
+      "app_id": 492
+    },
+    "Codashop": {
+      "code": "oe",
+      "app_id": 493
+    },
+    "Огонь": {
+      "code": [
+        "gr_og",
+        "og"
+      ],
+      "app_id": 494
+    },
+    "Housing": {
+      "code": "ogs",
+      "app_id": 495
+    },
+    "Maplesea": {
+      "code": "oh",
+      "app_id": 496
+    },
+    "Tinder": {
+      "code": "oi",
+      "app_id": 497
+    },
+    "Odnoklassniki": {
+      "code": "xxg",
+      "app_id": 498
+    },
+    "Kazanexpress": {
+      "code": "ol",
+      "app_id": 499
+    },
+    "Mrsool": {
+      "code": "oom",
+      "app_id": 500
+    },
+    "Koo": {
+      "code": "ooo",
+      "app_id": 501
+    },
+    "Apollo 247": {
+      "code": "oop",
+      "app_id": 502
+    },
+    "Miratorg": {
+      "code": "op",
+      "app_id": 503
+    },
+    "Vlife": {
+      "code": "oq",
+      "app_id": 504
+    },
+    "Oriflame": {
+      "code": "qh",
+      "app_id": 505
+    },
+    "Dhani": {
+      "code": "os",
+      "app_id": 506
+    },
+    "Any Other": {
+      "code": [
+        "gr_ot",
+        "ot"
+      ],
+      "app_id": 507
+    },
+    "Freecharge": {
+      "code": "otp",
+      "app_id": 508
+    },
+    "Otipy": {
+      "code": "oty",
+      "app_id": 509
+    },
+    "Gabi": {
+      "code": "ou",
+      "app_id": 510
+    },
+    "Aqua Ludo": {
+      "code": "ouu",
+      "app_id": 511
+    },
+    "Battlestate Games": {
+      "code": [
+        "bg",
+        "gr_bg",
+        "ov"
+      ],
+      "app_id": 512
+    },
+    "Poshmark": {
+      "code": "oz",
+      "app_id": 513
+    },
+    "Phable": {
+      "code": "pbl",
+      "app_id": 514
+    },
+    "Peoplecom": {
+      "code": [
+        "gr_pe",
+        "pe"
+      ],
+      "app_id": 515
+    },
+    "Teenpattigo": {
+      "code": "peo",
+      "app_id": 516
+    },
+    "Plenty Of Fish": {
+      "code": "pf",
+      "app_id": 517
+    },
+    "Nrj Music Awards": {
+      "code": "pg",
+      "app_id": 518
+    },
+    "Snappfood": {
+      "code": "ph",
+      "app_id": 519
+    },
+    "Pinduoduo": {
+      "code": "zp",
+      "app_id": 520
+    },
+    "Perekrestok": {
+      "code": [
+        "gr_pl",
+        "pl"
+      ],
+      "app_id": 521
+    },
+    "Aol": {
+      "code": "pm",
+      "app_id": 522
+    },
+    "Premium.one": {
+      "code": "po",
+      "app_id": 523
+    },
+    "Monoapp": {
+      "code": "ppp",
+      "app_id": 524
+    },
+    "Cdkeys": {
+      "code": "pq",
+      "app_id": 525
+    },
+    "Trendyol": {
+      "code": "pr",
+      "app_id": 526
+    },
+    "Rapido": {
+      "code": [
+        "bgf",
+        "rpd"
+      ],
+      "app_id": 527
+    },
+    "Parimatch": {
+      "code": [
+        "abf",
+        "prm"
+      ],
+      "app_id": 528
+    },
+    "Bitaqaty": {
+      "code": "pt",
+      "app_id": 529
+    },
+    "Toprun": {
+      "code": "ptn",
+      "app_id": 530
+    },
+    "Nifty": {
+      "code": "px",
+      "app_id": 531
+    },
+    "Flexpay": {
+      "code": "pxa",
+      "app_id": 532
+    },
+    "Happytuk": {
+      "code": [
+        "gr_py",
+        "py"
+      ],
+      "app_id": 533
+    },
+    "Fancrypt": {
+      "code": "pyf",
+      "app_id": 534
+    },
+    "Myfishka": {
+      "code": "qa",
+      "app_id": 535
+    },
+    "Payberry": {
+      "code": "qb",
+      "app_id": 536
+    },
+    "Праймериз 2020": {
+      "code": "qc",
+      "app_id": 537
+    },
+    "Redbook": {
+      "code": "qf",
+      "app_id": 538
+    },
+    "32red": {
+      "code": "qi",
+      "app_id": 539
+    },
+    "Whoosh": {
+      "code": "qj",
+      "app_id": 540
+    },
+    "Cmtcuzdan": {
+      "code": "ql",
+      "app_id": 541
+    },
+    "Rosakhutor": {
+      "code": "qm",
+      "app_id": 542
+    },
+    "Blued": {
+      "code": "qn",
+      "app_id": 543
+    },
+    "Moneylion": {
+      "code": "qo",
+      "app_id": 544
+    },
+    "Tencent Qq": {
+      "code": "qq",
+      "app_id": 545
+    },
+    "Mega": {
+      "code": "qr",
+      "app_id": 546
+    },
+    "Agroinform": {
+      "code": "qu",
+      "app_id": 547
+    },
+    "Qiwiwallet": {
+      "code": "qw",
+      "app_id": 548
+    },
+    "Faceit": {
+      "code": "qz",
+      "app_id": 549
+    },
+    "Keypay": {
+      "code": "ra",
+      "app_id": 550
+    },
+    "Chalkboard": {
+      "code": [
+        "gr_rd",
+        "rd"
+      ],
+      "app_id": 551
+    },
+    "Coinbase": {
+      "code": [
+        "gr_re",
+        "re"
+      ],
+      "app_id": 552
+    },
+    "Nurturefarm": {
+      "code": "reu",
+      "app_id": 553
+    },
+    "Akudo": {
+      "code": "rf",
+      "app_id": 554
+    },
+    "Ace2three": {
+      "code": "rh",
+      "app_id": 555
+    },
+    "Billmill": {
+      "code": "ri",
+      "app_id": 556
+    },
+    "Fotka": {
+      "code": "rk",
+      "app_id": 557
+    },
+    "Indriver": {
+      "code": "rl",
+      "app_id": 558
+    },
+    "Faberlic": {
+      "code": "rm",
+      "app_id": 559
+    },
+    "Rummycircle": {
+      "code": [
+        "adj",
+        "rmc"
+      ],
+      "app_id": 560
+    },
+    "Rummy Gold": {
+      "code": "rmg",
+      "app_id": 561
+    },
+    "Rainmaker": {
+      "code": "rmk",
+      "app_id": 562
+    },
+    "Rummy": {
+      "code": "rmm",
+      "app_id": 563
+    },
+    "Kazandirio": {
+      "code": "roz",
+      "app_id": 564
+    },
+    "Hamrahaval": {
+      "code": "rp",
+      "app_id": 565
+    },
+    "Realresearcher": {
+      "code": "xxj",
+      "app_id": 566
+    },
+    "Hily": {
+      "code": "rt",
+      "app_id": 567
+    },
+    "Rutube": {
+      "code": "ui",
+      "app_id": 568
+    },
+    "Kotak811": {
+      "code": "rv",
+      "app_id": 569
+    },
+    "Sheerid": {
+      "code": "rx",
+      "app_id": 570
+    },
+    "Rummytitans": {
+      "code": "ryy",
+      "app_id": 571
+    },
+    "Dodo Pizza": {
+      "code": "sd",
+      "app_id": 572
+    },
+    "Suprdaily": {
+      "code": "sdl",
+      "app_id": 573
+    },
+    "Sendinblue": {
+      "code": "xxl",
+      "app_id": 574
+    },
+    "Sneakersnstuff": {
+      "code": "sf",
+      "app_id": 575
+    },
+    "Ozon": {
+      "code": "sg",
+      "app_id": 576
+    },
+    "Vkusvill": {
+      "code": "sh",
+      "app_id": 577
+    },
+    "Shpock": {
+      "code": "ze",
+      "app_id": 578
+    },
+    "Cita Previa": {
+      "code": [
+        "gr_si",
+        "si"
+      ],
+      "app_id": 579
+    },
+    "Handypick": {
+      "code": "sj",
+      "app_id": 580
+    },
+    "Skroutz": {
+      "code": "sk",
+      "app_id": 581
+    },
+    "Olx(sn)": {
+      "code": [
+        "ox",
+        "sn"
+      ],
+      "app_id": 582
+    },
+    "Rummy Wealth": {
+      "code": "so",
+      "app_id": 583
+    },
+    "Sportmaster": {
+      "code": "yk",
+      "app_id": 584
+    },
+    "Spartan Poker": {
+      "code": [
+        "gr_sp",
+        "spp"
+      ],
+      "app_id": 585
+    },
+    "Kucoinplay": {
+      "code": "sq",
+      "app_id": 586
+    },
+    "Starchatsite": {
+      "code": "sr",
+      "app_id": 587
+    },
+    "Hezzl": {
+      "code": "ss",
+      "app_id": 588
+    },
+    "Spade365": {
+      "code": "ssp",
+      "app_id": 589
+    },
+    "Auchan": {
+      "code": "st",
+      "app_id": 590
+    },
+    "Суточно": {
+      "code": [
+        "gr_su",
+        "su"
+      ],
+      "app_id": 591
+    },
+    "Dostavista": {
+      "code": "sv",
+      "app_id": 592
+    },
+    "Ncsoft": {
+      "code": "sw",
+      "app_id": 593
+    },
+    "Synottip": {
+      "code": "xc",
+      "app_id": 594
+    },
+    "Tlzsl": {
+      "code": "szs",
+      "app_id": 595
+    },
+    "Taki": {
+      "code": "xw",
+      "app_id": 596
+    },
+    "Rambler": {
+      "code": [
+        "gr_ra",
+        "tc"
+      ],
+      "app_id": 597
+    },
+    "Teen Patti Dynasty": {
+      "code": [
+        "gr_td",
+        "td"
+      ],
+      "app_id": 598
+    },
+    "Todaybet": {
+      "code": "tdb",
+      "app_id": 599
+    },
+    "Truemeds": {
+      "code": [
+        "qdx",
+        "tdr"
+      ],
+      "app_id": 600
+    },
+    "Fastwin": {
+      "code": [
+        "faw",
+        "fst",
+        "tfs"
+      ],
+      "app_id": 601
+    },
+    "Telegram": {
+      "code": "tg",
+      "app_id": 602
+    },
+    "Weststein": {
+      "code": "th",
+      "app_id": 603
+    },
+    "Dbrua": {
+      "code": "tj",
+      "app_id": 604
+    },
+    "Jjbet": {
+      "code": "tje",
+      "app_id": 605
+    },
+    "Truecaller": {
+      "code": [
+        "gr_tl",
+        "tl"
+      ],
+      "app_id": 606
+    },
+    "Linkedin": {
+      "code": "tn",
+      "app_id": 607
+    },
+    "Teenpattijoy": {
+      "code": "tnp",
+      "app_id": 608
+    },
+    "Teenpattirummy3": {
+      "code": "tnr",
+      "app_id": 609
+    },
+    "Indiagold": {
+      "code": "tp",
+      "app_id": 610
+    },
+    "Swvl": {
+      "code": "tq",
+      "app_id": 611
+    },
+    "Paysend": {
+      "code": "tr",
+      "app_id": 612
+    },
+    "Paypal": {
+      "code": "ts",
+      "app_id": 613
+    },
+    "Ziglu": {
+      "code": "tt",
+      "app_id": 614
+    },
+    "Talku": {
+      "code": "tu",
+      "app_id": 615
+    },
+    "Flink": {
+      "code": [
+        "gr_tv",
+        "tv"
+      ],
+      "app_id": 616
+    },
+    "Twitter": {
+      "code": "tw",
+      "app_id": 617
+    },
+    "Twelfthman": {
+      "code": "twm",
+      "app_id": 618
+    },
+    "Bolt": {
+      "code": "tx",
+      "app_id": 619
+    },
+    "Uber": {
+      "code": "ub",
+      "app_id": 620
+    },
+    "Tatneft": {
+      "code": "uc",
+      "app_id": 621
+    },
+    "Disney Hotstar": {
+      "code": "ud",
+      "app_id": 622
+    },
+    "Onet": {
+      "code": [
+        "ue",
+        "ueu"
+      ],
+      "app_id": 623
+    },
+    "Fiqsy": {
+      "code": "ug",
+      "app_id": 624
+    },
+    "Yubo": {
+      "code": "uh",
+      "app_id": 625
+    },
+    "Babuji": {
+      "code": "uib",
+      "app_id": 626
+    },
+    "Airbnb": {
+      "code": "uk",
+      "app_id": 627
+    },
+    "Getir": {
+      "code": "ul",
+      "app_id": 628
+    },
+    "Humble Bundle": {
+      "code": [
+        "gr_hb",
+        "un"
+      ],
+      "app_id": 629
+    },
+    "Cafebazaar": {
+      "code": "uo",
+      "app_id": 630
+    },
+    "Magnolia": {
+      "code": "up",
+      "app_id": 631
+    },
+    "Irctc": {
+      "code": "us",
+      "app_id": 632
+    },
+    "Sportsbuzz11": {
+      "code": "usu",
+      "app_id": 633
+    },
+    "Wildberries": {
+      "code": "uu",
+      "app_id": 634
+    },
+    "1kkirana": {
+      "code": "uw",
+      "app_id": 635
+    },
+    "Offgamers": {
+      "code": "uz",
+      "app_id": 636
+    },
+    "Sportgully": {
+      "code": "va",
+      "app_id": 637
+    },
+    "Banqi": {
+      "code": "vc",
+      "app_id": 638
+    },
+    "Vscric": {
+      "code": "vcr",
+      "app_id": 639
+    },
+    "Betfair": {
+      "code": "vd",
+      "app_id": 640
+    },
+    "Vedantu": {
+      "code": "vdt",
+      "app_id": 641
+    },
+    "Dream11": {
+      "code": "ve",
+      "app_id": 642
+    },
+    "Q12 Trivia": {
+      "code": "vf",
+      "app_id": 643
+    },
+    "Shellbox": {
+      "code": "vg",
+      "app_id": 644
+    },
+    "Viber": {
+      "code": "vi",
+      "app_id": 645
+    },
+    "Investro": {
+      "code": [
+        "gr_inv",
+        "vis"
+      ],
+      "app_id": 646
+    },
+    "Вк, Одноклассники, Юла (mail.ru Group)": {
+      "code": "vk",
+      "app_id": 647
+    },
+    "Yaay": {
+      "code": "vn",
+      "app_id": 648
+    },
+    "Vinota": {
+      "code": "vnt",
+      "app_id": 649
+    },
+    "Brand20ua": {
+      "code": "vo",
+      "app_id": 650
+    },
+    "Vodorobot": {
+      "code": "vr",
+      "app_id": 651
+    },
+    "Winzogame": {
+      "code": "vs",
+      "app_id": 652
+    },
+    "Kaidee": {
+      "code": "vu",
+      "app_id": 653
+    },
+    "Seo Sprint": {
+      "code": "vv",
+      "app_id": 654
+    },
+    "Coinfield": {
+      "code": "vw",
+      "app_id": 655
+    },
+    "Whatsapp": {
+      "code": "wa",
+      "app_id": 656
+    },
+    "Goawin": {
+      "code": "wao",
+      "app_id": 657
+    },
+    "Wechat": {
+      "code": "wb",
+      "app_id": 658
+    },
+    "Craigslist": {
+      "code": "wc",
+      "app_id": 659
+    },
+    "Drugvokrug": {
+      "code": "we",
+      "app_id": 660
+    },
+    "Airtel": {
+      "code": "zl",
+      "app_id": 661
+    },
+    "Skout": {
+      "code": [
+        "gr_wg",
+        "wg"
+      ],
+      "app_id": 662
+    },
+    "Tantan": {
+      "code": "wh",
+      "app_id": 663
+    },
+    "Whide": {
+      "code": "whd",
+      "app_id": 664
+    },
+    "1xbet": {
+      "code": "wj",
+      "app_id": 665
+    },
+    "Mobile01": {
+      "code": "wk",
+      "app_id": 666
+    },
+    "Yougotagift": {
+      "code": "wl",
+      "app_id": 667
+    },
+    "Wizely": {
+      "code": "wle",
+      "app_id": 668
+    },
+    "Glowroad": {
+      "code": [
+        "ams",
+        "wlw"
+      ],
+      "app_id": 669
+    },
+    "Gamearena": {
+      "code": [
+        "gr_wn",
+        "wn"
+      ],
+      "app_id": 670
+    },
+    "163som": {
+      "code": "wp",
+      "app_id": 671
+    },
+    "Walmart": {
+      "code": "wr",
+      "app_id": 672
+    },
+    "Bip": {
+      "code": "ww",
+      "app_id": 673
+    },
+    "Rummyola": {
+      "code": "xb",
+      "app_id": 674
+    },
+    "Tokopedia": {
+      "code": "xd",
+      "app_id": 675
+    },
+    "Funexch": {
+      "code": "xeu",
+      "app_id": 676
+    },
+    "Lightchat": {
+      "code": "xf",
+      "app_id": 677
+    },
+    "Купер (сбермаркет)": {
+      "code": "xj",
+      "app_id": 678
+    },
+    "Didi": {
+      "code": "xk",
+      "app_id": 679
+    },
+    "Wmaraci": {
+      "code": "xl",
+      "app_id": 680
+    },
+    "Tango": {
+      "code": "xr",
+      "app_id": 681
+    },
+    "Flipkart": {
+      "code": "xt",
+      "app_id": 682
+    },
+    "Wish": {
+      "code": "xv",
+      "app_id": 683
+    },
+    "Joyride": {
+      "code": "xx",
+      "app_id": 684
+    },
+    "Gappx": {
+      "code": [
+        "arg",
+        "xxd"
+      ],
+      "app_id": 685
+    },
+    "Howzat": {
+      "code": "zaz",
+      "app_id": 686
+    },
+    "Otovinn": {
+      "code": "xxi",
+      "app_id": 687
+    },
+    "Sneakerboy": {
+      "code": [
+        "gr_oy",
+        "xxm"
+      ],
+      "app_id": 688
+    },
+    "Taskdealsin": {
+      "code": "xxn",
+      "app_id": 689
+    },
+    "Surveyjunkie": {
+      "code": "xxr",
+      "app_id": 690
+    },
+    "Depop": {
+      "code": "xy",
+      "app_id": 691
+    },
+    "Paycell": {
+      "code": "xz",
+      "app_id": 692
+    },
+    "Yandex/uber": {
+      "code": "ya",
+      "app_id": 693
+    },
+    "Система Город": {
+      "code": "yb",
+      "app_id": 694
+    },
+    "Rummynoble": {
+      "code": "ybl",
+      "app_id": 695
+    },
+    "米画师mihuashi": {
+      "code": [
+        "mih",
+        "yd"
+      ],
+      "app_id": 696
+    },
+    "Citymobil": {
+      "code": "yf",
+      "app_id": 697
+    },
+    "Coursehero": {
+      "code": "yg",
+      "app_id": 698
+    },
+    "Hhru": {
+      "code": "yh",
+      "app_id": 699
+    },
+    "Countrydelight": {
+      "code": "yhy",
+      "app_id": 700
+    },
+    "Yemeksepeti": {
+      "code": "yi",
+      "app_id": 701
+    },
+    "Yalla": {
+      "code": "yl",
+      "app_id": 702
+    },
+    "Royallyrummy": {
+      "code": "yll",
+      "app_id": 703
+    },
+    "Youla.ru": {
+      "code": [
+        "ula",
+        "ym"
+      ],
+      "app_id": 704
+    },
+    "Allegro": {
+      "code": "yn",
+      "app_id": 705
+    },
+    "Amasia": {
+      "code": [
+        "gr_yo",
+        "yo"
+      ],
+      "app_id": 706
+    },
+    "Payzapp": {
+      "code": "yp",
+      "app_id": 707
+    },
+    "Rummy Glee": {
+      "code": "yrl",
+      "app_id": 708
+    },
+    "Zcity": {
+      "code": "ys",
+      "app_id": 709
+    },
+    "Xiaomi": {
+      "code": "yu",
+      "app_id": 710
+    },
+    "Iplwin": {
+      "code": "yv",
+      "app_id": 711
+    },
+    "Venmo": {
+      "code": "yy",
+      "app_id": 712
+    },
+    "Jingdong": {
+      "code": "za",
+      "app_id": 713
+    },
+    "Zero2": {
+      "code": "zero",
+      "app_id": 714
+    },
+    "Ontaxi": {
+      "code": "zf",
+      "app_id": 715
+    },
+    "Zoho": {
+      "code": "zh",
+      "app_id": 716
+    },
+    "Lovelocal": {
+      "code": "zi",
+      "app_id": 717
+    },
+    "Deliveroo": {
+      "code": "zk",
+      "app_id": 718
+    },
+    "Offerup": {
+      "code": "zm",
+      "app_id": 719
+    },
+    "Zepto": {
+      "code": [
+        "adi",
+        "zpt"
+      ],
+      "app_id": 720
+    },
+    "Papara": {
+      "code": "zr",
+      "app_id": 721
+    },
+    "Bigc": {
+      "code": "zu",
+      "app_id": 722
+    },
+    "Digikala": {
+      "code": "zv",
+      "app_id": 723
+    },
+    "Quack": {
+      "code": "zw",
+      "app_id": 724
+    },
+    "Nttgame": {
+      "code": "zy",
+      "app_id": 725
+    },
+    "Dent": {
+      "code": "zz",
+      "app_id": 726
+    },
+    "Одноклассники": {
+      "code": "ok",
+      "app_id": 727
+    },
+    "Mamba": {
+      "code": "fd",
+      "app_id": 728
+    },
+    "Wolt": {
+      "code": "rr",
+      "app_id": 729
+    },
+    "Ticketmaster": {
+      "code": "gp",
+      "app_id": 730
+    },
+    "Happn": {
+      "code": "df",
+      "app_id": 731
+    },
+    "Hepsiburadacom": {
+      "code": "gx",
+      "app_id": 732
+    },
+    "Yandexgo": {
+      "code": "wf",
+      "app_id": 733
+    },
+    "Paxful": {
+      "code": "dn",
+      "app_id": 734
+    },
+    "Taobao": {
+      "code": "qd",
+      "app_id": 735
+    },
+    "Bonia": {
+      "code": "hn",
+      "app_id": 736
+    },
+    "Douyu": {
+      "code": "ak",
+      "app_id": 737
+    },
+    "Likee": {
+      "code": "jf",
+      "app_id": 738
+    },
+    "Tradingview": {
+      "code": [
+        "gc",
+        "gr_gc"
+      ],
+      "app_id": 739
+    },
+    "Mocospace": {
+      "code": "gm",
+      "app_id": 740
+    },
+    "Trip": {
+      "code": "nq",
+      "app_id": 741
+    },
+    "Akulaku": {
+      "code": "tm",
+      "app_id": 742
+    },
+    "Nimotv": {
+      "code": "kz",
+      "app_id": 743
+    },
+    "Stripe": {
+      "code": "nu",
+      "app_id": 744
+    },
+    "Krasyar": {
+      "code": [
+        "gr_kr",
+        "kr"
+      ],
+      "app_id": 745
+    },
+    "Twitch": {
+      "code": "hb",
+      "app_id": 746
+    },
+    "Galaxychat": {
+      "code": "xe",
+      "app_id": 747
+    },
+    "Iti": {
+      "code": "ad",
+      "app_id": 748
+    },
+    "Setel": {
+      "code": "zg",
+      "app_id": 749
+    },
+    "Сбераптека": {
+      "code": "sl",
+      "app_id": 750
+    },
+    "Heybox": {
+      "code": "vx",
+      "app_id": 751
+    },
+    "Сhampionсasino": {
+      "code": "uj",
+      "app_id": 752
+    },
+    "My Beauty Bonus": {
+      "code": [
+        "bo",
+        "gr_bo"
+      ],
+      "app_id": 753
+    },
+    "Checkscan": {
+      "code": [
+        "ch",
+        "gr_ch"
+      ],
+      "app_id": 754
+    },
+    "Agridevelop": {
+      "code": [
+        "cs",
+        "gr_cs"
+      ],
+      "app_id": 755
+    },
+    "Santander": {
+      "code": "lj",
+      "app_id": 756
+    },
+    "Wonder Ticket": {
+      "code": [
+        "gr_wt",
+        "wt"
+      ],
+      "app_id": 757
+    },
+    "Ovo": {
+      "code": "xh",
+      "app_id": 758
+    },
+    "4fun": {
+      "code": "hk",
+      "app_id": 759
+    },
+    "Около": {
+      "code": "yz",
+      "app_id": 760
+    },
+    "Sizeer": {
+      "code": "eo",
+      "app_id": 761
+    },
+    "Букмекерские": {
+      "code": "ft",
+      "app_id": 762
+    },
+    "Giftcloud": {
+      "code": [
+        "gr_nn",
+        "nn"
+      ],
+      "app_id": 763
+    },
+    "Vivo": {
+      "code": "kx",
+      "app_id": 764
+    },
+    "Supers": {
+      "code": "ca",
+      "app_id": 765
+    },
+    "Mrq": {
+      "code": "ej",
+      "app_id": 766
+    },
+    "Zilch": {
+      "code": "zd",
+      "app_id": 767
+    },
+    "Nanovest": {
+      "code": "je",
+      "app_id": 768
+    },
+    "Callapp": {
+      "code": "gw",
+      "app_id": 769
+    },
+    "Bit": {
+      "code": "qk",
+      "app_id": 770
+    },
+    "Infund": {
+      "code": "xi",
+      "app_id": 771
+    },
+    "Longhu": {
+      "code": "mk",
+      "app_id": 772
+    },
+    "Crefisamais": {
+      "code": "ax",
+      "app_id": 773
+    },
+    "Weidian": {
+      "code": "mf",
+      "app_id": 774
+    },
+    "Fwdmax": {
+      "code": "od",
+      "app_id": 775
+    },
+    "Yowin": {
+      "code": "sm",
+      "app_id": 776
+    },
+    "Oneaset": {
+      "code": "aj",
+      "app_id": 777
+    },
+    "Wink": {
+      "code": "ta",
+      "app_id": 778
+    },
+    "Dotz": {
+      "code": "cj",
+      "app_id": 779
+    },
+    "Stormgain": {
+      "code": "vj",
+      "app_id": 780
+    },
+    "Pivko24": {
+      "code": "sz",
+      "app_id": 781
+    },
+    "Urent/jet/rusharing": {
+      "code": "of",
+      "app_id": 782
+    },
+    "Artstation": {
+      "code": [
+        "gr_st",
+        "mh",
+        "st"
+      ],
+      "app_id": 783
+    },
+    "炙热星河": {
+      "code": "cu",
+      "app_id": 784
+    },
+    "Freechargeapp": {
+      "code": "kg",
+      "app_id": 785
+    },
+    "24betting": {
+      "code": "lh",
+      "app_id": 786
+    },
+    "Parkplus": {
+      "code": "wo",
+      "app_id": 787
+    },
+    "Porbet": {
+      "code": "rg",
+      "app_id": 788
+    },
+    "Getmega": {
+      "code": "cz",
+      "app_id": 789
+    },
+    "Cashfly": {
+      "code": "oy",
+      "app_id": 790
+    },
+    "Читайгород": {
+      "code": [
+        "gr_rc",
+        "rc"
+      ],
+      "app_id": 791
+    },
+    "Enticegames": {
+      "code": [
+        "eg",
+        "gr_eg"
+      ],
+      "app_id": 792
+    },
+    "Expressmoney": {
+      "code": [
+        "ba",
+        "gr_ba"
+      ],
+      "app_id": 793
+    },
+    "Aposta Ganha": {
+      "code": "ml",
+      "app_id": 794
+    },
+    "Gmng": {
+      "code": "mq",
+      "app_id": 795
+    },
+    "Turkiyepetrolleri": {
+      "code": "jt",
+      "app_id": 796
+    },
+    "Happyfresh": {
+      "code": "sp",
+      "app_id": 797
+    },
+    "Agibank": {
+      "code": "sa",
+      "app_id": 798
+    },
+    "Reddybook": {
+      "code": [
+        "gr_rb",
+        "rb"
+      ],
+      "app_id": 799
+    },
+    "Ewallet": {
+      "code": "yj",
+      "app_id": 800
+    },
+    "Kaya": {
+      "code": "jz",
+      "app_id": 801
+    },
+    "Mydailycash": {
+      "code": [
+        "gr_ur",
+        "ur"
+      ],
+      "app_id": 802
+    },
+    "Recargapay": {
+      "code": "xu",
+      "app_id": 803
+    },
+    "Virgo": {
+      "code": "no",
+      "app_id": 804
+    },
+    "Telegram 2.0": {
+      "code": "eh",
+      "app_id": 805
+    },
+    "Openai (chatgpt)": {
+      "code": "dr",
+      "app_id": 806
+    },
+    "Celebe": {
+      "code": "ai",
+      "app_id": 807
+    },
+    "Ximalaya": {
+      "code": "nw",
+      "app_id": 808
+    },
+    "Uplay": {
+      "code": "hh",
+      "app_id": 809
+    },
+    "Vkusno I Tochka": {
+      "code": [
+        "br",
+        "gr_br"
+      ],
+      "app_id": 810
+    },
+    "Adakami": {
+      "code": "ko",
+      "app_id": 811
+    },
+    "Yappy": {
+      "code": "kj",
+      "app_id": 812
+    },
+    "Spatenoktoberfest": {
+      "code": "ky",
+      "app_id": 813
+    },
+    "Soulapp": {
+      "code": "mx",
+      "app_id": 814
+    },
+    "Лэтуаль": {
+      "code": "xm",
+      "app_id": 815
+    },
+    "Brahma": {
+      "code": "sy",
+      "app_id": 816
+    },
+    "Ruten": {
+      "code": "ay",
+      "app_id": 817
+    },
+    "勇仕网络ys4fun": {
+      "code": [
+        "bi",
+        "gr_bi"
+      ],
+      "app_id": 818
+    },
+    "Moneypay": {
+      "code": "qg",
+      "app_id": 819
+    },
+    "Budweiser": {
+      "code": "zt",
+      "app_id": 820
+    },
+    "Lotus": {
+      "code": "rs",
+      "app_id": 821
+    },
+    "Ais": {
+      "code": "wv",
+      "app_id": 822
+    },
+    "Robinhood": {
+      "code": "zj",
+      "app_id": 823
+    },
+    "Lukoil-azs": {
+      "code": "dj",
+      "app_id": 824
+    },
+    "Pagsmile": {
+      "code": "gg",
+      "app_id": 825
+    },
+    "Lightchath": {
+      "code": [
+        "gr_lc",
+        "lc",
+        "xf"
+      ],
+      "app_id": 826
+    },
+    "Moneyсontrol": {
+      "code": "qt",
+      "app_id": 827
+    },
+    "Familia": {
+      "code": "xn",
+      "app_id": 828
+    },
+    "Sellmonitor": {
+      "code": "pw",
+      "app_id": 829
+    },
+    "Kuhnyanarayone": {
+      "code": "ct",
+      "app_id": 830
+    },
+    "Weverse": {
+      "code": "ja",
+      "app_id": 831
+    },
+    "Zhihu": {
+      "code": [
+        "qy",
+        "zu"
+      ],
+      "app_id": 832
+    },
+    "Corona": {
+      "code": "om",
+      "app_id": 833
+    },
+    "Mail.com": {
+      "code": "yq",
+      "app_id": 834
+    },
+    "Jtexpress": {
+      "code": "yx",
+      "app_id": 835
+    },
+    "Escapefromtarkov": {
+      "code": "ah",
+      "app_id": 836
+    },
+    "Perfluence": {
+      "code": "at",
+      "app_id": 837
+    },
+    "Gcash": {
+      "code": "bc",
+      "app_id": 838
+    },
+    "Mixmart": {
+      "code": "bg",
+      "app_id": 839
+    },
+    "Uteka": {
+      "code": "bh",
+      "app_id": 840
+    },
+    "Book24": {
+      "code": [
+        "bk",
+        "gr_bk"
+      ],
+      "app_id": 841
+    },
+    "Marketguru": {
+      "code": "bm",
+      "app_id": 842
+    },
+    "Tradeup": {
+      "code": "bs",
+      "app_id": 843
+    },
+    "Uwin": {
+      "code": "cl",
+      "app_id": 844
+    },
+    "Cloudchat": {
+      "code": [
+        "dd",
+        "xk"
+      ],
+      "app_id": 845
+    },
+    "Loanflix": {
+      "code": [
+        "di",
+        "gr_di"
+      ],
+      "app_id": 846
+    },
+    "Icecasino": {
+      "code": "dq",
+      "app_id": 847
+    },
+    "Aubank": {
+      "code": "du",
+      "app_id": 848
+    },
+    "Voltz": {
+      "code": "eb",
+      "app_id": 849
+    },
+    "Nextdoor": {
+      "code": "ef",
+      "app_id": 850
+    },
+    "Zédelivery": {
+      "code": "em",
+      "app_id": 851
+    },
+    "Temu": {
+      "code": "ep",
+      "app_id": 852
+    },
+    "Linode": {
+      "code": [
+        "ex",
+        "gr_ex"
+      ],
+      "app_id": 853
+    },
+    "Goerlifaucet": {
+      "code": "ez",
+      "app_id": 854
+    },
+    "Xadrezfeliz": {
+      "code": [
+        "fa",
+        "gr_fa"
+      ],
+      "app_id": 855
+    },
+    "Jogo": {
+      "code": "ic",
+      "app_id": 856
+    },
+    "Foxford": {
+      "code": "wz",
+      "app_id": 857
+    },
+    "Cashapp": {
+      "code": "it",
+      "app_id": 858
+    },
+    "Mylavash": {
+      "code": "iw",
+      "app_id": 859
+    },
+    "Celcoin": {
+      "code": "ix",
+      "app_id": 860
+    },
+    "Girabank": {
+      "code": "jd",
+      "app_id": 861
+    },
+    "Sticpay": {
+      "code": "jo",
+      "app_id": 862
+    },
+    "Br777": {
+      "code": "jw",
+      "app_id": 863
+    },
+    "Rbt": {
+      "code": "jp",
+      "app_id": 864
+    },
+    "Golosza": {
+      "code": "js",
+      "app_id": 865
+    },
+    "Consultant": {
+      "code": "jv",
+      "app_id": 866
+    },
+    "Author24": {
+      "code": "kd",
+      "app_id": 867
+    },
+    "Farpost": {
+      "code": [
+        "gr_fr",
+        "gr_lm",
+        "lm"
+      ],
+      "app_id": 868
+    },
+    "Nationallottery": {
+      "code": [
+        "gr_lo",
+        "gr_op",
+        "lo"
+      ],
+      "app_id": 869
+    },
+    "Moteplassen": {
+      "code": "mp",
+      "app_id": 870
+    },
+    "Things": {
+      "code": "lz",
+      "app_id": 871
+    },
+    "Transfergo": {
+      "code": "mw",
+      "app_id": 872
+    },
+    "Zolushka": {
+      "code": "mz",
+      "app_id": 873
+    },
+    "Payoneer": {
+      "code": "nc",
+      "app_id": 874
+    },
+    "Funpay": {
+      "code": "ng",
+      "app_id": 875
+    },
+    "Allobank": {
+      "code": "nh",
+      "app_id": 876
+    },
+    "Freshkarta": {
+      "code": "nj",
+      "app_id": 877
+    },
+    "2domains": {
+      "code": [
+        "gr_ns",
+        "ns"
+      ],
+      "app_id": 878
+    },
+    "Ligapro": {
+      "code": "oo",
+      "app_id": 879
+    },
+    "Regru": {
+      "code": "ow",
+      "app_id": 880
+    },
+    "Damejidlo": {
+      "code": [
+        "gr_ox",
+        "ox"
+      ],
+      "app_id": 881
+    },
+    "Casino, Bet, Gambling": {
+      "code": "pc",
+      "app_id": 882
+    },
+    "Skytv": {
+      "code": "pb",
+      "app_id": 883
+    },
+    "Podeli": {
+      "code": "pj",
+      "app_id": 884
+    },
+    "Coffeelike": {
+      "code": "pn",
+      "app_id": 885
+    },
+    "Zdorov": {
+      "code": "ps",
+      "app_id": 886
+    },
+    "Koshelek": {
+      "code": "pv",
+      "app_id": 887
+    },
+    "Максавит": {
+      "code": "qp",
+      "app_id": 888
+    },
+    "Мирзнакомств": {
+      "code": "qs",
+      "app_id": 889
+    },
+    "Worldremit": {
+      "code": "qx",
+      "app_id": 890
+    },
+    "Neftm": {
+      "code": "rn",
+      "app_id": 891
+    },
+    "Rostelecom": {
+      "code": "ro",
+      "app_id": 892
+    },
+    "Aptekiplus": {
+      "code": "rq",
+      "app_id": 893
+    },
+    "Scruff": {
+      "code": [
+        "sc",
+        "scrf"
+      ],
+      "app_id": 894
+    },
+    "Окей": {
+      "code": "ty",
+      "app_id": 895
+    },
+    "Лейка": {
+      "code": "tz",
+      "app_id": 896
+    },
+    "Belwest": {
+      "code": "um",
+      "app_id": 897
+    },
+    "Topdetal": {
+      "code": "uq",
+      "app_id": 898
+    },
+    "Energoboom": {
+      "code": "ut",
+      "app_id": 899
+    },
+    "Домовой": {
+      "code": "ux",
+      "app_id": 900
+    },
+    "Кораблик": {
+      "code": "vb",
+      "app_id": 901
+    },
+    "Ортека": {
+      "code": "vl",
+      "app_id": 902
+    },
+    "Shtolle": {
+      "code": "vh",
+      "app_id": 903
+    },
+    "Ladymaria": {
+      "code": "vq",
+      "app_id": 904
+    },
+    "Innomax": {
+      "code": "vt",
+      "app_id": 905
+    },
+    "Столото": {
+      "code": [
+        "hj",
+        "wd"
+      ],
+      "app_id": 906
+    },
+    "99speed": {
+      "code": "wm",
+      "app_id": 907
+    },
+    "Privetmir": {
+      "code": "wu",
+      "app_id": 908
+    },
+    "Yami": {
+      "code": "wy",
+      "app_id": 909
+    },
+    "Улыбкарадуги": {
+      "code": "xa",
+      "app_id": 910
+    },
+    "Notifire": {
+      "code": "xo",
+      "app_id": 911
+    },
+    "Monetaru": {
+      "code": "xp",
+      "app_id": 912
+    },
+    "Zaleycash": {
+      "code": "ye",
+      "app_id": 913
+    },
+    "Nubank": {
+      "code": "aaa",
+      "app_id": 914
+    },
+    "Bharatpe": {
+      "code": "aab",
+      "app_id": 915
+    },
+    "Pockit": {
+      "code": "aag",
+      "app_id": 916
+    },
+    "Tiptapp": {
+      "code": "aap",
+      "app_id": 917
+    },
+    "Netease": {
+      "code": [
+        "aaq",
+        "gr_ne"
+      ],
+      "app_id": 918
+    },
+    "Xxgame": {
+      "code": "aas",
+      "app_id": 919
+    },
+    "Tamtam": {
+      "code": "aat",
+      "app_id": 920
+    },
+    "Alchemy": {
+      "code": "aav",
+      "app_id": 921
+    },
+    "Aya Bank": {
+      "code": "aaw",
+      "app_id": 922
+    },
+    "Taptap Send": {
+      "code": [
+        "abc",
+        "gr_tp"
+      ],
+      "app_id": 923
+    },
+    "Beeboo": {
+      "code": [
+        "abd",
+        "acx",
+        "apn"
+      ],
+      "app_id": 924
+    },
+    "Pagbank": {
+      "code": "abg",
+      "app_id": 925
+    },
+    "Uol Host": {
+      "code": "abh",
+      "app_id": 926
+    },
+    "Byteplus": {
+      "code": "abi",
+      "app_id": 927
+    },
+    "Serasa": {
+      "code": "abj",
+      "app_id": 928
+    },
+    "Gpnbonus": {
+      "code": "abl",
+      "app_id": 929
+    },
+    "Утконос": {
+      "code": "abm",
+      "app_id": 930
+    },
+    "Namars": {
+      "code": "abn",
+      "app_id": 931
+    },
+    "Webde": {
+      "code": "abo",
+      "app_id": 932
+    },
+    "D5bet": {
+      "code": "abp",
+      "app_id": 933
+    },
+    "Privy": {
+      "code": "abr",
+      "app_id": 934
+    },
+    "Arenaplus": {
+      "code": "abt",
+      "app_id": 935
+    },
+    "Bpjstk": {
+      "code": "abu",
+      "app_id": 936
+    },
+    "Playzone": {
+      "code": "abv",
+      "app_id": 937
+    },
+    "Sokolov": {
+      "code": [
+        "abw",
+        "gr_so"
+      ],
+      "app_id": 938
+    },
+    "Kaching": {
+      "code": "abx",
+      "app_id": 939
+    },
+    "Couponscom": {
+      "code": "aby",
+      "app_id": 940
+    },
+    "Sunlight": {
+      "code": "aca",
+      "app_id": 941
+    },
+    "Дарить Легко": {
+      "code": "abz",
+      "app_id": 942
+    },
+    "Luckyland Slots": {
+      "code": "acc",
+      "app_id": 943
+    },
+    "Checkdomain": {
+      "code": "acd",
+      "app_id": 944
+    },
+    "Winter Loan": {
+      "code": "acf",
+      "app_id": 945
+    },
+    "Koronapay": {
+      "code": "acg",
+      "app_id": 946
+    },
+    "Haleon": {
+      "code": "ach",
+      "app_id": 947
+    },
+    "Colombian Cupid": {
+      "code": "aci",
+      "app_id": 948
+    },
+    "Terimerichoice": {
+      "code": "acj",
+      "app_id": 949
+    },
+    "Regainrx": {
+      "code": "ack",
+      "app_id": 950
+    },
+    "Swissmoney": {
+      "code": "acl",
+      "app_id": 951
+    },
+    "Gringo": {
+      "code": "acn",
+      "app_id": 952
+    },
+    "Ar Lens": {
+      "code": "aco",
+      "app_id": 953
+    },
+    "Bonuslink": {
+      "code": "acp",
+      "app_id": 954
+    },
+    "Astha Tea": {
+      "code": "acq",
+      "app_id": 955
+    },
+    "Qwikcilver": {
+      "code": "acr",
+      "app_id": 956
+    },
+    "Maxis": {
+      "code": "act",
+      "app_id": 957
+    },
+    "Citymall": {
+      "code": "acu",
+      "app_id": 958
+    },
+    "A23": {
+      "code": "acv",
+      "app_id": 959
+    },
+    "Youdo": {
+      "code": "acw",
+      "app_id": 960
+    },
+    "Vcollective": {
+      "code": "acx",
+      "app_id": 961
+    },
+    "Claude": {
+      "code": "acz",
+      "app_id": 962
+    },
+    "Truth Social": {
+      "code": "ada",
+      "app_id": 963
+    },
+    "Poshvine": {
+      "code": "adb",
+      "app_id": 964
+    },
+    "Punjab Timber Traders": {
+      "code": "adf",
+      "app_id": 965
+    },
+    "Yono777": {
+      "code": "adg",
+      "app_id": 966
+    },
+    "Fitcredit": {
+      "code": "adm",
+      "app_id": 967
+    },
+    "Khatabook": {
+      "code": "adk",
+      "app_id": 968
+    },
+    "Zach Bryan": {
+      "code": "adn",
+      "app_id": 969
+    },
+    "Jasper Home Fashions": {
+      "code": "ado",
+      "app_id": 970
+    },
+    "Uzum": {
+      "code": "adq",
+      "app_id": 971
+    },
+    "Boosty": {
+      "code": "adr",
+      "app_id": 972
+    },
+    "Cabify": {
+      "code": "adp",
+      "app_id": 973
+    },
+    "Gochat": {
+      "code": "ads",
+      "app_id": 974
+    },
+    "Willhaben": {
+      "code": "adt",
+      "app_id": 975
+    },
+    "Cian": {
+      "code": "adv",
+      "app_id": 976
+    },
+    "Seznam": {
+      "code": "adu",
+      "app_id": 977
+    },
+    "Профи": {
+      "code": [
+        "adw",
+        "gr_pr"
+      ],
+      "app_id": 978
+    },
+    "Firstcry": {
+      "code": "adx",
+      "app_id": 979
+    },
+    "Токио-city": {
+      "code": "ady",
+      "app_id": 980
+    },
+    "Shokoladnica": {
+      "code": [
+        "adz",
+        "gr_te"
+      ],
+      "app_id": 981
+    },
+    "Shine Brand Seeds": {
+      "code": "aeb",
+      "app_id": 982
+    },
+    "Aahira Fashion": {
+      "code": "aec",
+      "app_id": 983
+    },
+    "Booking.com": {
+      "code": "aed",
+      "app_id": 984
+    },
+    "Amway": {
+      "code": "aee",
+      "app_id": 985
+    },
+    "Flowwow": {
+      "code": [
+        "aeg",
+        "gr_fw"
+      ],
+      "app_id": 986
+    },
+    "Long Drive Cars": {
+      "code": "aef",
+      "app_id": 987
+    },
+    "Аптека Апрель": {
+      "code": "aeh",
+      "app_id": 988
+    },
+    "Sharyat": {
+      "code": "aei",
+      "app_id": 989
+    },
+    "Energo": {
+      "code": "aek",
+      "app_id": 990
+    },
+    "Autoru": {
+      "code": "aej",
+      "app_id": 991
+    },
+    "Cloud Manager": {
+      "code": "ael",
+      "app_id": 992
+    },
+    "Astrapay": {
+      "code": "aem",
+      "app_id": 993
+    },
+    "Madslots": {
+      "code": "aen",
+      "app_id": 994
+    },
+    "Slickcall": {
+      "code": "aep",
+      "app_id": 995
+    },
+    "Godrej": {
+      "code": "aeq",
+      "app_id": 996
+    },
+    "Playerauctions": {
+      "code": "aer",
+      "app_id": 997
+    },
+    "Greywoods": {
+      "code": "aet",
+      "app_id": 998
+    },
+    "Inshallah": {
+      "code": "aev",
+      "app_id": 999
+    },
+    "Flip": {
+      "code": "aew",
+      "app_id": 1000
+    },
+    "Neon": {
+      "code": "aex",
+      "app_id": 1001
+    },
+    "Next": {
+      "code": "aey",
+      "app_id": 1002
+    },
+    "Shein": {
+      "code": "aez",
+      "app_id": 1003
+    },
+    "Maybank": {
+      "code": "afb",
+      "app_id": 1004
+    },
+    "Bunda": {
+      "code": "afc",
+      "app_id": 1005
+    },
+    "Govbr": {
+      "code": "afe",
+      "app_id": 1006
+    },
+    "C6 Bank": {
+      "code": "aff",
+      "app_id": 1007
+    },
+    "Luck": {
+      "code": "afg",
+      "app_id": 1008
+    },
+    "Mpokket": {
+      "code": "afh",
+      "app_id": 1009
+    },
+    "Ame Digital": {
+      "code": "afi",
+      "app_id": 1010
+    },
+    "Skcapital": {
+      "code": "afj",
+      "app_id": 1011
+    },
+    "Chevron": {
+      "code": "afk",
+      "app_id": 1012
+    },
+    "Vsesmart": {
+      "code": "afl",
+      "app_id": 1013
+    },
+    "Myboost": {
+      "code": "afm",
+      "app_id": 1014
+    },
+    "Roomster": {
+      "code": "afn",
+      "app_id": 1015
+    },
+    "Kion": {
+      "code": "afo",
+      "app_id": 1016
+    },
+    "Vfs Global": {
+      "code": "afp",
+      "app_id": 1017
+    },
+    "Magalu": {
+      "code": "afq",
+      "app_id": 1018
+    },
+    "Ultragaz": {
+      "code": "afr",
+      "app_id": 1019
+    },
+    "Privalia": {
+      "code": "afs",
+      "app_id": 1020
+    },
+    "Neocrypto": {
+      "code": "aft",
+      "app_id": 1021
+    },
+    "Всеинструменты": {
+      "code": "afu",
+      "app_id": 1022
+    },
+    "Playckc": {
+      "code": "afv",
+      "app_id": 1023
+    },
+    "Packeta": {
+      "code": "afw",
+      "app_id": 1024
+    },
+    "Gamesofa": {
+      "code": "afx",
+      "app_id": 1025
+    },
+    "Tuul": {
+      "code": "afy",
+      "app_id": 1026
+    },
+    "Klarna": {
+      "code": "afz",
+      "app_id": 1027
+    },
+    "Smiles": {
+      "code": "agb",
+      "app_id": 1028
+    },
+    "Vimpay": {
+      "code": "agc",
+      "app_id": 1029
+    },
+    "Grailed": {
+      "code": "agd",
+      "app_id": 1030
+    },
+    "Yetz Promo": {
+      "code": "age",
+      "app_id": 1031
+    },
+    "Meitu": {
+      "code": "agf",
+      "app_id": 1032
+    },
+    "Getnet": {
+      "code": "agh",
+      "app_id": 1033
+    },
+    "Njuškalo": {
+      "code": "agi",
+      "app_id": 1034
+    },
+    "Marktplaats": {
+      "code": "agj",
+      "app_id": 1035
+    },
+    "Ipsos Isay": {
+      "code": "agk",
+      "app_id": 1036
+    },
+    "Betano": {
+      "code": "agl",
+      "app_id": 1037
+    },
+    "Cmb": {
+      "code": "agm",
+      "app_id": 1038
+    },
+    "Велобайк": {
+      "code": [
+        "aef",
+        "agn"
+      ],
+      "app_id": 1039
+    },
+    "Servify": {
+      "code": "ago",
+      "app_id": 1040
+    },
+    "Hdfcbank": {
+      "code": "agp",
+      "app_id": 1041
+    },
+    "Yonogames": {
+      "code": "agr",
+      "app_id": 1042
+    },
+    "Marlboro": {
+      "code": [
+        "agu",
+        "gr_ma"
+      ],
+      "app_id": 1043
+    },
+    "Pixels": {
+      "code": "agy",
+      "app_id": 1044
+    },
+    "Angel One": {
+      "code": "aha",
+      "app_id": 1045
+    },
+    "Bunq": {
+      "code": "ahe",
+      "app_id": 1046
+    },
+    "Gail`s Bakery": {
+      "code": "ahf",
+      "app_id": 1047
+    },
+    "Digivarsity Lurningo": {
+      "code": "ahg",
+      "app_id": 1048
+    },
+    "Cumbuca": {
+      "code": "ahh",
+      "app_id": 1049
+    },
+    "Strato": {
+      "code": "ahj",
+      "app_id": 1050
+    },
+    "Блинбери": {
+      "code": "ahk",
+      "app_id": 1051
+    },
+    "Riv Gosh": {
+      "code": "ahn",
+      "app_id": 1052
+    },
+    "Handyticket": {
+      "code": "ahp",
+      "app_id": 1053
+    },
+    "Bitget": {
+      "code": "ahq",
+      "app_id": 1054
+    },
+    "1and1": {
+      "code": "ahs",
+      "app_id": 1055
+    },
+    "Mockguru": {
+      "code": "aht",
+      "app_id": 1056
+    },
+    "Surveybell": {
+      "code": "ahv",
+      "app_id": 1057
+    },
+    "Zasilkovna": {
+      "code": "ahw",
+      "app_id": 1058
+    },
+    "Bitrue": {
+      "code": "ahx",
+      "app_id": 1059
+    },
+    "Fliff": {
+      "code": "ahy",
+      "app_id": 1060
+    },
+    "Кузбасс Онлайн": {
+      "code": "ahz",
+      "app_id": 1061
+    },
+    "Whoscall": {
+      "code": "aic",
+      "app_id": 1062
+    },
+    "Kwiff": {
+      "code": "aid",
+      "app_id": 1063
+    },
+    "Photostrana": {
+      "code": "aie",
+      "app_id": 1064
+    },
+    "Royal Canin": {
+      "code": "aif",
+      "app_id": 1065
+    },
+    "Fups": {
+      "code": "aih",
+      "app_id": 1066
+    },
+    "Hinge Dating": {
+      "code": "aii",
+      "app_id": 1067
+    },
+    "Nequi": {
+      "code": "aij",
+      "app_id": 1068
+    },
+    "Zus Coffee": {
+      "code": "aik",
+      "app_id": 1069
+    },
+    "Smotryoshka": {
+      "code": "ail",
+      "app_id": 1070
+    },
+    "Firebase": {
+      "code": "aim",
+      "app_id": 1071
+    },
+    "Spaceweb": {
+      "code": "ain",
+      "app_id": 1072
+    },
+    "Prakerja": {
+      "code": "aio",
+      "app_id": 1073
+    },
+    "Prime Opinion": {
+      "code": "aiq",
+      "app_id": 1074
+    },
+    "Schibsted": {
+      "code": "ais",
+      "app_id": 1075
+    },
+    "Getninjas": {
+      "code": "aiu",
+      "app_id": 1076
+    },
+    "Striving In The Lion City": {
+      "code": "aiv",
+      "app_id": 1077
+    },
+    "Сушивёсла": {
+      "code": "aiw",
+      "app_id": 1078
+    },
+    "Nloto": {
+      "code": "aiy",
+      "app_id": 1079
+    },
+    "G2a": {
+      "code": "aja",
+      "app_id": 1080
+    },
+    "Brevo": {
+      "code": "aiz",
+      "app_id": 1081
+    },
+    "Beri Zaryad": {
+      "code": "ajb",
+      "app_id": 1082
+    },
+    "Pochta Rossii": {
+      "code": "ajc",
+      "app_id": 1083
+    },
+    "Ipanelonline": {
+      "code": "ajf",
+      "app_id": 1084
+    },
+    "Bankera": {
+      "code": "ajd",
+      "app_id": 1085
+    },
+    "Zaymigo": {
+      "code": "ajg",
+      "app_id": 1086
+    },
+    "Cupidmedia": {
+      "code": "aje",
+      "app_id": 1087
+    },
+    "Waug": {
+      "code": "ajh",
+      "app_id": 1088
+    },
+    "Migrant Service": {
+      "code": "aji",
+      "app_id": 1089
+    },
+    "Venteny": {
+      "code": "ajk",
+      "app_id": 1090
+    },
+    "Gener8": {
+      "code": "ajm",
+      "app_id": 1091
+    },
+    "Gopuff": {
+      "code": "ajn",
+      "app_id": 1092
+    },
+    "Av100pro": {
+      "code": "ajl",
+      "app_id": 1093
+    },
+    "Coffeetea": {
+      "code": "ajo",
+      "app_id": 1094
+    },
+    "Boku": {
+      "code": "ajr",
+      "app_id": 1095
+    },
+    "Asiamiles": {
+      "code": "ajp",
+      "app_id": 1096
+    },
+    "Город": {
+      "code": "ajt",
+      "app_id": 1097
+    },
+    "Daya Auto": {
+      "code": "aju",
+      "app_id": 1098
+    },
+    "Shareparty": {
+      "code": "ajv",
+      "app_id": 1099
+    },
+    "Indoba": {
+      "code": "ajw",
+      "app_id": 1100
+    },
+    "All Access": {
+      "code": "ajy",
+      "app_id": 1101
+    },
+    "Kemnaker Ri": {
+      "code": "ajx",
+      "app_id": 1102
+    },
+    "Linkaja": {
+      "code": "aka",
+      "app_id": 1103
+    },
+    "Motionpay": {
+      "code": "ajz",
+      "app_id": 1104
+    },
+    "Gurmanika": {
+      "code": "akb",
+      "app_id": 1105
+    },
+    "Feels": {
+      "code": "akd",
+      "app_id": 1106
+    },
+    "Dikidi": {
+      "code": "ake",
+      "app_id": 1107
+    },
+    "Ollis": {
+      "code": "akf",
+      "app_id": 1108
+    },
+    "Book My Play": {
+      "code": "akg",
+      "app_id": 1109
+    },
+    "Tiketcom": {
+      "code": "aki",
+      "app_id": 1110
+    },
+    "Easycash": {
+      "code": "akj",
+      "app_id": 1111
+    },
+    "Lotte Mart": {
+      "code": "akm",
+      "app_id": 1112
+    },
+    "Doku": {
+      "code": "akl",
+      "app_id": 1113
+    },
+    "Chakra Rewards": {
+      "code": "akn",
+      "app_id": 1114
+    },
+    "Her": {
+      "code": "akp",
+      "app_id": 1115
+    },
+    "Blank Street": {
+      "code": "akq",
+      "app_id": 1116
+    },
+    "Voi": {
+      "code": "akr",
+      "app_id": 1117
+    },
+    "Xworldwallet": {
+      "code": "akt",
+      "app_id": 1118
+    },
+    "Hanya": {
+      "code": "aks",
+      "app_id": 1119
+    },
+    "Sony Liv": {
+      "code": "akx",
+      "app_id": 1120
+    },
+    "Gomofy": {
+      "code": "aky",
+      "app_id": 1121
+    },
+    "Guiche Web": {
+      "code": "alb",
+      "app_id": 1122
+    },
+    "Facily": {
+      "code": "alc",
+      "app_id": 1123
+    },
+    "Getresponse": {
+      "code": "ala",
+      "app_id": 1124
+    },
+    "Nice88": {
+      "code": "ald",
+      "app_id": 1125
+    },
+    "Lydia": {
+      "code": "ale",
+      "app_id": 1126
+    },
+    "Webull": {
+      "code": "alf",
+      "app_id": 1127
+    },
+    "Ankama": {
+      "code": "alg",
+      "app_id": 1128
+    },
+    "Stockydodo": {
+      "code": "ali",
+      "app_id": 1129
+    },
+    "Hugesoft": {
+      "code": "alk",
+      "app_id": 1130
+    },
+    "Muzz": {
+      "code": "alm",
+      "app_id": 1131
+    },
+    "Profee": {
+      "code": "alo",
+      "app_id": 1132
+    },
+    "Etsy": {
+      "code": "alq",
+      "app_id": 1133
+    },
+    "Vson": {
+      "code": "alr",
+      "app_id": 1134
+    },
+    "Greggs": {
+      "code": "als",
+      "app_id": 1135
+    },
+    "Bc Game": {
+      "code": "alu",
+      "app_id": 1136
+    },
+    "Tier": {
+      "code": "alv",
+      "app_id": 1137
+    },
+    "Vida": {
+      "code": "alw",
+      "app_id": 1138
+    },
+    "Nutriclub": {
+      "code": "alx",
+      "app_id": 1139
+    },
+    "Wooplus": {
+      "code": "ama",
+      "app_id": 1140
+    },
+    "Casinoandfriends": {
+      "code": "alz",
+      "app_id": 1141
+    },
+    "Vercel": {
+      "code": "amb",
+      "app_id": 1142
+    },
+    "Fortune Slots": {
+      "code": "amc",
+      "app_id": 1143
+    },
+    "Smart": {
+      "code": "amd",
+      "app_id": 1144
+    },
+    "Acko": {
+      "code": "amf",
+      "app_id": 1145
+    },
+    "Discover Hong Kong": {
+      "code": "ame",
+      "app_id": 1146
+    },
+    "Sbi Card": {
+      "code": "amg",
+      "app_id": 1147
+    },
+    "Mitid": {
+      "code": "amh",
+      "app_id": 1148
+    },
+    "Gordan": {
+      "code": "amk",
+      "app_id": 1149
+    },
+    "Xbox": {
+      "code": "aml",
+      "app_id": 1150
+    },
+    "Constitutioner": {
+      "code": "amn",
+      "app_id": 1151
+    },
+    "Verifykit": {
+      "code": "amp",
+      "app_id": 1152
+    },
+    "Freshoos": {
+      "code": "amq",
+      "app_id": 1153
+    },
+    "Univest": {
+      "code": "amr",
+      "app_id": 1154
+    },
+    "Moneyview": {
+      "code": "amt",
+      "app_id": 1155
+    },
+    "Glassbox": {
+      "code": "amu",
+      "app_id": 1156
+    },
+    "Meseems": {
+      "code": "amv",
+      "app_id": 1157
+    },
+    "Tise": {
+      "code": "amw",
+      "app_id": 1158
+    },
+    "Tank": {
+      "code": "amx",
+      "app_id": 1159
+    },
+    "Отзовик": {
+      "code": "amy",
+      "app_id": 1160
+    },
+    "Immoscout24": {
+      "code": "amz",
+      "app_id": 1161
+    },
+    "Sicredi": {
+      "code": "ana",
+      "app_id": 1162
+    },
+    "Varus": {
+      "code": "anc",
+      "app_id": 1163
+    },
+    "Supercell": {
+      "code": "ane",
+      "app_id": 1164
+    },
+    "Zoominfo": {
+      "code": "anf",
+      "app_id": 1165
+    },
+    "Tomoro Coffee": {
+      "code": [
+        "ang",
+        "tmro"
+      ],
+      "app_id": 1166
+    },
+    "Garena": {
+      "code": "ank",
+      "app_id": 1167
+    },
+    "Attapoll": {
+      "code": "anl",
+      "app_id": 1168
+    },
+    "Caltexgo": {
+      "code": "anm",
+      "app_id": 1169
+    },
+    "Start": {
+      "code": "ahc",
+      "app_id": 1170
+    },
+    "Shopify": {
+      "code": "ano",
+      "app_id": 1171
+    },
+    "Blackcatcard": {
+      "code": "anp",
+      "app_id": 1172
+    },
+    "Hitnspin": {
+      "code": "anq",
+      "app_id": 1173
+    },
+    "Cashew": {
+      "code": "ant",
+      "app_id": 1174
+    },
+    "Edurators": {
+      "code": "anu",
+      "app_id": 1175
+    },
+    "Shield": {
+      "code": "anv",
+      "app_id": 1176
+    },
+    "Infinitepay": {
+      "code": "anx",
+      "app_id": 1177
+    },
+    "Fastearn": {
+      "code": "any",
+      "app_id": 1178
+    },
+    "Topgun": {
+      "code": "anz",
+      "app_id": 1179
+    },
+    "Hicard": {
+      "code": "aoa",
+      "app_id": 1180
+    },
+    "Anthropic": {
+      "code": "aob",
+      "app_id": 1181
+    },
+    "Sendwave": {
+      "code": "aoe",
+      "app_id": 1182
+    },
+    "Guzman Y Gomez": {
+      "code": "aof",
+      "app_id": 1183
+    },
+    "Naukri": {
+      "code": [
+        "aog",
+        "nau"
+      ],
+      "app_id": 1184
+    },
+    "Yoomoney": {
+      "code": "aoh",
+      "app_id": 1185
+    },
+    "Cryptonow": {
+      "code": "aoi",
+      "app_id": 1186
+    },
+    "Simply": {
+      "code": "aoj",
+      "app_id": 1187
+    },
+    "Neteller": {
+      "code": "aok",
+      "app_id": 1188
+    },
+    "Paysera": {
+      "code": "aol",
+      "app_id": 1189
+    },
+    "Monzo": {
+      "code": "aom",
+      "app_id": 1190
+    },
+    "Binance": {
+      "code": "aon",
+      "app_id": 1191
+    },
+    "Pegasus Airlines": {
+      "code": "aoo",
+      "app_id": 1192
+    },
+    "Jb Hi-fi": {
+      "code": "aoq",
+      "app_id": 1193
+    },
+    "Okx": {
+      "code": "aor",
+      "app_id": 1194
+    },
+    "Loloo": {
+      "code": "aos",
+      "app_id": 1195
+    },
+    "Diversity": {
+      "code": "aot",
+      "app_id": 1196
+    },
+    "It Business Group": {
+      "code": "aou",
+      "app_id": 1197
+    },
+    "Zanimaika": {
+      "code": "aov",
+      "app_id": 1198
+    },
+    "Geekay": {
+      "code": "aow",
+      "app_id": 1199
+    },
+    "Aukro": {
+      "code": "aox",
+      "app_id": 1200
+    },
+    "Reclameaqui": {
+      "code": "aoz",
+      "app_id": 1201
+    },
+    "Exness": {
+      "code": "apa",
+      "app_id": 1202
+    },
+    "Etoro": {
+      "code": "apb",
+      "app_id": 1203
+    },
+    "Igamebuy": {
+      "code": "apc",
+      "app_id": 1204
+    },
+    "Toutiao": {
+      "code": "ape",
+      "app_id": 1205
+    },
+    "Carrefour": {
+      "code": "apf",
+      "app_id": 1206
+    },
+    "Damai": {
+      "code": "apg",
+      "app_id": 1207
+    },
+    "Openbudget": {
+      "code": [
+        "aph",
+        "ob_uz"
+      ],
+      "app_id": 1208
+    },
+    "Kktix": {
+      "code": "api",
+      "app_id": 1209
+    },
+    "Tinkoff Voicekit": {
+      "code": "apj",
+      "app_id": 1210
+    },
+    "Liberty": {
+      "code": "apk",
+      "app_id": 1211
+    },
+    "Sideline": {
+      "code": "apl",
+      "app_id": 1212
+    },
+    "Index": {
+      "code": "apm",
+      "app_id": 1213
+    },
+    "Netmarble": {
+      "code": "apo",
+      "app_id": 1214
+    },
+    "Wepoker": {
+      "code": "apq",
+      "app_id": 1215
+    },
+    "Capital One": {
+      "code": "apr",
+      "app_id": 1216
+    },
+    "Airwallex": {
+      "code": "apt",
+      "app_id": 1217
+    },
+    "Bankiros": {
+      "code": "apw",
+      "app_id": 1218
+    },
+    "Винлаб": {
+      "code": "apy",
+      "app_id": 1219
+    },
+    "Wynk": {
+      "code": "apz",
+      "app_id": 1220
+    },
+    "Satori": {
+      "code": "aqa",
+      "app_id": 1221
+    },
+    "Pinoy Peso": {
+      "code": "aqb",
+      "app_id": 1222
+    },
+    "Omne By Fwd": {
+      "code": "aqc",
+      "app_id": 1223
+    },
+    "Pesohere": {
+      "code": "aqd",
+      "app_id": 1224
+    },
+    "Peramoo": {
+      "code": "aqe",
+      "app_id": 1225
+    },
+    "Rayobyte": {
+      "code": "aqh",
+      "app_id": 1226
+    },
+    "Cairon Fashion": {
+      "code": "aqi",
+      "app_id": 1227
+    },
+    "Richkart": {
+      "code": "aqk",
+      "app_id": 1228
+    },
+    "Xigua Video 西瓜视频": {
+      "code": "aql",
+      "app_id": 1229
+    },
+    "Tala": {
+      "code": "aqm",
+      "app_id": 1230
+    },
+    "Cashmypic": {
+      "code": "aqn",
+      "app_id": 1231
+    },
+    "Xreward": {
+      "code": "aqo",
+      "app_id": 1232
+    },
+    "Golden Plus Gp": {
+      "code": "aqp",
+      "app_id": 1233
+    },
+    "Sportefir": {
+      "code": "aqr",
+      "app_id": 1234
+    },
+    "Betonred": {
+      "code": "aqs",
+      "app_id": 1235
+    },
+    "Skrill": {
+      "code": "aqt",
+      "app_id": 1236
+    },
+    "Kbx": {
+      "code": "aqu",
+      "app_id": 1237
+    },
+    "Edvantum": {
+      "code": "aqw",
+      "app_id": 1238
+    },
+    "Xl-pearl": {
+      "code": "aqx",
+      "app_id": 1239
+    },
+    "Blazetech": {
+      "code": "aqz",
+      "app_id": 1240
+    },
+    "Shareful": {
+      "code": "ara",
+      "app_id": 1241
+    },
+    "Las Vegas Casino": {
+      "code": "arb",
+      "app_id": 1242
+    },
+    "Check24": {
+      "code": "arc",
+      "app_id": 1243
+    },
+    "Maya": {
+      "code": "ard",
+      "app_id": 1244
+    },
+    "Enjoei": {
+      "code": "arf",
+      "app_id": 1245
+    },
+    "Super Ace": {
+      "code": "arh",
+      "app_id": 1246
+    },
+    "Ring4": {
+      "code": "ari",
+      "app_id": 1247
+    },
+    "E2zstore": {
+      "code": "arj",
+      "app_id": 1248
+    },
+    "Sagemaker Studio Lab": {
+      "code": "ark",
+      "app_id": 1249
+    },
+    "Mainvest": {
+      "code": "arl",
+      "app_id": 1250
+    },
+    "Cathay Pacific": {
+      "code": "arm",
+      "app_id": 1251
+    },
+    "Gfk": {
+      "code": "arn",
+      "app_id": 1252
+    },
+    "Continente": {
+      "code": "arp",
+      "app_id": 1253
+    },
+    "Adapundi": {
+      "code": "arq",
+      "app_id": 1254
+    },
+    "Линии Любви": {
+      "code": "arr",
+      "app_id": 1255
+    },
+    "Bingo Plus": {
+      "code": "ars",
+      "app_id": 1256
+    },
+    "Unni 강남언니": {
+      "code": "aru",
+      "app_id": 1257
+    },
+    "Darkside": {
+      "code": "arv",
+      "app_id": 1258
+    },
+    "Asa": {
+      "code": "arw",
+      "app_id": 1259
+    },
+    "Zinia": {
+      "code": "arx",
+      "app_id": 1260
+    },
+    "Habby": {
+      "code": "asa",
+      "app_id": 1261
+    },
+    "Hongguo 红果短剧": {
+      "code": "asd",
+      "app_id": 1262
+    },
+    "Collection Pot": {
+      "code": "ase",
+      "app_id": 1263
+    },
+    "Textfree": {
+      "code": "asf",
+      "app_id": 1264
+    },
+    "Asetku": {
+      "code": "asg",
+      "app_id": 1265
+    },
+    "Pinjam Yuk": {
+      "code": "ash",
+      "app_id": 1266
+    },
+    "Omoda": {
+      "code": "asi",
+      "app_id": 1267
+    },
+    "Svoye": {
+      "code": "ask",
+      "app_id": 1268
+    },
+    "Familhao": {
+      "code": "asl",
+      "app_id": 1269
+    },
+    "Rl Solution": {
+      "code": "aso",
+      "app_id": 1270
+    },
+    "Phonepe": {
+      "code": [
+        "asp",
+        "noh"
+      ],
+      "app_id": 1271
+    },
+    "Warpcast": {
+      "code": "asq",
+      "app_id": 1272
+    },
+    "La Voz Del Paciente": {
+      "code": "asr",
+      "app_id": 1273
+    },
+    "Cicil": {
+      "code": "ass",
+      "app_id": 1274
+    },
+    "Thxapp": {
+      "code": "ast",
+      "app_id": 1275
+    },
+    "Replit": {
+      "code": "asu",
+      "app_id": 1276
+    },
+    "Acson": {
+      "code": "asw",
+      "app_id": 1277
+    },
+    "Kimgres": {
+      "code": "asx",
+      "app_id": 1278
+    },
+    "Fonial": {
+      "code": "asz",
+      "app_id": 1279
+    },
+    "Authy": {
+      "code": "ata",
+      "app_id": 1280
+    },
+    "Movider": {
+      "code": "atb",
+      "app_id": 1281
+    },
+    "Lemo": {
+      "code": "atc",
+      "app_id": 1282
+    },
+    "Buka": {
+      "code": "atd",
+      "app_id": 1283
+    },
+    "Getaward": {
+      "code": "ate",
+      "app_id": 1284
+    },
+    "Asharfi Design": {
+      "code": "atf",
+      "app_id": 1285
+    },
+    "Mandi Bhav": {
+      "code": "atg",
+      "app_id": 1286
+    },
+    "Samarth Diamond App": {
+      "code": "ath",
+      "app_id": 1287
+    },
+    "Kullut": {
+      "code": "ati",
+      "app_id": 1288
+    },
+    "Klin": {
+      "code": "atj",
+      "app_id": 1289
+    },
+    "Arch": {
+      "code": "atk",
+      "app_id": 1290
+    },
+    "Watsons My": {
+      "code": "atl",
+      "app_id": 1291
+    },
+    "Yotta": {
+      "code": "atm",
+      "app_id": 1292
+    },
+    "Fawry": {
+      "code": "atn",
+      "app_id": 1293
+    },
+    "Podrygka": {
+      "code": "ato",
+      "app_id": 1294
+    },
+    "Vonage": {
+      "code": "atp",
+      "app_id": 1295
+    },
+    "Pqhosting": {
+      "code": "atq",
+      "app_id": 1296
+    },
+    "Ride": {
+      "code": "atr",
+      "app_id": 1297
+    },
+    "Fave": {
+      "code": "ats",
+      "app_id": 1298
+    },
+    "Bcd Travel": {
+      "code": "att",
+      "app_id": 1299
+    },
+    "Sber/cooper": {
+      "code": "atu",
+      "app_id": 1300
+    },
+    "快手 Kuaishou": {
+      "code": "atv",
+      "app_id": 1301
+    },
+    "Winee3": {
+      "code": "atx",
+      "app_id": 1302
+    },
+    "Frnd": {
+      "code": "aty",
+      "app_id": 1303
+    },
+    "同程旅行 Tongcheng Travel": {
+      "code": "aua",
+      "app_id": 1304
+    },
+    "Smitten": {
+      "code": "aub",
+      "app_id": 1305
+    },
+    "Totalpass": {
+      "code": "auc",
+      "app_id": 1306
+    },
+    "Audible": {
+      "code": "aud",
+      "app_id": 1307
+    },
+    "Ticketone": {
+      "code": "aue",
+      "app_id": 1308
+    },
+    "Premier": {
+      "code": "auf",
+      "app_id": 1309
+    },
+    "Магнит Маркет": {
+      "code": "aug",
+      "app_id": 1310
+    },
+    "Keeta 美团": {
+      "code": "auh",
+      "app_id": 1311
+    },
+    "Idolchamp": {
+      "code": "aui",
+      "app_id": 1312
+    },
+    "High 5 Casino": {
+      "code": "auj",
+      "app_id": 1313
+    },
+    "Stb Union": {
+      "code": "auk",
+      "app_id": 1314
+    },
+    "Alignable": {
+      "code": "aul",
+      "app_id": 1315
+    },
+    "Mycashbacks": {
+      "code": "auo",
+      "app_id": 1316
+    },
+    "Welive": {
+      "code": "auq",
+      "app_id": 1317
+    },
+    "The Concert": {
+      "code": "aur",
+      "app_id": 1318
+    },
+    "Palawanpay": {
+      "code": "aus",
+      "app_id": 1319
+    },
+    "Миллионъ": {
+      "code": "aut",
+      "app_id": 1320
+    },
+    "Chetire Lapi": {
+      "code": "auu",
+      "app_id": 1321
+    },
+    "Фк «спартак»": {
+      "code": "auv",
+      "app_id": 1322
+    },
+    "Lightning Ai": {
+      "code": "aux",
+      "app_id": 1323
+    },
+    "Outlier": {
+      "code": "auz",
+      "app_id": 1324
+    },
+    "E-cny": {
+      "code": "ava",
+      "app_id": 1325
+    },
+    "Tealive": {
+      "code": "avb",
+      "app_id": 1326
+    },
+    "Bunches": {
+      "code": "avc",
+      "app_id": 1327
+    },
+    "Nca888": {
+      "code": "avd",
+      "app_id": 1328
+    },
+    "Biznex": {
+      "code": "ave",
+      "app_id": 1329
+    },
+    "Onesiam": {
+      "code": "avf",
+      "app_id": 1330
+    },
+    "Hooked Protocol": {
+      "code": "avg",
+      "app_id": 1331
+    },
+    "Xm": {
+      "code": "avh",
+      "app_id": 1332
+    },
+    "Oye Turtle": {
+      "code": "avi",
+      "app_id": 1333
+    },
+    "Sumup": {
+      "code": "avj",
+      "app_id": 1334
+    },
+    "Quoka": {
+      "code": "avk",
+      "app_id": 1335
+    },
+    "Brimo Bri": {
+      "code": "avl",
+      "app_id": 1336
+    },
+    "G42": {
+      "code": "avn",
+      "app_id": 1337
+    },
+    "Instacart": {
+      "code": "avm",
+      "app_id": 1338
+    },
+    "Twikey": {
+      "code": "avo",
+      "app_id": 1339
+    },
+    "Ripio": {
+      "code": "avp",
+      "app_id": 1340
+    },
+    "Wego": {
+      "code": "avq",
+      "app_id": 1341
+    },
+    "Oj": {
+      "code": "avr",
+      "app_id": 1342
+    },
+    "Wooppay": {
+      "code": "avs",
+      "app_id": 1343
+    },
+    "Huntthemouse": {
+      "code": "avt",
+      "app_id": 1344
+    },
+    "Karos": {
+      "code": "avu",
+      "app_id": 1345
+    },
+    "Shopfareast": {
+      "code": "avv",
+      "app_id": 1346
+    },
+    "Great Rewards": {
+      "code": "avw",
+      "app_id": 1347
+    },
+    "Zazzle": {
+      "code": "avx",
+      "app_id": 1348
+    },
+    "Bv": {
+      "code": "avy",
+      "app_id": 1349
+    },
+    "Getsbet": {
+      "code": "avz",
+      "app_id": 1350
+    },
+    "Nhn Cloud": {
+      "code": "awa",
+      "app_id": 1351
+    },
+    "Flixbus": {
+      "code": "awb",
+      "app_id": 1352
+    },
+    "Nestle Baby": {
+      "code": "awc",
+      "app_id": 1353
+    },
+    "Dunhill": {
+      "code": "awd",
+      "app_id": 1354
+    },
+    "Mygift": {
+      "code": "awe",
+      "app_id": 1355
+    },
+    "Rothmans": {
+      "code": "awf",
+      "app_id": 1356
+    },
+    "Natura Avon": {
+      "code": "awg",
+      "app_id": 1357
+    },
+    "Ngcash": {
+      "code": "awh",
+      "app_id": 1358
+    },
+    "Aly": {
+      "code": "awi",
+      "app_id": 1359
+    },
+    "Hyperjar": {
+      "code": "awj",
+      "app_id": 1360
+    },
+    "Bereke Bank": {
+      "code": "awk",
+      "app_id": 1361
+    },
+    "Kitabeli": {
+      "code": "awl",
+      "app_id": 1362
+    },
+    "Grosenia": {
+      "code": "awm",
+      "app_id": 1363
+    },
+    "Dialmycalls": {
+      "code": "awn",
+      "app_id": 1364
+    },
+    "Greatday Sunfish": {
+      "code": "awo",
+      "app_id": 1365
+    },
+    "Clapper": {
+      "code": "awp",
+      "app_id": 1366
+    },
+    "Kcex": {
+      "code": "awr",
+      "app_id": 1367
+    },
+    "7-eleven": {
+      "code": "aws",
+      "app_id": 1368
+    },
+    "Blockdag": {
+      "code": "awt",
+      "app_id": 1369
+    },
+    "Mosgram": {
+      "code": "awu",
+      "app_id": 1370
+    },
+    "Wallapop": {
+      "code": "awv",
+      "app_id": 1371
+    },
+    "Pecunpay": {
+      "code": "aww",
+      "app_id": 1372
+    },
+    "Busyfly": {
+      "code": [
+        "adx",
+        "awx"
+      ],
+      "app_id": 1373
+    },
+    "Kia": {
+      "code": [
+        "aid",
+        "awy"
+      ],
+      "app_id": 1374
+    },
+    "Playtime": {
+      "code": "awz",
+      "app_id": 1375
+    },
+    "Social Nature": {
+      "code": "axa",
+      "app_id": 1376
+    },
+    "Trueid": {
+      "code": "axb",
+      "app_id": 1377
+    },
+    "One World Connect": {
+      "code": "axc",
+      "app_id": 1378
+    },
+    "Stk": {
+      "code": "axd",
+      "app_id": 1379
+    },
+    "Mocamoca": {
+      "code": "axe",
+      "app_id": 1380
+    },
+    "Hinance": {
+      "code": "axf",
+      "app_id": 1381
+    },
+    "Twin": {
+      "code": "axg",
+      "app_id": 1382
+    },
+    "Taovip": {
+      "code": "axh",
+      "app_id": 1383
+    },
+    "Productlab": {
+      "code": "axi",
+      "app_id": 1384
+    },
+    "Fifgroup Mobile Customer": {
+      "code": "axj",
+      "app_id": 1385
+    },
+    "Bandinginaja": {
+      "code": "axk",
+      "app_id": 1386
+    },
+    "Viralmu": {
+      "code": "axl",
+      "app_id": 1387
+    },
+    "Não Me Perturbe": {
+      "code": "axm",
+      "app_id": 1388
+    },
+    "Fastmoss": {
+      "code": "axn",
+      "app_id": 1389
+    },
+    "Fanatics Live": {
+      "code": "axo",
+      "app_id": 1390
+    },
+    "Chargepoint": {
+      "code": "axp",
+      "app_id": 1391
+    },
+    "Match.com": {
+      "code": "axr",
+      "app_id": 1392
+    },
+    "Ais Play": {
+      "code": "axs",
+      "app_id": 1393
+    },
+    "Gnjoy": {
+      "code": "axt",
+      "app_id": 1394
+    },
+    "Sipay": {
+      "code": "axu",
+      "app_id": 1395
+    },
+    "Aia 友邦保險": {
+      "code": "axv",
+      "app_id": 1396
+    },
+    "Allē": {
+      "code": "axw",
+      "app_id": 1397
+    },
+    "Alcon": {
+      "code": "axy",
+      "app_id": 1398
+    },
+    "Warpin": {
+      "code": "axz",
+      "app_id": 1399
+    },
+    "Gopay": {
+      "code": "aya",
+      "app_id": 1400
+    },
+    "Asiandating": {
+      "code": "ayb",
+      "app_id": 1401
+    },
+    "Hungerstation": {
+      "code": "ayc",
+      "app_id": 1402
+    },
+    "Nocnoc": {
+      "code": "ayd",
+      "app_id": 1403
+    },
+    "Smartsari": {
+      "code": "aye",
+      "app_id": 1404
+    },
+    "Itv": {
+      "code": "ayf",
+      "app_id": 1405
+    },
+    "Leroy Merlin": {
+      "code": [
+        "ayg",
+        "lrmn"
+      ],
+      "app_id": 1406
+    },
+    "Gb Wallet": {
+      "code": "ayh",
+      "app_id": 1407
+    },
+    "Klook": {
+      "code": "ayi",
+      "app_id": 1408
+    },
+    "Realme": {
+      "code": "ayj",
+      "app_id": 1409
+    },
+    "Wpk": {
+      "code": "ayl",
+      "app_id": 1410
+    },
+    "Langit Musik": {
+      "code": "aym",
+      "app_id": 1411
+    },
+    "Lime": {
+      "code": "ayn",
+      "app_id": 1412
+    },
+    "360kredi": {
+      "code": "ayo",
+      "app_id": 1413
+    },
+    "Vybe By Bpi": {
+      "code": "ayp",
+      "app_id": 1414
+    },
+    "Победа 63": {
+      "code": "ayq",
+      "app_id": 1415
+    },
+    "Superbet": {
+      "code": "ayr",
+      "app_id": 1416
+    },
+    "Icw Connect": {
+      "code": "ays",
+      "app_id": 1417
+    },
+    "Roqqu": {
+      "code": "ayt",
+      "app_id": 1418
+    },
+    "Mytvsuper": {
+      "code": "ayv",
+      "app_id": 1419
+    },
+    "E4b": {
+      "code": "ayw",
+      "app_id": 1420
+    },
+    "C24 Bank": {
+      "code": "ayx",
+      "app_id": 1421
+    },
+    "Rabbit": {
+      "code": "ayy",
+      "app_id": 1422
+    },
+    "Kimi": {
+      "code": "ayz",
+      "app_id": 1423
+    },
+    "Hypernet Of Things": {
+      "code": "aza",
+      "app_id": 1424
+    },
+    "Alphai": {
+      "code": "azb",
+      "app_id": 1425
+    },
+    "Coreasia": {
+      "code": "azc",
+      "app_id": 1426
+    },
+    "Вплюсе": {
+      "code": "azd",
+      "app_id": 1427
+    },
+    "Beehiiv": {
+      "code": "aze",
+      "app_id": 1428
+    },
+    "Welocalize": {
+      "code": "azf",
+      "app_id": 1429
+    },
+    "Loda": {
+      "code": [
+        "azg",
+        "lod"
+      ],
+      "app_id": 1430
+    },
+    "Vivid": {
+      "code": "azh",
+      "app_id": 1431
+    },
+    "Thel": {
+      "code": "azi",
+      "app_id": 1432
+    },
+    "Maripinjam": {
+      "code": "azj",
+      "app_id": 1433
+    },
+    "Kreditmart": {
+      "code": "azk",
+      "app_id": 1434
+    },
+    "Motoran": {
+      "code": "azl",
+      "app_id": 1435
+    },
+    "Ticket Plus": {
+      "code": "azm",
+      "app_id": 1436
+    },
+    "Ufc": {
+      "code": "azn",
+      "app_id": 1437
+    },
+    "Jegotrip": {
+      "code": "azo",
+      "app_id": 1438
+    },
+    "Senthil Murugan Jewellers": {
+      "code": "azp",
+      "app_id": 1439
+    },
+    "Payfix": {
+      "code": "azr",
+      "app_id": 1440
+    },
+    "Магнолия": {
+      "code": [
+        "azs",
+        "mn",
+        "up"
+      ],
+      "app_id": 1441
+    },
+    "Fidelity Investments": {
+      "code": "azt",
+      "app_id": 1442
+    },
+    "Ninjaz": {
+      "code": "azu",
+      "app_id": 1443
+    },
+    "Tangga": {
+      "code": "azv",
+      "app_id": 1444
+    },
+    "Espresso House": {
+      "code": "azw",
+      "app_id": 1445
+    },
+    "Casa Pariurilor": {
+      "code": "azy",
+      "app_id": 1446
+    },
+    "Crystalbet": {
+      "code": "azz",
+      "app_id": 1447
+    },
+    "Wirex": {
+      "code": "baa",
+      "app_id": 1448
+    },
+    "Opera Mini": {
+      "code": "bab",
+      "app_id": 1449
+    },
+    "Indiamart": {
+      "code": "bac",
+      "app_id": 1450
+    },
+    "All It": {
+      "code": "bad",
+      "app_id": 1451
+    },
+    "Topchop": {
+      "code": "bae",
+      "app_id": 1452
+    },
+    "Urbanic": {
+      "code": "baf",
+      "app_id": 1453
+    },
+    "Taurus": {
+      "code": "bag",
+      "app_id": 1454
+    },
+    "Afriex": {
+      "code": "bah",
+      "app_id": 1455
+    },
+    "Bipa": {
+      "code": "baj",
+      "app_id": 1456
+    },
+    "Livecode": {
+      "code": "bak",
+      "app_id": 1457
+    },
+    "The Haat": {
+      "code": "bam",
+      "app_id": 1458
+    },
+    "Blink By Bonuslink": {
+      "code": "ban",
+      "app_id": 1459
+    },
+    "Sugo": {
+      "code": "bao",
+      "app_id": 1460
+    },
+    "Happybet": {
+      "code": "bap",
+      "app_id": 1461
+    },
+    "Redbubble": {
+      "code": "baq",
+      "app_id": 1462
+    },
+    "Bjp": {
+      "code": "bar",
+      "app_id": 1463
+    },
+    "Stoiximan": {
+      "code": "bas",
+      "app_id": 1464
+    },
+    "Muathegame": {
+      "code": "bat",
+      "app_id": 1465
+    },
+    "Fieldstar": {
+      "code": "bau",
+      "app_id": 1466
+    },
+    "Leadgid": {
+      "code": "baw",
+      "app_id": 1467
+    },
+    "Теремок": {
+      "code": "bax",
+      "app_id": 1468
+    },
+    "Genome": {
+      "code": "bay",
+      "app_id": 1469
+    },
+    "Christian Filipina": {
+      "code": "baz",
+      "app_id": 1470
+    },
+    "Switchup": {
+      "code": "bba",
+      "app_id": 1471
+    },
+    "Dscout": {
+      "code": "bbb",
+      "app_id": 1472
+    },
+    "Sparkblend": {
+      "code": "bbc",
+      "app_id": 1473
+    },
+    "Dbs Bank": {
+      "code": "bbd",
+      "app_id": 1474
+    },
+    "Neosurf": {
+      "code": "bbf",
+      "app_id": 1475
+    },
+    "Square": {
+      "code": "bbg",
+      "app_id": 1476
+    },
+    "Qbet": {
+      "code": "bbh",
+      "app_id": 1477
+    },
+    "Aiqfome": {
+      "code": "bbi",
+      "app_id": 1478
+    },
+    "Onepay": {
+      "code": "bbj",
+      "app_id": 1479
+    },
+    "Filipinocupid": {
+      "code": "bbk",
+      "app_id": 1480
+    },
+    "Autodesk": {
+      "code": "bbl",
+      "app_id": 1481
+    },
+    "Truemoney": {
+      "code": "bbm",
+      "app_id": 1482
+    },
+    "Norstat": {
+      "code": "bbn",
+      "app_id": 1483
+    },
+    "Аскона": {
+      "code": "bbo",
+      "app_id": 1484
+    },
+    "Linebet": {
+      "code": "bbp",
+      "app_id": 1485
+    },
+    "Chime": {
+      "code": "bbq",
+      "app_id": 1486
+    },
+    "Wallethub": {
+      "code": "bbr",
+      "app_id": 1487
+    },
+    "Ecoplatform": {
+      "code": "bbs",
+      "app_id": 1488
+    },
+    "Blink": {
+      "code": "bbt",
+      "app_id": 1489
+    },
+    "Internationalcupid": {
+      "code": "bbu",
+      "app_id": 1490
+    },
+    "Биннофарм Групп": {
+      "code": "bbv",
+      "app_id": 1491
+    },
+    "Foxy": {
+      "code": "bbw",
+      "app_id": 1492
+    },
+    "Servexplus": {
+      "code": "bbx",
+      "app_id": 1493
+    },
+    "Tata 1mg": {
+      "code": "bby",
+      "app_id": 1494
+    },
+    "Shop101": {
+      "code": "bca",
+      "app_id": 1495
+    },
+    "Codapay": {
+      "code": "bcb",
+      "app_id": 1496
+    },
+    "Belanjayuk": {
+      "code": "bcd",
+      "app_id": 1497
+    },
+    "Busqo": {
+      "code": [
+        "bce",
+        "busq"
+      ],
+      "app_id": 1498
+    },
+    "Hoff": {
+      "code": [
+        "bcf",
+        "gr_hf"
+      ],
+      "app_id": 1499
+    },
+    "2гис": {
+      "code": "bcg",
+      "app_id": 1500
+    },
+    "Cyberlotus": {
+      "code": "bch",
+      "app_id": 1501
+    },
+    "Pesobox": {
+      "code": "bci",
+      "app_id": 1502
+    },
+    "Escort Advisor": {
+      "code": "bcj",
+      "app_id": 1503
+    },
+    "Onion Academy 洋葱学园": {
+      "code": "bck",
+      "app_id": 1504
+    },
+    "Yonopay": {
+      "code": "bcl",
+      "app_id": 1505
+    },
+    "Kanoe": {
+      "code": "bcm",
+      "app_id": 1506
+    },
+    "Tipsport Gamechanger": {
+      "code": "bcn",
+      "app_id": 1507
+    },
+    "Ситилинк": {
+      "code": "bco",
+      "app_id": 1508
+    },
+    "Dls": {
+      "code": "bcp",
+      "app_id": 1509
+    },
+    "Mantan": {
+      "code": "bcq",
+      "app_id": 1510
+    },
+    "Esx": {
+      "code": "bcr",
+      "app_id": 1511
+    },
+    "Ocard": {
+      "code": "bcs",
+      "app_id": 1512
+    },
+    "Neoteq": {
+      "code": "bct",
+      "app_id": 1513
+    },
+    "Bt One": {
+      "code": "bcu",
+      "app_id": 1514
+    },
+    "Britannia": {
+      "code": "bcv",
+      "app_id": 1515
+    },
+    "Online Check Writer": {
+      "code": "bcw",
+      "app_id": 1516
+    },
+    "Bantusaku": {
+      "code": "bcx",
+      "app_id": 1517
+    },
+    "Finplus": {
+      "code": "bcy",
+      "app_id": 1518
+    },
+    "Uatas": {
+      "code": "bcz",
+      "app_id": 1519
+    },
+    "The Simple Peso": {
+      "code": "bda",
+      "app_id": 1520
+    },
+    "Оби": {
+      "code": "bdb",
+      "app_id": 1521
+    },
+    "Veo": {
+      "code": "bdc",
+      "app_id": 1522
+    },
+    "Betmen": {
+      "code": "bdd",
+      "app_id": 1523
+    },
+    "Шаверно": {
+      "code": "bde",
+      "app_id": 1524
+    },
+    "Xegr": {
+      "code": "bdf",
+      "app_id": 1525
+    },
+    "Hud": {
+      "code": "bdg",
+      "app_id": 1526
+    },
+    "Singledk": {
+      "code": "bdh",
+      "app_id": 1527
+    },
+    "Копилка": {
+      "code": "bdi",
+      "app_id": 1528
+    },
+    "Findo": {
+      "code": "bdj",
+      "app_id": 1529
+    },
+    "Veera": {
+      "code": "bdk",
+      "app_id": 1530
+    },
+    "Frankly": {
+      "code": "bdl",
+      "app_id": 1531
+    },
+    "Octobank": {
+      "code": "bdm",
+      "app_id": 1532
+    },
+    "Teman Prima": {
+      "code": "bdn",
+      "app_id": 1533
+    },
+    "Adamodal": {
+      "code": "bdo",
+      "app_id": 1534
+    },
+    "Kredito": {
+      "code": "bdp",
+      "app_id": 1535
+    },
+    "Paydy": {
+      "code": "bdq",
+      "app_id": 1536
+    },
+    "Yara Farmcare": {
+      "code": "bdr",
+      "app_id": 1537
+    },
+    "رسال Resal": {
+      "code": "bds",
+      "app_id": 1538
+    },
+    "Hot51": {
+      "code": "bdt",
+      "app_id": 1539
+    },
+    "星城online": {
+      "code": "bdu",
+      "app_id": 1540
+    },
+    "Mudah": {
+      "code": "bdv",
+      "app_id": 1541
+    },
+    "Valora": {
+      "code": "bdw",
+      "app_id": 1542
+    },
+    "Binmo": {
+      "code": "bea",
+      "app_id": 1543
+    },
+    "Rotiboy": {
+      "code": "beb",
+      "app_id": 1544
+    },
+    "Migo": {
+      "code": "bec",
+      "app_id": 1545
+    },
+    "Netbet": {
+      "code": "bed",
+      "app_id": 1546
+    },
+    "Sko": {
+      "code": "bee",
+      "app_id": 1547
+    },
+    "Parker Cards": {
+      "code": "bef",
+      "app_id": 1548
+    },
+    "Global Cash": {
+      "code": "beg",
+      "app_id": 1549
+    },
+    "Luup": {
+      "code": "beh",
+      "app_id": 1550
+    },
+    "Measat": {
+      "code": "bei",
+      "app_id": 1551
+    },
+    "Keretaku": {
+      "code": "bej",
+      "app_id": 1552
+    },
+    "Chubb": {
+      "code": "bek",
+      "app_id": 1553
+    },
+    "Shinein": {
+      "code": "bel",
+      "app_id": 1554
+    },
+    "Shafa": {
+      "code": "bem",
+      "app_id": 1555
+    },
+    "Mpower": {
+      "code": "ben",
+      "app_id": 1556
+    },
+    "Bigpay": {
+      "code": "beo",
+      "app_id": 1557
+    },
+    "Турбо": {
+      "code": "bep",
+      "app_id": 1558
+    },
+    "Литрес": {
+      "code": "beq",
+      "app_id": 1559
+    },
+    "Gumtree": {
+      "code": "ber",
+      "app_id": 1560
+    },
+    "Rusnovo": {
+      "code": "bes",
+      "app_id": 1561
+    },
+    "Fibank": {
+      "code": "bet",
+      "app_id": 1562
+    },
+    "Brax": {
+      "code": "beu",
+      "app_id": 1563
+    },
+    "Itn": {
+      "code": "bev",
+      "app_id": 1564
+    },
+    "Mariyas Naturals": {
+      "code": "bew",
+      "app_id": 1565
+    },
+    "Whatnot": {
+      "code": "bex",
+      "app_id": 1566
+    },
+    "La3eb": {
+      "code": "bey",
+      "app_id": 1567
+    },
+    "Boom Market": {
+      "code": "bez",
+      "app_id": 1568
+    },
+    "Webmotors": {
+      "code": "bfa",
+      "app_id": 1569
+    },
+    "Mudrex": {
+      "code": "bfb",
+      "app_id": 1570
+    },
+    "Tomei": {
+      "code": "bfc",
+      "app_id": 1571
+    },
+    "Kalodata": {
+      "code": "bfd",
+      "app_id": 1572
+    },
+    "Muchbetter": {
+      "code": "bfe",
+      "app_id": 1573
+    },
+    "Kawan Food": {
+      "code": "bff",
+      "app_id": 1574
+    },
+    "Finom": {
+      "code": "bfh",
+      "app_id": 1575
+    },
+    "Wcode": {
+      "code": "bfi",
+      "app_id": 1576
+    },
+    "Good Morning Global": {
+      "code": "bfj",
+      "app_id": 1577
+    },
+    "Pharmaniaga": {
+      "code": "bfk",
+      "app_id": 1578
+    },
+    "Beebop Circus": {
+      "code": "bfl",
+      "app_id": 1579
+    },
+    "Simplysiti": {
+      "code": "bfm",
+      "app_id": 1580
+    },
+    "Tualang Honey": {
+      "code": "bfn",
+      "app_id": 1581
+    },
+    "Msport": {
+      "code": "bfo",
+      "app_id": 1582
+    },
+    "Grapedata": {
+      "code": "bfp",
+      "app_id": 1583
+    },
+    "Mypat": {
+      "code": "bfq",
+      "app_id": 1584
+    },
+    "Rus-zaimru": {
+      "code": "bft",
+      "app_id": 1585
+    },
+    "Boostra": {
+      "code": "bfu",
+      "app_id": 1586
+    },
+    "Chocofamily": {
+      "code": "bfv",
+      "app_id": 1587
+    },
+    "Finya": {
+      "code": "bfw",
+      "app_id": 1588
+    },
+    "Anthe Aakash": {
+      "code": "bfx",
+      "app_id": 1589
+    },
+    "The Dots": {
+      "code": "bfy",
+      "app_id": 1590
+    },
+    "Snapmint": {
+      "code": "bfz",
+      "app_id": 1591
+    },
+    "Lptracker": {
+      "code": "bga",
+      "app_id": 1592
+    },
+    "Ajio": {
+      "code": "bgc",
+      "app_id": 1593
+    },
+    "Gs World": {
+      "code": "bgd",
+      "app_id": 1594
+    },
+    "T2p": {
+      "code": "bge",
+      "app_id": 1595
+    },
+    "Link": {
+      "code": "bgg",
+      "app_id": 1596
+    },
+    "Sayhi Chat": {
+      "code": "bgh",
+      "app_id": 1597
+    },
+    "Superlive": {
+      "code": "bgi",
+      "app_id": 1598
+    },
+    "Moonpay": {
+      "code": "bgj",
+      "app_id": 1599
+    },
+    "Delorean Labs": {
+      "code": "bgl",
+      "app_id": 1600
+    },
+    "Blockpicks": {
+      "code": "bgm",
+      "app_id": 1601
+    },
+    "Veeka": {
+      "code": "bgn",
+      "app_id": 1602
+    },
+    "Mtrading": {
+      "code": "bgo",
+      "app_id": 1603
+    },
+    "Accuindex": {
+      "code": "bgp",
+      "app_id": 1604
+    },
+    "Zalabin": {
+      "code": "bgq",
+      "app_id": 1605
+    },
+    "Superbank": {
+      "code": "bgr",
+      "app_id": 1606
+    },
+    "Pintu": {
+      "code": "bgs",
+      "app_id": 1607
+    },
+    "Efflink": {
+      "code": "bgu",
+      "app_id": 1608
+    },
+    "Clearpay": {
+      "code": "bgv",
+      "app_id": 1609
+    },
+    "Freedom24": {
+      "code": "bgw",
+      "app_id": 1610
+    },
+    "Paxel": {
+      "code": "bgx",
+      "app_id": 1611
+    },
+    "Astro": {
+      "code": "bgy",
+      "app_id": 1612
+    },
+    "Deloitte": {
+      "code": "bgz",
+      "app_id": 1613
+    },
+    "Wuling": {
+      "code": "bhb",
+      "app_id": 1614
+    },
+    "Creaplay": {
+      "code": "bhc",
+      "app_id": 1615
+    },
+    "Ipiu": {
+      "code": "bhd",
+      "app_id": 1616
+    },
+    "Jago": {
+      "code": "bhe",
+      "app_id": 1617
+    },
+    "Inpost": {
+      "code": "bhf",
+      "app_id": 1618
+    },
+    "Telz": {
+      "code": "bhg",
+      "app_id": 1619
+    },
+    "Chase": {
+      "code": "bhi",
+      "app_id": 1620
+    },
+    "Jòfogàs": {
+      "code": "bhj",
+      "app_id": 1621
+    },
+    "Qumpara": {
+      "code": "bhk",
+      "app_id": 1622
+    },
+    "Ati Su": {
+      "code": "bhl",
+      "app_id": 1623
+    },
+    "Betl": {
+      "code": "bhm",
+      "app_id": 1624
+    },
+    "Topcashback": {
+      "code": "bhn",
+      "app_id": 1625
+    },
+    "Знание": {
+      "code": "bho",
+      "app_id": 1626
+    },
+    "Ppc": {
+      "code": "bhp",
+      "app_id": 1627
+    },
+    "Solitaire Cash": {
+      "code": "bhq",
+      "app_id": 1628
+    },
+    "Dil Mil": {
+      "code": "bhr",
+      "app_id": 1629
+    },
+    "Bingo Cash": {
+      "code": "bhs",
+      "app_id": 1630
+    },
+    "Luno": {
+      "code": "bht",
+      "app_id": 1631
+    },
+    "Tmtw": {
+      "code": "bhu",
+      "app_id": 1632
+    },
+    "Savbra": {
+      "code": "bhv",
+      "app_id": 1633
+    },
+    "Столички": {
+      "code": "bhw",
+      "app_id": 1634
+    },
+    "Пава Пава": {
+      "code": "bhx",
+      "app_id": 1635
+    },
+    "Highlevel": {
+      "code": "bhy",
+      "app_id": 1636
+    },
+    "Eurobet": {
+      "code": "bhz",
+      "app_id": 1637
+    },
+    "Coyo": {
+      "code": "bia",
+      "app_id": 1638
+    },
+    "Mybca": {
+      "code": "bib",
+      "app_id": 1639
+    },
+    "Marktde": {
+      "code": "bic",
+      "app_id": 1640
+    },
+    "Hablax": {
+      "code": "bid",
+      "app_id": 1641
+    },
+    "Shinjiru": {
+      "code": "bie",
+      "app_id": 1642
+    },
+    "Opap": {
+      "code": "bif",
+      "app_id": 1643
+    },
+    "Копійочка": {
+      "code": "big",
+      "app_id": 1644
+    },
+    "Indosaku": {
+      "code": "bih",
+      "app_id": 1645
+    },
+    "Mexc": {
+      "code": "bii",
+      "app_id": 1646
+    },
+    "Prodege": {
+      "code": "bij",
+      "app_id": 1647
+    },
+    "Hanwha Life": {
+      "code": "bik",
+      "app_id": 1648
+    },
+    "Safew": {
+      "code": "bil",
+      "app_id": 1649
+    },
+    "Синема Парк": {
+      "code": "bim",
+      "app_id": 1650
+    },
+    "Baggins Coffee": {
+      "code": "bin",
+      "app_id": 1651
+    },
+    "Peryagame": {
+      "code": "bio",
+      "app_id": 1652
+    },
+    "Горздрав": {
+      "code": "bip",
+      "app_id": 1653
+    },
+    "Xpress Super App": {
+      "code": "biq",
+      "app_id": 1654
+    },
+    "Floatme": {
+      "code": "bir",
+      "app_id": 1655
+    },
+    "Mpaisa": {
+      "code": "bis",
+      "app_id": 1656
+    },
+    "Домклик": {
+      "code": "bit",
+      "app_id": 1657
+    },
+    "Siesta": {
+      "code": "biu",
+      "app_id": 1658
+    },
+    "Sonline": {
+      "code": "biv",
+      "app_id": 1659
+    },
+    "Kome": {
+      "code": "biw",
+      "app_id": 1660
+    },
+    "Hotel101": {
+      "code": "bix",
+      "app_id": 1661
+    },
+    "Tada": {
+      "code": "biy",
+      "app_id": 1662
+    },
+    "Quackquack Dating App": {
+      "code": "bja",
+      "app_id": 1663
+    },
+    "Paysprint": {
+      "code": "bjb",
+      "app_id": 1664
+    },
+    "Iconcept": {
+      "code": "bjd",
+      "app_id": 1665
+    },
+    "Meest": {
+      "code": "bje",
+      "app_id": 1666
+    },
+    "Dubizzle": {
+      "code": "bjf",
+      "app_id": 1667
+    },
+    "Globalnet": {
+      "code": "bjg",
+      "app_id": 1668
+    },
+    "Ngn": {
+      "code": "bjh",
+      "app_id": 1669
+    },
+    "Perfect World 完美世界": {
+      "code": "bji",
+      "app_id": 1670
+    },
+    "Osem": {
+      "code": "bjj",
+      "app_id": 1671
+    },
+    "Electropay": {
+      "code": "bjk",
+      "app_id": 1672
+    },
+    "Digio": {
+      "code": "bjl",
+      "app_id": 1673
+    },
+    "Cheddar": {
+      "code": "bjm",
+      "app_id": 1674
+    },
+    "Saltycustoms": {
+      "code": "bjn",
+      "app_id": 1675
+    },
+    "Smooshie Juice": {
+      "code": "bjo",
+      "app_id": 1676
+    },
+    "Ria": {
+      "code": "bjp",
+      "app_id": 1677
+    },
+    "Surveyon": {
+      "code": "bjq",
+      "app_id": 1678
+    },
+    "Pony": {
+      "code": "bjr",
+      "app_id": 1679
+    },
+    "Автор24": {
+      "code": "bjs",
+      "app_id": 1680
+    },
+    "Ocbc": {
+      "code": "bjt",
+      "app_id": 1681
+    },
+    "Odix Pay": {
+      "code": "bju",
+      "app_id": 1682
+    },
+    "Lotoclub": {
+      "code": "bjv",
+      "app_id": 1683
+    },
+    "Paripesa": {
+      "code": "bjw",
+      "app_id": 1684
+    },
+    "Shaadi": {
+      "code": "bjy",
+      "app_id": 1685
+    },
+    "Pipwave": {
+      "code": "bka",
+      "app_id": 1686
+    },
+    "Cmk Club": {
+      "code": "bkb",
+      "app_id": 1687
+    },
+    "Cointr": {
+      "code": "bkc",
+      "app_id": 1688
+    },
+    "Sahibinden": {
+      "code": [
+        "bkd",
+        "gr_sh"
+      ],
+      "app_id": 1689
+    },
+    "Footdistrict": {
+      "code": "bke",
+      "app_id": 1690
+    },
+    "Myxl": {
+      "code": "bkf",
+      "app_id": 1691
+    },
+    "Vprok": {
+      "code": "bkg",
+      "app_id": 1692
+    },
+    "Т-мобайл": {
+      "code": "bkh",
+      "app_id": 1693
+    },
+    "Myacuvue": {
+      "code": "bki",
+      "app_id": 1694
+    },
+    "Давай Делить": {
+      "code": "bkj",
+      "app_id": 1695
+    },
+    "Uancomm": {
+      "code": "bkl",
+      "app_id": 1696
+    },
+    "Moneyhelp": {
+      "code": "bkm",
+      "app_id": 1697
+    },
+    "Betlive": {
+      "code": "bkn",
+      "app_id": 1698
+    },
+    "Vision Plus": {
+      "code": "bko",
+      "app_id": 1699
+    },
+    "Makemytrip": {
+      "code": "bkp",
+      "app_id": 1700
+    },
+    "Ft Cabs": {
+      "code": "bkq",
+      "app_id": 1701
+    },
+    "Storm Edugo": {
+      "code": "bkr",
+      "app_id": 1702
+    },
+    "Heetch": {
+      "code": "bks",
+      "app_id": 1703
+    },
+    "Ingramspark": {
+      "code": "bkt",
+      "app_id": 1704
+    },
+    "Nl International": {
+      "code": "bku",
+      "app_id": 1705
+    },
+    "Zen": {
+      "code": "bkv",
+      "app_id": 1706
+    },
+    "Bilkraft": {
+      "code": "bkw",
+      "app_id": 1707
+    },
+    "Mi Gente": {
+      "code": "bkx",
+      "app_id": 1708
+    },
+    "Tesco": {
+      "code": "bky",
+      "app_id": 1709
+    },
+    "Rewardy": {
+      "code": "bkz",
+      "app_id": 1710
+    },
+    "Fdj Parionssport": {
+      "code": "bla",
+      "app_id": 1711
+    },
+    "Foundit": {
+      "code": "blb",
+      "app_id": 1712
+    },
+    "Дикси": {
+      "code": "blc",
+      "app_id": 1713
+    },
+    "Сибирское Здоровье": {
+      "code": "bld",
+      "app_id": 1714
+    },
+    "Nexon": {
+      "code": "ble",
+      "app_id": 1715
+    },
+    "Malabar": {
+      "code": "blf",
+      "app_id": 1716
+    },
+    "Kopi Susu": {
+      "code": "blg",
+      "app_id": 1717
+    },
+    "Winner": {
+      "code": "blh",
+      "app_id": 1718
+    },
+    "Scalapay": {
+      "code": "bli",
+      "app_id": 1719
+    },
+    "Brace": {
+      "code": "blj",
+      "app_id": 1720
+    },
+    "Hdi": {
+      "code": "blk",
+      "app_id": 1721
+    },
+    "Black Gsm": {
+      "code": "bll",
+      "app_id": 1722
+    },
+    "Epic Games": {
+      "code": "blm",
+      "app_id": 1723
+    },
+    "Pawshake": {
+      "code": "bln",
+      "app_id": 1724
+    },
+    "Siliconflow 硅基流动": {
+      "code": "blo",
+      "app_id": 1725
+    },
+    "Meeff": {
+      "code": "blp",
+      "app_id": 1726
+    },
+    "Docusign": {
+      "code": "blr",
+      "app_id": 1727
+    },
+    "Wetv": {
+      "code": "bls",
+      "app_id": 1728
+    },
+    "Indopaket": {
+      "code": "blt",
+      "app_id": 1729
+    },
+    "Surveyrewardz": {
+      "code": "blu",
+      "app_id": 1730
+    },
+    "Pepsi": {
+      "code": "blv",
+      "app_id": 1731
+    },
+    "Bp": {
+      "code": "blw",
+      "app_id": 1732
+    },
+    "2ememain": {
+      "code": "blx",
+      "app_id": 1733
+    },
+    "Cosmote": {
+      "code": "bly",
+      "app_id": 1734
+    },
+    "Minipay": {
+      "code": "blz",
+      "app_id": 1735
+    },
+    "Acerta E Recicla": {
+      "code": "bma",
+      "app_id": 1736
+    },
+    "Газпром Id": {
+      "code": "bmb",
+      "app_id": 1737
+    },
+    "Хорошие Новости": {
+      "code": "bmc",
+      "app_id": 1738
+    },
+    "Voov Meeting": {
+      "code": "bmd",
+      "app_id": 1739
+    },
+    "Myim3": {
+      "code": "bme",
+      "app_id": 1740
+    },
+    "K-ritel": {
+      "code": "bmf",
+      "app_id": 1741
+    },
+    "Emoney": {
+      "code": "bmg",
+      "app_id": 1742
+    },
+    "Welink": {
+      "code": "bmh",
+      "app_id": 1743
+    },
+    "Sisal": {
+      "code": "bmi",
+      "app_id": 1744
+    },
+    "Betflag": {
+      "code": "bmj",
+      "app_id": 1745
+    },
+    "Автополе": {
+      "code": "bmk",
+      "app_id": 1746
+    },
+    "Wavy": {
+      "code": "bml",
+      "app_id": 1747
+    },
+    "Hey Cash": {
+      "code": "bmm",
+      "app_id": 1748
+    },
+    "Motina": {
+      "code": "bmn",
+      "app_id": 1749
+    },
+    "Kviku": {
+      "code": "bmo",
+      "app_id": 1750
+    },
+    "Ourbit": {
+      "code": "bmp",
+      "app_id": 1751
+    },
+    "Royale": {
+      "code": "bmq",
+      "app_id": 1752
+    },
+    "Ncism": {
+      "code": "bmr",
+      "app_id": 1753
+    },
+    "Playpark": {
+      "code": "bms",
+      "app_id": 1754
+    },
+    "Worldgas": {
+      "code": "bmt",
+      "app_id": 1755
+    },
+    "Newsoft": {
+      "code": "bmu",
+      "app_id": 1756
+    },
+    "Emma Axa Mandiri": {
+      "code": "bmv",
+      "app_id": 1757
+    },
+    "Jchicken": {
+      "code": "bmw",
+      "app_id": 1758
+    },
+    "Canal Rcn": {
+      "code": "bmx",
+      "app_id": 1759
+    },
+    "Холодильникру": {
+      "code": "bmy",
+      "app_id": 1760
+    },
+    "Rumble": {
+      "code": [
+        "bmz",
+        "gr_ru"
+      ],
+      "app_id": 1761
+    },
+    "Practo": {
+      "code": "bna",
+      "app_id": 1762
+    },
+    "Infomaniak": {
+      "code": "bnc",
+      "app_id": 1763
+    },
+    "Куулклевер": {
+      "code": "bnd",
+      "app_id": 1764
+    },
+    "Hm": {
+      "code": "bne",
+      "app_id": 1765
+    },
+    "Conticazino": {
+      "code": "bnf",
+      "app_id": 1766
+    },
+    "Jush": {
+      "code": "bng",
+      "app_id": 1767
+    },
+    "Philip Morris": {
+      "code": "bnh",
+      "app_id": 1768
+    },
+    "Pets4homes": {
+      "code": "bni",
+      "app_id": 1769
+    },
+    "Notarielle": {
+      "code": "bnj",
+      "app_id": 1770
+    },
+    "Caai": {
+      "code": "bnk",
+      "app_id": 1771
+    },
+    "Reddit": {
+      "code": "bnl",
+      "app_id": 1772
+    },
+    "Tangome": {
+      "code": "bnm",
+      "app_id": 1773
+    },
+    "Koho": {
+      "code": "bnn",
+      "app_id": 1774
+    },
+    "Welo Data": {
+      "code": "bno",
+      "app_id": 1775
+    },
+    "Airba Fresh": {
+      "code": "bnp",
+      "app_id": 1776
+    },
+    "Fortuna": {
+      "code": "bnq",
+      "app_id": 1777
+    },
+    "Семейная Команда": {
+      "code": "bnr",
+      "app_id": 1778
+    },
+    "Pac Cash": {
+      "code": "bns",
+      "app_id": 1779
+    },
+    "Treasury": {
+      "code": "bnt",
+      "app_id": 1780
+    },
+    "In1": {
+      "code": "bnv",
+      "app_id": 1781
+    },
+    "Medium": {
+      "code": "bnw",
+      "app_id": 1782
+    },
+    "Allianz": {
+      "code": "bnx",
+      "app_id": 1783
+    },
+    "Seven Bet": {
+      "code": "bnz",
+      "app_id": 1784
+    },
+    "Excellent": {
+      "code": "boa",
+      "app_id": 1785
+    },
+    "51exch": {
+      "code": [
+        "boc",
+        "exch"
+      ],
+      "app_id": 1786
+    },
+    "Genspark": {
+      "code": "bod",
+      "app_id": 1787
+    },
+    "Hp Gas Vitran": {
+      "code": "boe",
+      "app_id": 1788
+    },
+    "Davaka": {
+      "code": "bof",
+      "app_id": 1789
+    },
+    "France Mobilities": {
+      "code": "bog",
+      "app_id": 1790
+    },
+    "Yophone": {
+      "code": "boh",
+      "app_id": 1791
+    },
+    "Niko": {
+      "code": "boj",
+      "app_id": 1792
+    },
+    "Riobet": {
+      "code": "bok",
+      "app_id": 1793
+    },
+    "My Telus": {
+      "code": "bol",
+      "app_id": 1794
+    },
+    "Solcredito": {
+      "code": "bom",
+      "app_id": 1795
+    },
+    "Retailmenot": {
+      "code": "bon",
+      "app_id": 1796
+    },
+    "Везёт": {
+      "code": "bop",
+      "app_id": 1797
+    },
+    "Lider": {
+      "code": "boq",
+      "app_id": 1798
+    },
+    "Bitpanda": {
+      "code": "bor",
+      "app_id": 1799
+    },
+    "Casino Portugal": {
+      "code": "bos",
+      "app_id": 1800
+    },
+    "Egs": {
+      "code": "bot",
+      "app_id": 1801
+    },
+    "汇旺 Huione Pay": {
+      "code": "bou",
+      "app_id": 1802
+    },
+    "Naiin": {
+      "code": "bov",
+      "app_id": 1803
+    },
+    "Affirm": {
+      "code": "bow",
+      "app_id": 1804
+    },
+    "Thumbtack": {
+      "code": "box",
+      "app_id": 1805
+    },
+    "Ixigo": {
+      "code": "boy",
+      "app_id": 1806
+    },
+    "Doctu": {
+      "code": "boz",
+      "app_id": 1807
+    },
+    "Op Braga": {
+      "code": "bpa",
+      "app_id": 1808
+    },
+    "Outbox": {
+      "code": "bpb",
+      "app_id": 1809
+    },
+    "Lovoo": {
+      "code": "bpc",
+      "app_id": 1810
+    },
+    "Сільпо": {
+      "code": "bpe",
+      "app_id": 1811
+    },
+    "Fix Price": {
+      "code": [
+        "bpf",
+        "gr_fp"
+      ],
+      "app_id": 1812
+    },
+    "Напоправку": {
+      "code": "bpg",
+      "app_id": 1813
+    },
+    "Bibi": {
+      "code": "bph",
+      "app_id": 1814
+    },
+    "Askable": {
+      "code": "bpi",
+      "app_id": 1815
+    },
+    "Pmsuryaghar": {
+      "code": "bpj",
+      "app_id": 1816
+    },
+    "Huggies": {
+      "code": "bpk",
+      "app_id": 1817
+    },
+    "Flaming": {
+      "code": "bpl",
+      "app_id": 1818
+    },
+    "Porter": {
+      "code": "bpm",
+      "app_id": 1819
+    },
+    "Namirial": {
+      "code": "bpn",
+      "app_id": 1820
+    },
+    "Clerk": {
+      "code": "bpo",
+      "app_id": 1821
+    },
+    "Bliq": {
+      "code": "bpp",
+      "app_id": 1822
+    },
+    "Mchat": {
+      "code": "bpq",
+      "app_id": 1823
+    },
+    "Waha": {
+      "code": "bpr",
+      "app_id": 1824
+    },
+    "Indiluck": {
+      "code": "bps",
+      "app_id": 1825
+    },
+    "Serpapi": {
+      "code": [
+        "bpt",
+        "ser"
+      ],
+      "app_id": 1826
+    },
+    "Tcone": {
+      "code": "bpu",
+      "app_id": 1827
+    },
+    "Портал": {
+      "code": "bpv",
+      "app_id": 1828
+    },
+    "Honor": {
+      "code": "bpw",
+      "app_id": 1829
+    },
+    "Haiilo": {
+      "code": "bpx",
+      "app_id": 1830
+    },
+    "Quicko": {
+      "code": "bpy",
+      "app_id": 1831
+    },
+    "Just Eat": {
+      "code": "bpz",
+      "app_id": 1832
+    },
+    "Airasia Move": {
+      "code": "bqa",
+      "app_id": 1833
+    },
+    "Weex": {
+      "code": "bqb",
+      "app_id": 1834
+    },
+    "Wigl": {
+      "code": "bqc",
+      "app_id": 1835
+    },
+    "Easypark": {
+      "code": "bqd",
+      "app_id": 1836
+    },
+    "Nuum": {
+      "code": "bqf",
+      "app_id": 1837
+    },
+    "Informpskov": {
+      "code": "bqg",
+      "app_id": 1838
+    },
+    "Pedir Gas": {
+      "code": "bqh",
+      "app_id": 1839
+    },
+    "Datanyze": {
+      "code": "bqi",
+      "app_id": 1840
+    },
+    "Qqpk": {
+      "code": "bqj",
+      "app_id": 1841
+    },
+    "Lex": {
+      "code": "bqk",
+      "app_id": 1842
+    },
+    "Бетховен": {
+      "code": "bql",
+      "app_id": 1843
+    },
+    "Beebs": {
+      "code": "bqm",
+      "app_id": 1844
+    },
+    "Upward": {
+      "code": "bqn",
+      "app_id": 1845
+    },
+    "Caffe Nero": {
+      "code": "bqo",
+      "app_id": 1846
+    },
+    "Zara": {
+      "code": "bqp",
+      "app_id": 1847
+    },
+    "Intersport": {
+      "code": "bqq",
+      "app_id": 1848
+    },
+    "Asaas": {
+      "code": "bqr",
+      "app_id": 1849
+    },
+    "Cgv": {
+      "code": "bqs",
+      "app_id": 1850
+    },
+    "Penta": {
+      "code": "bqt",
+      "app_id": 1851
+    },
+    "Kaspro": {
+      "code": "bqu",
+      "app_id": 1852
+    },
+    "Yuzu": {
+      "code": "bqv",
+      "app_id": 1853
+    },
+    "Kpn Fresh": {
+      "code": "bqw",
+      "app_id": 1854
+    },
+    "Club Q8": {
+      "code": "bqx",
+      "app_id": 1855
+    },
+    "Snai": {
+      "code": "bqy",
+      "app_id": 1856
+    },
+    "Credit Karma": {
+      "code": "bqz",
+      "app_id": 1857
+    },
+    "Touch N Go Tng": {
+      "code": "bra",
+      "app_id": 1858
+    },
+    "Hohoro": {
+      "code": "brb",
+      "app_id": 1859
+    },
+    "Casa It": {
+      "code": "brc",
+      "app_id": 1860
+    },
+    "Budgett Ru": {
+      "code": "brd",
+      "app_id": 1861
+    },
+    "Blue Rewards": {
+      "code": "bre",
+      "app_id": 1862
+    },
+    "Dolap": {
+      "code": "brf",
+      "app_id": 1863
+    },
+    "Letgo": {
+      "code": "brg",
+      "app_id": 1864
+    },
+    "Efsane": {
+      "code": "brh",
+      "app_id": 1865
+    },
+    "Gardrops": {
+      "code": "bri",
+      "app_id": 1866
+    },
+    "Indeed": {
+      "code": "brk",
+      "app_id": 1867
+    },
+    "Paperspace": {
+      "code": "brl",
+      "app_id": 1868
+    },
+    "Locanto": {
+      "code": "brm",
+      "app_id": 1869
+    },
+    "Tune Ai": {
+      "code": "brn",
+      "app_id": 1870
+    },
+    "Yougov Shopper": {
+      "code": "bro",
+      "app_id": 1871
+    },
+    "Аптечество": {
+      "code": "brp",
+      "app_id": 1872
+    },
+    "Фармленд": {
+      "code": "brq",
+      "app_id": 1873
+    },
+    "Lemfi": {
+      "code": "brr",
+      "app_id": 1874
+    },
+    "Miodottore": {
+      "code": "brs",
+      "app_id": 1875
+    },
+    "Netwin": {
+      "code": "brt",
+      "app_id": 1876
+    },
+    "Mypos": {
+      "code": "bru",
+      "app_id": 1877
+    },
+    "999 Md": {
+      "code": "brv",
+      "app_id": 1878
+    },
+    "Sendy": {
+      "code": "brw",
+      "app_id": 1879
+    },
+    "Coinw": {
+      "code": "brx",
+      "app_id": 1880
+    },
+    "Fuelcycle": {
+      "code": "brz",
+      "app_id": 1881
+    },
+    "Will": {
+      "code": "bsa",
+      "app_id": 1882
+    },
+    "Fasset": {
+      "code": "bsb",
+      "app_id": 1883
+    },
+    "Shielded": {
+      "code": "bsc",
+      "app_id": 1884
+    },
+    "Codeium": {
+      "code": "bsd",
+      "app_id": 1885
+    },
+    "Лигамфо": {
+      "code": "bse",
+      "app_id": 1886
+    },
+    "Rupiah Cepat": {
+      "code": "bsf",
+      "app_id": 1887
+    },
+    "Sticksnsushi": {
+      "code": "bsg",
+      "app_id": 1888
+    },
+    "Yell Vote": {
+      "code": "bsh",
+      "app_id": 1889
+    },
+    "Smspilot": {
+      "code": "bsi",
+      "app_id": 1890
+    },
+    "Pagaleve": {
+      "code": "bsj",
+      "app_id": 1891
+    },
+    "Oskelly": {
+      "code": "bsl",
+      "app_id": 1892
+    },
+    "Ahlan": {
+      "code": "bsm",
+      "app_id": 1893
+    },
+    "Relicdao": {
+      "code": "bsn",
+      "app_id": 1894
+    },
+    "Paywell": {
+      "code": "bso",
+      "app_id": 1895
+    },
+    "Starterapp": {
+      "code": "bsp",
+      "app_id": 1896
+    },
+    "Knectt": {
+      "code": "bsq",
+      "app_id": 1897
+    },
+    "Janapriya": {
+      "code": "bsr",
+      "app_id": 1898
+    },
+    "Trade Republic": {
+      "code": "bss",
+      "app_id": 1899
+    },
+    "Admiralbet": {
+      "code": "bst",
+      "app_id": 1900
+    },
+    "Dingtone": {
+      "code": "bsu",
+      "app_id": 1901
+    },
+    "Amarthafin": {
+      "code": "bsv",
+      "app_id": 1902
+    },
+    "Milanuncios": {
+      "code": "bsw",
+      "app_id": 1903
+    },
+    "Kulturpass": {
+      "code": "bsx",
+      "app_id": 1904
+    },
+    "Air Miles": {
+      "code": "bsy",
+      "app_id": 1905
+    },
+    "Sling Money": {
+      "code": "bsz",
+      "app_id": 1906
+    },
+    "Tcloud": {
+      "code": "bta",
+      "app_id": 1907
+    },
+    "Sm Malls Online": {
+      "code": "btb",
+      "app_id": 1908
+    },
+    "Depinsim": {
+      "code": "btc",
+      "app_id": 1909
+    },
+    "Volcengine 火山引擎": {
+      "code": "btd",
+      "app_id": 1910
+    },
+    "Crocobet": {
+      "code": "bte",
+      "app_id": 1911
+    },
+    "Whoppah": {
+      "code": "btg",
+      "app_id": 1912
+    },
+    "Caranga": {
+      "code": "bth",
+      "app_id": 1913
+    },
+    "Sayurbox": {
+      "code": "bti",
+      "app_id": 1914
+    },
+    "Sbl-pharma": {
+      "code": "btj",
+      "app_id": 1915
+    },
+    "Mais Store": {
+      "code": "btk",
+      "app_id": 1916
+    },
+    "D4": {
+      "code": "btl",
+      "app_id": 1917
+    },
+    "Zeenow": {
+      "code": "btm",
+      "app_id": 1918
+    },
+    "Itau": {
+      "code": "btn",
+      "app_id": 1919
+    },
+    "Планета Авто": {
+      "code": "bto",
+      "app_id": 1920
+    },
+    "Связь On": {
+      "code": "btp",
+      "app_id": 1921
+    },
+    "Элплат": {
+      "code": "btq",
+      "app_id": 1922
+    },
+    "Duet": {
+      "code": "btr",
+      "app_id": 1923
+    },
+    "Trustee Plus": {
+      "code": "bts",
+      "app_id": 1924
+    },
+    "Copec": {
+      "code": "btt",
+      "app_id": 1925
+    },
+    "Ddx Fitness": {
+      "code": "btu",
+      "app_id": 1926
+    },
+    "Radiate": {
+      "code": "btv",
+      "app_id": 1927
+    },
+    "Cloudtips": {
+      "code": "btw",
+      "app_id": 1928
+    },
+    "Amap 高德地图": {
+      "code": "btx",
+      "app_id": 1929
+    },
+    "Quebueno": {
+      "code": "bty",
+      "app_id": 1930
+    },
+    "Irwin": {
+      "code": "btz",
+      "app_id": 1931
+    },
+    "Mistral Ai": {
+      "code": "bua",
+      "app_id": 1932
+    },
+    "Sparda Bank": {
+      "code": "bub",
+      "app_id": 1933
+    },
+    "Wargaming": {
+      "code": "buc",
+      "app_id": 1934
+    },
+    "Wetalk": {
+      "code": "bud",
+      "app_id": 1935
+    },
+    "映客 Inke": {
+      "code": "bue",
+      "app_id": 1936
+    },
+    "Web8": {
+      "code": "buf",
+      "app_id": 1937
+    },
+    "2go": {
+      "code": "bug",
+      "app_id": 1938
+    },
+    "Jai Foods": {
+      "code": "buh",
+      "app_id": 1939
+    },
+    "Okbet": {
+      "code": "bui",
+      "app_id": 1940
+    },
+    "Asvla": {
+      "code": "buj",
+      "app_id": 1941
+    },
+    "Nabis": {
+      "code": "buk",
+      "app_id": 1942
+    },
+    "Openbank": {
+      "code": "bul",
+      "app_id": 1943
+    },
+    "Wahana Honda": {
+      "code": "bum",
+      "app_id": 1944
+    },
+    "Fat Llama": {
+      "code": "bun",
+      "app_id": 1945
+    },
+    "Hrblock": {
+      "code": "buo",
+      "app_id": 1946
+    },
+    "Thx": {
+      "code": "bup",
+      "app_id": 1947
+    },
+    "로드나인 Lordnine": {
+      "code": "buq",
+      "app_id": 1948
+    },
+    "Tayyab": {
+      "code": "bur",
+      "app_id": 1949
+    },
+    "Okolo Market": {
+      "code": "bus",
+      "app_id": 1950
+    },
+    "Milliysmm": {
+      "code": "but",
+      "app_id": 1951
+    },
+    "Sts": {
+      "code": "buu",
+      "app_id": 1952
+    },
+    "Avosend": {
+      "code": "buv",
+      "app_id": 1953
+    },
+    "Newport": {
+      "code": "buw",
+      "app_id": 1954
+    },
+    "I1da": {
+      "code": "bux",
+      "app_id": 1955
+    },
+    "Getblogger": {
+      "code": "buy",
+      "app_id": 1956
+    },
+    "Jitume": {
+      "code": "buz",
+      "app_id": 1957
+    },
+    "Bingo101": {
+      "code": "bva",
+      "app_id": 1958
+    },
+    "Uphold": {
+      "code": "bvb",
+      "app_id": 1959
+    },
+    "Elev8": {
+      "code": "bvc",
+      "app_id": 1960
+    },
+    "Socialmatte": {
+      "code": "bvd",
+      "app_id": 1961
+    },
+    "Verdecasino": {
+      "code": "bve",
+      "app_id": 1962
+    },
+    "Gymplius": {
+      "code": "bvf",
+      "app_id": 1963
+    },
+    "Gizbo": {
+      "code": "bvg",
+      "app_id": 1964
+    },
+    "Санофи": {
+      "code": "bvj",
+      "app_id": 1965
+    },
+    "Salampay": {
+      "code": "bvk",
+      "app_id": 1966
+    },
+    "Psysu": {
+      "code": "bvl",
+      "app_id": 1967
+    },
+    "Тикетон": {
+      "code": "bvm",
+      "app_id": 1968
+    },
+    "Globo": {
+      "code": "bvn",
+      "app_id": 1969
+    },
+    "Kkp": {
+      "code": "bvo",
+      "app_id": 1970
+    },
+    "Forte": {
+      "code": "bvp",
+      "app_id": 1971
+    },
+    "Premium Bandai": {
+      "code": "bvq",
+      "app_id": 1972
+    },
+    "Sbm Urban": {
+      "code": [
+        "bvr",
+        "gr_bm"
+      ],
+      "app_id": 1973
+    },
+    "Вчасно": {
+      "code": "bvs",
+      "app_id": 1974
+    },
+    "Soco": {
+      "code": "bvt",
+      "app_id": 1975
+    },
+    "Swarail": {
+      "code": [
+        "bvu",
+        "swl",
+        "swr"
+      ],
+      "app_id": 1976
+    },
+    "Ride Amigo": {
+      "code": "bvv",
+      "app_id": 1977
+    },
+    "Rida": {
+      "code": "bvw",
+      "app_id": 1978
+    },
+    "Lagkagehuset": {
+      "code": "bvx",
+      "app_id": 1979
+    },
+    "Waje": {
+      "code": "bvy",
+      "app_id": 1980
+    },
+    "Tourcmr": {
+      "code": "bvz",
+      "app_id": 1981
+    },
+    "Hostinger": {
+      "code": "bwa",
+      "app_id": 1982
+    },
+    "Winmatch365": {
+      "code": "bwb",
+      "app_id": 1983
+    },
+    "Vision11": {
+      "code": [
+        "bwc",
+        "vsn"
+      ],
+      "app_id": 1984
+    },
+    "Fetch": {
+      "code": "bwd",
+      "app_id": 1985
+    },
+    "Immutable Play": {
+      "code": "bwe",
+      "app_id": 1986
+    },
+    "Mygo": {
+      "code": "bwf",
+      "app_id": 1987
+    },
+    "Бристоль": {
+      "code": "bwg",
+      "app_id": 1988
+    },
+    "Eos Red 靈境殺戮": {
+      "code": "bwh",
+      "app_id": 1989
+    },
+    "Cimb": {
+      "code": "bwi",
+      "app_id": 1990
+    },
+    "Bata": {
+      "code": "bwj",
+      "app_id": 1991
+    },
+    "Sorted Wallet": {
+      "code": "bwk",
+      "app_id": 1992
+    },
+    "Guthabende": {
+      "code": "bwl",
+      "app_id": 1993
+    },
+    "Yamahamotor": {
+      "code": "bwm",
+      "app_id": 1994
+    },
+    "Viendong": {
+      "code": "bwn",
+      "app_id": 1995
+    },
+    "Kabanchikua": {
+      "code": "bwo",
+      "app_id": 1996
+    },
+    "Глобус": {
+      "code": "bwp",
+      "app_id": 1997
+    },
+    "Amazingtalker": {
+      "code": "bwq",
+      "app_id": 1998
+    },
+    "Cita": {
+      "code": "bwr",
+      "app_id": 1999
+    },
+    "Full Rent": {
+      "code": "full",
+      "app_id": 2000
+    },
+    "Leboncoin1": {
+      "code": "wq",
+      "app_id": 2001
+    },
+    "Kwork": {
+      "code": "er",
+      "app_id": 2002
+    },
+    "Phound": {
+      "code": "fp",
+      "app_id": 2003
+    },
+    "Crowdtap": {
+      "code": [
+        "gr_sx",
+        "qbs",
+        "sx"
+      ],
+      "app_id": 2004
+    },
+    "A9a": {
+      "code": "gn",
+      "app_id": 2005
+    },
+    "Marketpapa": {
+      "code": "hd",
+      "app_id": 2006
+    },
+    "Kontur": {
+      "code": "fq",
+      "app_id": 2007
+    },
+    "Bls-spain": {
+      "code": [
+        "bs",
+        "rw"
+      ],
+      "app_id": 2008
+    },
+    "Miyachat": {
+      "code": "gy",
+      "app_id": 2009
+    },
+    "Diffbot": {
+      "code": "dfb",
+      "app_id": 2010
+    },
+    "I.saku": {
+      "code": "is",
+      "app_id": 2011
+    },
+    "X5 Retail Group": {
+      "code": [
+        "bd",
+        "x5"
+      ],
+      "app_id": 2012
+    },
+    "Сберчаевые": {
+      "code": "gr_sber",
+      "app_id": 2013
+    },
+    "Gorodsreda": {
+      "code": "grsrd",
+      "app_id": 2014
+    },
+    "Sitistest": {
+      "code": "sitis",
+      "app_id": 2015
+    },
+    "Orbimed": {
+      "code": "gr_or",
+      "app_id": 2016
+    },
+    "Atlasbus.by": {
+      "code": "gr_as",
+      "app_id": 2017
+    },
+    "Agoda": {
+      "code": "gr_ag",
+      "app_id": 2018
+    },
+    "Петрович": {
+      "code": "gr_pet",
+      "app_id": 2019
+    },
+    "Emenu": {
+      "code": "enu",
+      "app_id": 2020
+    },
+    "Naimi.kz": {
+      "code": "nmkz",
+      "app_id": 2021
+    },
+    "Mycar.kz": {
+      "code": "mcr",
+      "app_id": 2022
+    },
+    "Choco Crush": {
+      "code": "chc",
+      "app_id": 2023
+    },
+    "Stickpool": {
+      "code": "scp",
+      "app_id": 2024
+    },
+    "Ludosupreme": {
+      "code": "rod",
+      "app_id": 2025
+    },
+    "Licious": {
+      "code": "cuo",
+      "app_id": 2026
+    },
+    "Rummy Most": {
+      "code": "oru",
+      "app_id": 2027
+    },
+    "Полная Аренда": {
+      "code": "all",
+      "app_id": 2028
+    },
+    "Ludo Ninja": {
+      "code": "lnj",
+      "app_id": 2029
+    },
+    "Noh": {
+      "code": "PhonePe",
+      "app_id": 2030
+    },
+    "Sankes And Ladders": {
+      "code": "sal",
+      "app_id": 2031
+    },
+    "Sharechat": {
+      "code": "raa",
+      "app_id": 2032
+    },
+    "Fit.credit": {
+      "code": "ess",
+      "app_id": 2033
+    },
+    "Namma Yatri": {
+      "code": "man",
+      "app_id": 2034
+    },
+    "Fancode": {
+      "code": "fan",
+      "app_id": 2035
+    },
+    "Sugarwallet": {
+      "code": "sgw",
+      "app_id": 2036
+    },
+    "Media Express": {
+      "code": [
+        "mde",
+        "meex"
+      ],
+      "app_id": 2037
+    },
+    "Play.pixels": {
+      "code": "pps",
+      "app_id": 2038
+    },
+    "Fastwin 2": {
+      "code": [
+        "fst2",
+        "waf"
+      ],
+      "app_id": 2039
+    },
+    "Comfirmtkt": {
+      "code": "cmmt",
+      "app_id": 2040
+    },
+    "Confirmtkt": {
+      "code": "ctkt",
+      "app_id": 2041
+    },
+    "Omnicard": {
+      "code": [
+        "ocd",
+        "qhy"
+      ],
+      "app_id": 2042
+    },
+    "Namascar": {
+      "code": "nmc",
+      "app_id": 2043
+    },
+    "Tbigwin": {
+      "code": "tbg",
+      "app_id": 2044
+    },
+    "Betinin": {
+      "code": [
+        "btnn",
+        "gr_bt"
+      ],
+      "app_id": 2045
+    },
+    "Goa Games": {
+      "code": "ggms",
+      "app_id": 2046
+    },
+    "Google Messenger": {
+      "code": "gmsg",
+      "app_id": 2047
+    },
+    "Happypancake": {
+      "code": "hpnc",
+      "app_id": 2048
+    },
+    "Hdfc Egro": {
+      "code": "hdfc",
+      "app_id": 2049
+    },
+    "Keeta": {
+      "code": "keet",
+      "app_id": 2050
+    },
+    "Ludoplus": {
+      "code": "ldps",
+      "app_id": 2051
+    },
+    "Meta.ua": {
+      "code": "mua",
+      "app_id": 2052
+    },
+    "Midia Express": {
+      "code": "Miexprs",
+      "app_id": 2053
+    },
+    "Migros": {
+      "code": "mgrs",
+      "app_id": 2054
+    },
+    "Namaskar": {
+      "code": "nmcr",
+      "app_id": 2055
+    },
+    "Narendra Modi": {
+      "code": [
+        "nmd",
+        "qcx"
+      ],
+      "app_id": 2056
+    },
+    "Nuum.ru": {
+      "code": "nuum",
+      "app_id": 2057
+    },
+    "Pcipay": {
+      "code": "pcp",
+      "app_id": 2058
+    },
+    "Poker Circle": {
+      "code": "Prcl",
+      "app_id": 2059
+    },
+    "Pyypl": {
+      "code": "ppl",
+      "app_id": 2060
+    },
+    "Rakuten": {
+      "code": "rktn",
+      "app_id": 2061
+    },
+    "Satu": {
+      "code": "satu_kz",
+      "app_id": 2062
+    },
+    "Siberian Wellness": {
+      "code": "sbw",
+      "app_id": 2063
+    },
+    "Sonol": {
+      "code": "snl",
+      "app_id": 2064
+    },
+    "Taj Rummy": {
+      "code": "tjrm",
+      "app_id": 2065
+    },
+    "Telegram2": {
+      "code": "tg2",
+      "app_id": 2066
+    },
+    "Universal Beijing Resort": {
+      "code": "ubr_gr",
+      "app_id": 2067
+    },
+    "Verasight": {
+      "code": "vrst",
+      "app_id": 2068
+    },
+    "Yellow": {
+      "code": "ylww",
+      "app_id": 2069
+    },
+    "Yuda": {
+      "code": "yudafr",
+      "app_id": 2070
+    },
+    "Сушиmake": {
+      "code": "sshimke",
+      "app_id": 2071
+    },
+    "Таксовичкоф": {
+      "code": "Tksf",
+      "app_id": 2072
+    },
+    "华人街": {
+      "code": "hrnjie",
+      "app_id": 2073
+    },
+    "Theasianparent": {
+      "code": "aprnt",
+      "app_id": 2074
+    },
+    "Toloka.ai": {
+      "code": "tlk",
+      "app_id": 2075
+    },
+    "Myhpgas": {
+      "code": "mhs",
+      "app_id": 2076
+    },
+    "Winmatch": {
+      "code": "wmh",
+      "app_id": 2077
+    },
+    "Spincrush": {
+      "code": "sch",
+      "app_id": 2078
+    },
+    "Alipayhk": {
+      "code": "hwhk",
+      "app_id": 2079
+    },
+    "Acima": {
+      "code": "cim",
+      "app_id": 2080
+    },
+    "Aspiration": {
+      "code": "aptn",
+      "app_id": 2081
+    },
+    "Blastbucks": {
+      "code": "blbk",
+      "app_id": 2082
+    },
+    "Centurylink": {
+      "code": "ctr",
+      "app_id": 2083
+    },
+    "College Pulse": {
+      "code": "cgp",
+      "app_id": 2084
+    },
+    "Dutch Bros": {
+      "code": "dtc",
+      "app_id": 2085
+    },
+    "Gaintplay": {
+      "code": "gnt",
+      "app_id": 2086
+    },
+    "Github": {
+      "code": "git",
+      "app_id": 2087
+    },
+    "Hpgas": {
+      "code": "qim",
+      "app_id": 2088
+    },
+    "Hypermart": {
+      "code": "hyp",
+      "app_id": 2089
+    },
+    "Ibotta": {
+      "code": "ibt",
+      "app_id": 2090
+    },
+    "Juno": {
+      "code": "jno",
+      "app_id": 2091
+    },
+    "Kudos": {
+      "code": "kds",
+      "app_id": 2092
+    },
+    "Mmlive": {
+      "code": "mml",
+      "app_id": 2093
+    },
+    "Pelago": {
+      "code": "plg",
+      "app_id": 2094
+    },
+    "Rapidapi": {
+      "code": "rap",
+      "app_id": 2095
+    },
+    "Resy": {
+      "code": "rsy",
+      "app_id": 2096
+    },
+    "Rummyyes": {
+      "code": "qbn",
+      "app_id": 2097
+    },
+    "Saathi": {
+      "code": "qiy",
+      "app_id": 2098
+    },
+    "Shopsy": {
+      "code": "qcb",
+      "app_id": 2099
+    },
+    "Stan": {
+      "code": "stn",
+      "app_id": 2100
+    },
+    "Streamlabs": {
+      "code": "sls",
+      "app_id": 2101
+    },
+    "Taimi": {
+      "code": "tmi",
+      "app_id": 2102
+    },
+    "Talkatone": {
+      "code": "talk",
+      "app_id": 2103
+    },
+    "Timewall": {
+      "code": "tmw",
+      "app_id": 2104
+    },
+    "Trapcall": {
+      "code": "trc",
+      "app_id": 2105
+    },
+    "Tumblr": {
+      "code": "tum",
+      "app_id": 2106
+    },
+    "Tune Studio": {
+      "code": "tnst",
+      "app_id": 2107
+    },
+    "Unstop": {
+      "code": "uns",
+      "app_id": 2108
+    },
+    "Winclash": {
+      "code": "qks",
+      "app_id": 2109
+    },
+    "Bridgemoney": {
+      "code": "gmy",
+      "app_id": 2110
+    },
+    "Courtyard": {
+      "code": "ctd",
+      "app_id": 2111
+    },
+    "Dave": {
+      "code": "dav",
+      "app_id": 2112
+    },
+    "Getholdings": {
+      "code": "ghe",
+      "app_id": 2113
+    },
+    "Rednote / Xiaohongshu": {
+      "code": "xgu",
+      "app_id": 2114
+    },
+    "Seatgeek": {
+      "code": "sgk",
+      "app_id": 2115
+    },
+    "Turbotenant": {
+      "code": "tbn",
+      "app_id": 2116
+    },
+    "Zillow": {
+      "code": "zlw",
+      "app_id": 2117
+    },
+    "Luxy": {
+      "code": "luu",
+      "app_id": 2118
+    },
+    "Starexch": {
+      "code": "sre",
+      "app_id": 2119
+    },
+    "Playkaro247": {
+      "code": "pkr",
+      "app_id": 2120
+    },
+    "Spinwinner": {
+      "code": "qkt",
+      "app_id": 2121
+    },
+    "Instamatch": {
+      "code": "nst",
+      "app_id": 2122
+    },
+    "Ludo11": {
+      "code": "qld",
+      "app_id": 2123
+    },
+    "Manus": {
+      "code": "mns",
+      "app_id": 2124
+    },
+    "Paisabazaar": {
+      "code": "pzr",
+      "app_id": 2125
+    },
+    "Huionepay": {
+      "code": "hip",
+      "app_id": 2126
+    },
+    "Skills": {
+      "code": "skls",
+      "app_id": 2127
+    },
+    "Kleinanzeigen": {
+      "code": "ebay_kl",
+      "app_id": 2128
+    },
+    "Facebook Business": {
+      "code": "fbb",
+      "app_id": 2129
+    },
+    "Aeg Presents": {
+      "code": "rsn",
+      "app_id": 2130
+    }
+  }
