@@ -14,9 +14,10 @@ RUN apt-get update \
 # Copy application code and dependencies file
 COPY . /app
 
-# Install Python dependencies
+# Upgrade pip and install Python dependencies without cache to save space
 RUN pip install --upgrade pip \
-    && pip install -r requirements.txt
+    && pip install --no-cache-dir -r requirements.txt \
+    && rm -rf /root/.cache
 
 # Wait for Redis service, then start the bot
 ENTRYPOINT ["/usr/local/bin/wait-for-it.sh", "flashsms-redis:6379", "--"]
