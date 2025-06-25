@@ -87,14 +87,8 @@ class ForwardManager:
             if bot:
                 self.bot = bot
                 self._setup_telegram_logging()
-            self.logger.info("Managers initialized")
-            try:
-                await self.start()
-            except Exception as e:
-                self.logger.exception("Forward manager error: %s", e)
-                return False
-            finally:
-                await forward_manager.client.disconnect()
+            # Initialize connection and login if needed
+            await self.start()
             return True
         except Exception as e:
             self.logger.exception("Init managers error: %s", e)
@@ -121,16 +115,19 @@ class ForwardManager:
                 reply_markup=ForceReply(selective=True)
             )
 
-        # credentials: only process if not command and same chat
         @bot.message_handler(func=lambda m: m.chat.id == self._login_chat_id and not self._expecting_code and not m.text.startswith('/'))
         async def recv_creds(message):
             text = message.text.strip()
             try:
+                # Ensure connection before sending
+                if not self.client.is_connected():
+                    await self.client.connect()
+
                 if len(text) > 40 or '/' in text:
-                    # bot token
+                    # Bot token login
                     await self.client.start(bot_token=text)
                 else:
-                    # user phone
+                    # User phone login
                     self._phone = text
                     await self.client.send_code_request(text)
                     self._expecting_code = True
@@ -145,11 +142,12 @@ class ForwardManager:
                 self.logger.exception("Login error")
                 self._reset_login_state()
 
-        # code: only if expecting code and numeric
         @bot.message_handler(func=lambda m: m.chat.id == self._login_chat_id and self._expecting_code and m.text.strip().isdigit())
         async def recv_code(message):
             code = message.text.strip()
             try:
+                if not self.client.is_connected():
+                    await self.client.connect()
                 await self.client.sign_in(self._phone, code)
             except SessionPasswordNeededError:
                 self._expecting_2fa = True
@@ -162,7 +160,6 @@ class ForwardManager:
             await bot.send_message(message.chat.id, "✅ Logged in! Forwarder ready.")
             await self._post_login()
 
-        # 2FA: any reply when expecting 2fa
         @bot.message_handler(func=lambda m: m.chat.id == self._login_chat_id and self._expecting_2fa)
         async def recv_2fa(message):
             try:
@@ -215,7 +212,8 @@ class ForwardManager:
         self._expecting_2fa = False
 
     async def _post_login(self):
-        await self.client.connect()
+        if not self.client.is_connected():
+            await self.client.connect()
         await self._cache_peers()
         self.logger.info("Client ready and peers cached")
 
