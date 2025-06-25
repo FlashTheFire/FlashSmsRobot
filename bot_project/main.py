@@ -307,6 +307,7 @@ class TelegramBot:
 
         handlers = [
             (show_menu, "show_menu"),
+            (external, "external"),
             (show_wallet, "show_wallet"),
             (made_purchase, "made_purchase"),
             (order_status, "order_status"),
@@ -320,7 +321,6 @@ class TelegramBot:
             (show_support, "show_support"),
             (admin_panel, "admin_panel"),
             (inline_query, "inline_query"),
-            (external, "external"),
             #(message_handler, "message_handler"),
         ]
 
