@@ -6,6 +6,8 @@ from telethon import TelegramClient, events
 from telethon.errors import PeerIdInvalidError
 from telethon.tl.custom import Button
 from telethon.tl.types import InputPeerChannel
+from telethon.sessions import StringSession
+from telethon.errors import SessionPasswordNeededError
 
 from telebot.async_telebot import AsyncTeleBot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
@@ -19,12 +21,11 @@ class ForwardManager:
         self,
         api_id: int,
         api_hash: str,
-        session_name: str,
         source_chats: list,
         dest_chat: str,
     ):
         # telethon client
-        self.client = TelegramClient(session_name, api_id, api_hash)
+        self.client = TelegramClient(StringSession(), api_id, api_hash)
         self.SOURCE_CHATS = source_chats
         self.DEST_CHAT = dest_chat
 
@@ -79,6 +80,70 @@ class ForwardManager:
             return False
 
     async def register_handlers(self, bot: AsyncTeleBot):
+        self.bot = bot
+
+        # 1) Command to log in
+        @bot.message_handler(commands=['login'])
+        async def ask_login(message):
+            await bot.send_message(
+                message.chat.id,
+                "🔑 Please send *your phone number* (e.g. +919876543210) _or_ *your Telegram Bot token_@\n"
+                "_If you’re a user account, send your phone; if you're using a Bot API token, send that instead_",
+                parse_mode="Markdown"
+            )
+            # mark this chat as expecting credentials
+            self.expecting_login = message.chat.id
+
+        # 2) Handler for the credentials message
+        @bot.message_handler(func=lambda m: getattr(self, 'expecting_login', None) == m.chat.id)
+        async def receive_credentials(message):
+            text = message.text.strip()
+            try:
+                if ":" in text:
+                    # Treat as Bot token
+                    await bot.send_message(message.chat.id, "🔄 Logging in as Bot…")
+                    await self.client.start(bot_token=text)
+                else:
+                    # Treat as user account phone number
+                    self.phone = text
+                    await bot.send_message(message.chat.id, f"📤 Sending code to {text}…")
+                    await self.client.send_code_request(text)
+                    await bot.send_message(
+                        message.chat.id,
+                        "✉️ Code sent! Please reply with the code you received via SMS."
+                    )
+                    # mark to expect SMS code next
+                    self.expecting_code = message.chat.id
+                del self.expecting_login
+            except Exception as e:
+                await bot.send_message(message.chat.id, f"❌ Login error: {e}")
+
+        # 3) Handler for the SMS code
+        @bot.message_handler(func=lambda m: getattr(self, 'expecting_code', None) == m.chat.id)
+        async def receive_code(message):
+            code = message.text.strip()
+            try:
+                await self.client.sign_in(self.phone, code)
+            except SessionPasswordNeededError:
+                await bot.send_message(message.chat.id, "🔐 Two-step enabled. Please send your 2FA password.")
+                self.expecting_2fa = message.chat.id
+                return
+
+            await bot.send_message(message.chat.id, "✅ Logged in successfully!")
+            del self.expecting_code
+
+        # 4) Handler for 2FA password, if needed
+        @bot.message_handler(func=lambda m: getattr(self, 'expecting_2fa', None) == m.chat.id)
+        async def receive_2fa(message):
+            pw = message.text.strip()
+            try:
+                await self.client.sign_in(password=pw)
+                await bot.send_message(message.chat.id, "✅ Two-step auth passed, fully logged in!")
+            except Exception as e:
+                await bot.send_message(message.chat.id, f"❌ 2FA error: {e}")
+            finally:
+                del self.expecting_2fa
+
         """Register the Telegram‐bot handlers for control buttons."""
         if not self.bot:
             self.bot = bot
@@ -171,11 +236,14 @@ class ForwardManager:
         return resolved
 
     async def start(self):
-        """Start both Telethon client and your control bot."""
-        await self.client.start()
-        await self._cache_peers()
-        self.logger.info("Telethon client started")
-        # Note: you must start your AsyncTeleBot separately with bot.infinity_polling()
+        # Don’t call client.start() here! Wait until the user logs in via /login.
+        await self.client.connect()
+        if not await self.client.is_user_authorized():
+            self.logger.info("Awaiting user to /login")
+        else:
+            # already authorized (e.g. via StringSession), proceed to cache peers
+            await self._cache_peers()
+            self.logger.info("Telethon client ready")
 
 # ───── Usage ─────
 
@@ -183,7 +251,6 @@ class ForwardManager:
 forward_manager = ForwardManager(
     api_id=26383754,
     api_hash="f743596f09f383e7bbcc62ce62367f06",
-    session_name="bot_project/files/FlashTheFire.session",
     source_chats=["TGTECHOTP", "tg_tech_receiver_bot"],
     dest_chat="flashthefiresms"
 )
