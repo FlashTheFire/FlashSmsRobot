@@ -677,7 +677,12 @@ class UserSearchManagement:
             # Try cache
             cached = await cache_manager.get(cache_key, CachePrefix.SEARCH)
             if cached:
-                return_message, return_keyboard = cached
+                markup_dict = cached["markup"]
+                return_message = cached["meta"]
+                return_keyboard = InlineKeyboardMarkup([
+                    [InlineKeyboardButton(**btn) for btn in row]
+                    for row in markup_dict["inline_keyboard"]
+                ])
                 msg = message.chat.id
                 if msg != 'tool':
                     await self.bot.send_message(
@@ -777,9 +782,11 @@ class UserSearchManagement:
             )
 
             # Save to cache
+            meta = result_text
+            button_data = {"markup": keyboard.to_dict(), "meta": meta}
             await cache_manager.set(
                 cache_key,
-                (result_text, keyboard),
+                button_data,
                 CachePrefix.SEARCH
             )
 
