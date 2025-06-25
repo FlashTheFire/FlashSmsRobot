@@ -192,15 +192,38 @@ class UserPurchaseManagement:
         }
         return data
 
-    async def unmask_number(self, masked: str, candidates: list[str]) -> str:
+    async def unmask_number(self, masked: str, candidates: list[str], element: str) -> str:
         """
-        Given something like '7707503*897', build a regex '^7707503\d897$'
-        and return the one candidate that matches, or return masked if none.
+        Given something like '7747600•••007' or '7747600***007' (element='•' or '*'),
+        build a regex '^7747600\\d{3}007$' and return the one candidate that matches,
+        or return masked if none.
         """
-        # Escape then turn '*' → '\d'
-        pattern = "^" + re.escape(masked).replace(r"\*", r"\d") + "$"
+        if element not in ("*", "•"):
+            raise ValueError("`element` must be '*' or '•'")
+
+        # Build the regex by walking through `masked`
+        regex = ["^"]
+        i = 0
+        L = len(masked)
+        while i < L:
+            if masked[i] == element:
+                # count how many in a row
+                j = i
+                while j < L and masked[j] == element:
+                    j += 1
+                count = j - i
+                regex.append(f"\\d{{{count}}}")
+                i = j
+            else:
+                # escape any regex-special char
+                regex.append(re.escape(masked[i]))
+                i += 1
+        regex.append("$")
+
+        pattern = "".join(regex)
+        # Now find the one candidate that matches
         for num in candidates:
-            if re.match(pattern, num):
+            if re.fullmatch(pattern, num):
                 return num
         return masked
 
@@ -1444,6 +1467,11 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
             if "*" in parsed["number"]:
                 CANDIDATES = await purchase_manager.order_manager.get_candidates()
                 full = await purchase_manager.unmask_number(parsed["number"], CANDIDATES)
+                print(f"Unmasked {parsed['number']} → {full}")
+                parsed["number"] = full
+            elif "•" in parsed["number"]:
+                CANDIDATES = await purchase_manager.order_manager.get_candidates()
+                full = await purchase_manager.unmask_number(parsed["number"], CANDIDATES, "•")
                 print(f"Unmasked {parsed['number']} → {full}")
                 parsed["number"] = full
 

@@ -21,7 +21,7 @@ from handlers.manager.operation import (
 )
 from handlers.security import InputValidator, TransactionGuard
 from handlers.methods.purchase import made_purchase, show_country, show_servers, order_status
-from handlers.main import inline_query, message_handler, show_refferal, show_menu, top_services, show_wallet, show_support, support_management
+from handlers.main import inline_query, message_handler, show_refferal, show_menu, top_services, show_wallet, show_support, support_management, external
 from handlers.methods.purchase.order_tracker import init_managers as order_tracker_init, register_handlers as order_tracker_register, order_tracker
 from handlers.methods.recharge.deposit_tracker import init_managers as deposit_tracker_init, register_handlers as deposit_tracker_register, deposit_tracker
 from handlers.methods.recharge import show_deposit
@@ -319,7 +319,8 @@ class TelegramBot:
             (show_refferal, "show_refferal"),
             (show_support, "show_support"),
             (admin_panel, "admin_panel"),
-            (inline_query, "inline_query")
+            (inline_query, "inline_query"),
+            (external, "external"),
             #(message_handler, "message_handler"),
         ]
 
