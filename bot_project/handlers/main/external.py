@@ -33,7 +33,7 @@ class ForwardManager:
     CALLBACK_START = "fm_start"
     CALLBACK_STOP = "fm_stop"
     CALLBACK_SHOW_LOGS = "fm_show_logs"
-    LOG_USER_ID = 5716978793
+    LOG_USER_ID = 1889471360
     session_path = "session.txt"
 
     def __init__(
