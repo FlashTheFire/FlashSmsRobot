@@ -491,12 +491,8 @@ class UserSearchManagement:
                 country_name_query=None,
                 tool_limit=None
             )
-            print(colored(adv, "red"))
             apps = list(adv.get("results", {}).items())
             total_count = len(apps)
-            print(apps)
-            print(offset)
-            print(CACHE_RESULTS_PER_PAGE)
             page_data = apps[int(offset) if offset else 0: int(offset) + int(CACHE_RESULTS_PER_PAGE) if CACHE_RESULTS_PER_PAGE else 0]
 
             # ─── 5) No results
