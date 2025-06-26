@@ -9,6 +9,7 @@ from utils.redis_manager import redis_manager
 class CachePrefix:
     BASE       = "cache-data"
     SEARCH     = f"{BASE}:search_cache:"
+    API        = f"{BASE}:api_cache:"
     INLINE     = f"{BASE}:inline_cache:"
     SERVER     = f"{BASE}:server_cache:"
     BUTTONS    = f"{BASE}:buttons_cache:"

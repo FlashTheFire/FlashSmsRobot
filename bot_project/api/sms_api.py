@@ -10,6 +10,7 @@ from redis.exceptions import RedisError
 from termcolor import colored
 from utils.config import COMMISSION
 from typing import Optional, Dict, Any
+from utils.cache_manager import cache_manager, CacheManager, CachePrefix
 import logging
 from aiohttp import web
 import redis.asyncio as aioredis  # Ensure redis-py >= 4.2 is installed
@@ -126,7 +127,7 @@ class CombinedAPI:
 
         self.user_aggregator: Optional[FinancialManagement] = financial_mgr
 
-    async def _acquire_transaction_lock(self, guard, transaction_key, input_data) -> bool:
+    async def _acquire_transaction_lock(self, guard, transaction_key) -> bool:
         """Acquire transaction lock with error handling."""
         if not await guard.acquire_lock(transaction_key):
             try:
@@ -193,6 +194,10 @@ class CombinedAPI:
         and format price data in two API styles.
         """
         # Build filter clauses
+        cache_key = f"app_data_prices:{country_id}:{app_id}:{server_id}:{api_id}"
+        cached = await cache_manager.get(cache_key, prefix=CachePrefix.API)
+        if cached:
+            return json.loads(cached)
         def fmt(val, field, name):
             if val is None:
                 return None
@@ -285,6 +290,7 @@ class CombinedAPI:
             }
             for cid in sorted(out1.keys(), key=lambda x: int(x))
         }
+        await cache_manager.set(cache_key, json.dumps(sorted_out), prefix=CachePrefix.API)
         return sorted_out
 
 
@@ -301,6 +307,10 @@ class CombinedAPI:
         Unified method to fetch, aggregate (via Redisearch cursor),
         and format stock data in two API styles.
         """
+        cache_key = f"app_data_stock:{country_id}:{app_id}:{server_id}:{api_id}"
+        cached = await cache_manager.get(cache_key, prefix=CachePrefix.API)
+        if cached:
+            return json.loads(cached)
         # Build filter clauses for stock
         filters = [
             f"@country_id:{country_id}" if country_id is not None else None,
@@ -370,9 +380,14 @@ class CombinedAPI:
             if None in (aid, sid):
                 continue
             flat[f"{aid}_{sid}"] = stock
+        await cache_manager.set(cache_key, json.dumps(flat), prefix=CachePrefix.API)
         return flat
 
     async def services_data(self, api_id: int = 1):
+        cache_key = f"app_data_services:{api_id}"
+        cached = await cache_manager.get(cache_key, prefix=CachePrefix.API)
+        if cached:
+            return json.loads(cached)
         try:
             data = await self.redis_client.json().get('main_data:service:app_data')
         except RedisError as e:
@@ -393,7 +408,6 @@ class CombinedAPI:
                 ],
                 "status": "success"
             }
-            return output
         elif api_id == 2:
             output = {
                 "status": "success",
@@ -408,10 +422,15 @@ class CombinedAPI:
                     "total_services": len(data)
                 }
             }
-            return output
         else:
             return await self.services_data(api_id=1)
+        await cache_manager.set(cache_key, json.dumps(output), prefix=CachePrefix.API)
+        return output
     async def countries_data(self, api_id: int = 1):
+        cache_key = f"app_data_countries:{api_id}"
+        cached = await cache_manager.get(cache_key, prefix=CachePrefix.API)
+        if cached:
+            return json.loads(cached)
         try:
             data = await self.redis_client.json().get('main_data:details:country_data')
         except RedisError as e:
@@ -433,7 +452,6 @@ class CombinedAPI:
                 "countries": list(cleaned_output.values()),
                 "status": "success"
             }
-            return output
         elif api_id == 2:
             original_data = data
             formatted_countries = {
@@ -452,9 +470,10 @@ class CombinedAPI:
                     "total_countries": len(formatted_countries)
                 }
             }
-            return output
         else:
             return await self.countries_data(api_id=1)
+        await cache_manager.set(cache_key, json.dumps(output), prefix=CachePrefix.API)
+        return output
 
 
     async def is_valid_api_key(self, key: str) -> bool:
@@ -811,15 +830,16 @@ class CombinedAPI:
         )
 
 
-    async def handle_get_number(self, user_id: int, server_id: int, app_id: int, country_id: int, input_price: float, ref_id: str, api_id: int) -> Dict[str, Any]:
+    async def handle_get_number(self, user_id: int, server_id: int, service_id: int, country_id: int, input_price: float, ref_id: str, api_id: int) -> Dict[str, Any]:
         print("API ID: ", api_id)
-        print("App ID: ", app_id)
+        print("Service ID: ", service_id)
+        print("server_id ID: ", server_id)
         print("Country ID: ", country_id)
         print("Server ID: ", server_id)
         print("Input Price: ", input_price)
         print("Ref ID: ", ref_id)
         price = None if input_price is None else round(float(input_price) / float(COMMISSION), 2)
-        app_data = await purchase_manager.fetch_app_data(app_id, country_id, server_id, price=price)
+        app_data = await purchase_manager.fetch_app_data(server_id, country_id, server_id, price=price)
         if not app_data:
             return {"status": False, "message": F"WRONG_MAX_PRICE"}
         print("App Data: ", json.dumps(app_data, indent=4))
@@ -828,14 +848,14 @@ class CombinedAPI:
             return {"status": False, "message": "NO_BALANCE"}
         
 
-        transaction_key = RedisKeys.transaction_lock_key(user_id, f"purchase_number:{app_id}:{country_id}:{server_id}")
+        transaction_key = RedisKeys.transaction_lock_key(user_id, f"purchase_number:{server_id}:{country_id}:{server_id}")
 
         async with TransactionGuard(self.redis_client) as guard:
-            if not await self._acquire_transaction_lock(guard, transaction_key, call):
+            if not await self._acquire_transaction_lock(guard, transaction_key):
                 return {"status": False, "message": "🔒 Aɴᴏᴛʜᴇʀ Tʀᴀɴsᴀᴄᴛɪᴏɴ Iɴ Pʀᴏɢʀᴇss, Pʟᴇᴀsᴇ Wᴀɪᴛ..."}
 
             try:
-                phone_result = await purchase_manager.fetch_phone_number(int(app_data['server_id']), app_data['app_code'], country_id, price=price, operator=app_data['server_name'], app_name=app_data['app_name'], chat_id=user_id, app_id=app_id)
+                phone_result = await purchase_manager.fetch_phone_number(int(app_data['server_id']), app_data['app_code'], country_id, price=price, operator=app_data['server_name'], app_name=app_data['app_name'], chat_id=user_id, app_id=service_id)
                 print(json.dumps(phone_result, indent=4))
                 if not phone_result.get("status"):
                     if phone_result.get("message"):
@@ -855,7 +875,7 @@ class CombinedAPI:
                     "message_id": 0,
                     "chat_id": user_id,
                     "app_data": app_data,
-                    "app_id": app_id,
+                    "app_id": service_id,
                     "call_data": '',
                     "user_id": user_id,
                     "first_name": "API",
@@ -875,7 +895,7 @@ class CombinedAPI:
                     call.message,
                     is_new=True,
                     is_api=True,
-                    app_id=app_id,
+                    app_id=service_id,
                     server_id=app_data['server_id']
                 )
                 #return {'status': True, 'order_id': order_id, 'number': number, 'code': code, 'service': service}
