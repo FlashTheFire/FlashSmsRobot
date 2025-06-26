@@ -121,7 +121,7 @@ class UserPurchaseManagement:
                 return None
             return (
                 f"@{id_field}:{val}"
-                if val.isnumeric()
+                if isinstance(val, int) or val.isdigit()
                 else f"@{name_field}:(%%{val}%%|{val}*|{val})"
             )
 
