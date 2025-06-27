@@ -25,7 +25,7 @@ class TransactionGuard:
             await self.release_lock(self.current_lock)
         return False
 
-    async def acquire_lock(self, lock_key: str) -> bool:
+    async def acquire_lock(self, lock_key: str, timeout: int = None) -> bool:
         """Acquire a lock for a transaction."""
         try:
             async with self._lock:
@@ -33,7 +33,7 @@ class TransactionGuard:
                     f"lock:{lock_key}",
                     str(datetime.utcnow().isoformat()),
                     nx=True,
-                    ex=self.lock_timeout
+                    ex=timeout or self.lock_timeout
                 )
                 if success:
                     self.current_lock = lock_key
