@@ -117,6 +117,18 @@ class UserPurchaseManagement:
                 if isinstance(val, int)
                 else f"@{name_field}:(%%{val}%%|{val}*|{val})"
             )
+        try:
+            country_id = int(country_id)
+        except ValueError:
+            country_id = country_id
+        try:
+            app_id = int(app_id)
+        except ValueError:
+            app_id = app_id
+        try:
+            server_id = int(server_id)
+        except ValueError:
+            server_id = server_id
 
         # Base tag filters
         tags = list(filter(None, [
@@ -135,6 +147,7 @@ class UserPurchaseManagement:
 
         res = await self.redis_client.ft(SERVICE_INDEX).search(q)
         if not res.docs:
+            print("No documents found")
             return None
 
         # Process the first document
