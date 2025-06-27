@@ -101,6 +101,7 @@ class UserPurchaseManagement:
         except Exception as e:
             print(f"Initialization error: {e}")
             return False
+
     async def fetch_app_data(
         self,
         app_id: str,
@@ -108,17 +109,6 @@ class UserPurchaseManagement:
         server_id: Optional[str] = None,
         price: Optional[float] = None,
     ) -> Optional[Dict]:
-        """
-        Retrieve a document matching app_id and country_id.
-        
-        - If price is None:
-            • Without server_id: return the document with the lowest app_price.
-            • With server_id: return the lowest-priced document for that server.
-        - If price is given:
-            • Filter to documents with app_price >= price, sort ascending, return first.
-            • Apply server_id filter if provided.
-        - Returns None if no matching document is found.
-        """
         def fld(val, id_field, name_field):
             if not val:
                 return None
@@ -128,62 +118,36 @@ class UserPurchaseManagement:
                 else f"@{name_field}:(%%{val}%%|{val}*|{val})"
             )
 
-        try:
-            rc = self.redis_client
-            # Build cache key
-            cache_key = f"app_data:{app_id}:{country_id}:{server_id or '_'}:{price or '_'}"
-            cached = await cache_manager.get(cache_key, CachePrefix.API)
-            if cached:
-                return cached
+        # Base tag filters
+        tags = list(filter(None, [
+            fld(app_id, "app_id", "app_name"),
+            fld(country_id, "country_id", "country_name"),
+            f"@server_id:{server_id}" if server_id else None,
+        ]))
+        base_q = " ".join(tags) or "*"
 
-            # Base tag filters
-            tags = list(filter(None, [
-                fld(app_id, "app_id", "app_name"),
-                fld(country_id, "country_id", "country_name"),
-                f"@server_id:{server_id}" if server_id else None,
-            ]))
-            base_q = " ".join(tags) or "*"
+        # Build the RedisSearch query
+        if price is None:
+            q = Query(base_q).sort_by("app_price", asc=True).paging(0, 1)
+        else:
+            q = Query(f"{base_q} @app_price:[0 {price}]").paging(0, 1)
 
-            # Build the RedisSearch query
-            if price is None:
-                # No price filter: just sort by price ascending
-                q = Query(base_q) \
-                        .sort_by("app_price", asc=True) \
-                        .paging(0, 1)
-            else:
-                # Price filter: app_price >= price
-                q = Query(f"{base_q} @app_price:[{price} +inf]") \
-                        .sort_by("app_price", asc=True) \
-                        .paging(0, 1)
-
-            res = await rc.ft(SERVICE_INDEX).search(q)
-
-            if not res.docs:
-                # No match
-                return None
-
-            # Process the first document
-            doc = res.docs[0]
-            app_data = await self._process_app_documents([doc])
-            await cache_manager.set(cache_key, app_data, CachePrefix.API)
-            return app_data
-
-        except Exception as e:
-            print(f"App data fetch error: {e}")
+        res = await self.redis_client.ft(SERVICE_INDEX).search(q)
+        if not res.docs:
             return None
 
+        # Process the first document
+        app_data = await self._process_app_documents(res.docs[:1])
+        return app_data
+
     async def _process_app_documents(self, docs) -> Dict:
-        """
-        Process Redis documents into a dict containing all available fields.
-        """
         doc = docs[0]
         # Dynamically extract all public fields
-        data = {
+        return {
             field: getattr(doc, field)
             for field in dir(doc)
             if not field.startswith("_") and not callable(getattr(doc, field))
         }
-        return data
 
     async def unmask_number(self, masked: str, candidates: list[str], element: str) -> str:
         """
