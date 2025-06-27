@@ -13,6 +13,8 @@ from pydantic import BaseModel, Field, validator
 from utils.redis_keys import RedisKeys
 
 import json
+import uuid
+import time
 import asyncio
 from functools import lru_cache, partial
 from typing import Dict, Any, Optional, List, Tuple, Union
@@ -577,6 +579,8 @@ class UserServerManagement:
         try:
             # detect admin vs. user
             is_admin = "#AᴅᴍɪɴAᴘᴘIᴅ:" in inline_query.query
+            page_size = 50
+            offset = int(inline_query.offset or 0)
 
             # build a cache key unique to this query + params
             cache_key = (
@@ -588,23 +592,42 @@ class UserServerManagement:
                 + f":sort={sort_by or ''}"
             )
 
-            # try cache
+            # ─── 1) Try cache
             cached = await cache_manager.get(cache_key, CachePrefix.SEARCH)
             if cached:
-                # cached for "tool" mode is a list of dicts
-                if inline_query.id == "tool":
-                    return cached
-                # cached for normal inline mode is tuple (results, next_offset)
-                results, next_offset = cached
+                items = cached.get("items", [])
+                total_count = int(cached.get("total", 0))
+
+                # Reconstruct and answer inline-query directly
+                articles = []
+                for it in items:
+                    art = InlineQueryResultArticle(
+                        id=it["id"],
+                        title=it["title"],
+                        description=it["description"],
+                        thumbnail_url=it["thumb"],
+                        input_message_content=InputTextMessageContent(
+                            message_text=it["input_cmd"]
+                        )
+                    )
+                    if it.get("switch"):
+                        art.switch_inline_query_current_chat = it["switch"]
+                    articles.append(art)
+
+                next_offset = (
+                    str(offset + page_size)
+                    if total_count > offset + page_size else ""
+                )
+
                 await self.bot.answer_inline_query(
                     inline_query.id,
-                    results,
-                    cache_time=1,
+                    articles,
+                    cache_time=30,
                     next_offset=next_offset
                 )
                 return
 
-            # parse out app_id and optional country_filter
+            # ─── 2) No cache: parse query
             if not is_admin:
                 parts = inline_query.query.split('#AᴘᴘIᴅ:')[1].split()
             else:
@@ -641,14 +664,8 @@ class UserServerManagement:
             )
             if not data or not data.get("servers"):
                 if inline_query.id != "tool":
-                    await self.bot.answer_inline_query(inline_query.id, '[]')
-                else:
-                    #print(colored(
-                    #    f"No servers found for app_id: {app_id} and country_filter: {country_filter}",
-                    #    "red"
-                    #))
-                    return []
-                return
+                    await self.bot.answer_inline_query(inline_query.id, [])
+                return [] if inline_query.id == "tool" else None
 
             # aggregate by country_id
             country_stats: Dict[str, Any] = {}
@@ -687,28 +704,22 @@ class UserServerManagement:
             else:
                 f_cids = list(country_stats.keys())
 
+            # sort and page
             f_cids.sort(key=lambda cid: (country_stats[cid][0], country_stats[cid][3]))
-
-            offset = int(inline_query.offset or 0)
-            page_size = 50
+            raw_items = []
             results = []
 
             for cid in f_cids[offset:offset + page_size]:
                 min_price, total_stock, srv_nums, cname = country_stats[cid]
                 servers_sorted = sorted(srv_nums, key=int)
+                disp = (
+                    f"[{', '.join(servers_sorted)}]"
+                    if len(servers_sorted) <= 3 else f"[{', '.join(servers_sorted[:3])}, ...]"
+                ) if inline_query.id != "tool" else f"[{', '.join(servers_sorted)}]"
 
-                if inline_query.id != "tool":
-                    disp = (
-                        f"[{', '.join(servers_sorted)}]"
-                        if len(servers_sorted) <= 3
-                        else f"[{', '.join(servers_sorted[:3])}, ...]"
-                    )
-                else:
-                    disp = f"[{', '.join(servers_sorted)}]"
-
-                price = float(min_price) * float(COMMISSION)
+                price_pts = float(min_price) * float(COMMISSION)
                 desc = (
-                    f"❯ Tʜᴇ Sᴛᴀʀᴛɪɴɢ Pʀɪᴄᴇ Is Oɴʟʏ {price:.2f} Pᴏɪɴᴛ's.\n"
+                    f"❯ Tʜᴇ Sᴛᴀʀᴛɪɴɢ Pʀɪᴄᴇ Is Oɴʟʏ {price_pts:.2f} Pᴏɪɴᴛ's.\n"
                     f"• Sᴇʀᴠᴇʀs » {disp}\n"
                     f"• Tᴏᴛᴀʟ Sᴛᴏᴄᴋ » {total_stock}"
                 ).translate(await small_caps())
@@ -725,40 +736,49 @@ class UserServerManagement:
                         'country_code': country_data[cid]['country_code']
                     })
                 else:
-                    results.append(
-                        InlineQueryResultArticle(
-                            id=f"{cid}_{min_price}",
-                            title=(
-                                f"{cname} [{country_data[cid]['country_code']}]"
-                            ).translate(await small_caps()),
-                            description=desc,
-                            input_message_content=InputTextMessageContent(imc),
-                            thumbnail_url=country_data[cid]["flag_url"]
+                    item = {
+                        "id": str(uuid.uuid4()),
+                        "title": (
+                            f"{cname} [{country_data[cid]['country_code']}]"
+                        ).translate(await small_caps()),
+                        "description": desc,
+                        "thumb": country_data[cid]["flag_url"],
+                        "input_cmd": imc,
+                        "switch": None  # or set as needed
+                    }
+                    raw_items.append(item)
+                    art = InlineQueryResultArticle(
+                        id=item["id"],
+                        title=item["title"],
+                        description=item["description"],
+                        thumbnail_url=item["thumb"],
+                        input_message_content=InputTextMessageContent(
+                            message_text=item["input_cmd"]
                         )
                     )
+                    results.append(art)
 
-            next_offset = (
-                str(offset + page_size)
-                if len(f_cids) > offset + page_size
-                else ""
+            total_count = len(f_cids)
+            next_offset = str(offset + page_size) if total_count > offset + page_size else ""
+
+            # ─── 3) Cache final results
+            await cache_manager.set(
+                cache_key,
+                {"items": raw_items, "total": total_count, "ts": time.time()},
+                CachePrefix.SEARCH
             )
 
-            # cache final results
+            # answer or return
             if inline_query.id == "tool":
-                await cache_manager.set(cache_key, results, CachePrefix.SEARCH)
                 return results
             else:
-                await cache_manager.set(
-                    cache_key,
-                    (results, next_offset),
-                    CachePrefix.SEARCH
-                )
                 await self.bot.answer_inline_query(
                     inline_query.id,
                     results,
-                    cache_time=1,
+                    cache_time=30,
                     next_offset=next_offset
                 )
+
         except Exception as e:
             await self.bot.answer_inline_query(inline_query.id, [])
 

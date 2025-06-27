@@ -101,7 +101,6 @@ class UserPurchaseManagement:
         except Exception as e:
             print(f"Initialization error: {e}")
             return False
-
     async def fetch_app_data(
         self,
         app_id: str,
@@ -111,70 +110,64 @@ class UserPurchaseManagement:
     ) -> Optional[Dict]:
         """
         Retrieve a document matching app_id and country_id.
-        If server_id is given, filter by it without price logic.
-        If server_id is None and price is given, filter by documents with app_price ≤ price,
-        returning the highest possible price under the limit. If that yields no results, fallback
-        to any price. If both server_id and price are None, return the first match by app_id and country_id.
+        
+        - If price is None:
+            • Without server_id: return the document with the lowest app_price.
+            • With server_id: return the lowest-priced document for that server.
+        - If price is given:
+            • Filter to documents with app_price >= price, sort ascending, return first.
+            • Apply server_id filter if provided.
+        - Returns None if no matching document is found.
         """
         def fld(val, id_field, name_field):
             if not val:
                 return None
             return (
                 f"@{id_field}:{val}"
-                if isinstance(val, int) or val.isdigit()
+                if isinstance(val, int)
                 else f"@{name_field}:(%%{val}%%|{val}*|{val})"
             )
 
         try:
-            redis_client = self.redis_client
-            # Build cache key parts
-            key_parts = [app_id]
-            if server_id is not None:
-                key_parts.append(server_id)
-            key_parts.append(country_id)
-            if price is not None and server_id is None:
-                key_parts.append(str(price))
-            cache_key = "app_data:" + ":".join(str(part) for part in key_parts)
-            cache_data = await cache_manager.get(cache_key, CachePrefix.SEARCH)
-            if cache_data:
-                return cache_data
+            rc = self.redis_client
+            # Build cache key
+            cache_key = f"app_data:{app_id}:{country_id}:{server_id or '_'}:{price or '_'}"
+            cached = await cache_manager.get(cache_key, CachePrefix.API)
+            if cached:
+                return cached
 
-            # Base RedisSearch tag query (no braces)
-            parts = filter(
-                None,
-                [
-                    fld(country_id, "country_id", "country_name"),
-                    fld(app_id, "app_id", "app_name"),
-                    f"@server_id:{server_id}" if server_id else None,
-                    "@app_price:[0.01 +inf]",
-                ],
-            )
-            q = " ".join(parts) or "*"
+            # Base tag filters
+            tags = list(filter(None, [
+                fld(app_id, "app_id", "app_name"),
+                fld(country_id, "country_id", "country_name"),
+                f"@server_id:{server_id}" if server_id else None,
+            ]))
+            base_q = " ".join(tags) or "*"
 
-            # Initial price-filtered search when applicable
-            # Build full RedisSearch tag query
-            query_str_full = q
-            if server_id is None and price is not None:
-                # append numeric range filter in tag syntax
-                query_str_full += f" @app_price:[0 {price}]"
-            q = Query(query_str_full).sort_by("app_price", asc=True)
-            q = q.paging(0, 1)
-            result = await redis_client.ft(SERVICE_INDEX).search(q)
+            # Build the RedisSearch query
+            if price is None:
+                # No price filter: just sort by price ascending
+                q = Query(base_q) \
+                        .sort_by("app_price", asc=True) \
+                        .paging(0, 1)
+            else:
+                # Price filter: app_price >= price
+                q = Query(f"{base_q} @app_price:[{price} +inf]") \
+                        .sort_by("app_price", asc=True) \
+                        .paging(0, 1)
 
-            # Fallback: if price filtering yielded nothing, retry without price filter
-            if not result.docs and server_id is None and price is not None:
-                q2 = Query(q).sort_by("app_price", asc=True).paging(0, 1)
-                result = await redis_client.ft(SERVICE_INDEX).search(q2)
+            res = await rc.ft(SERVICE_INDEX).search(q)
 
-            if not result.docs:
+            if not res.docs:
+                # No match
                 return None
 
-            # Process and cache
-            app_data = await self._process_app_documents([result.docs[0]])
-            await cache_manager.set(cache_key, app_data, CachePrefix.SEARCH)
-            if price is None:
-                return app_data
-            return app_data if float(app_data['app_price']) <= price else {}
+            # Process the first document
+            doc = res.docs[0]
+            app_data = await self._process_app_documents([doc])
+            await cache_manager.set(cache_key, app_data, CachePrefix.API)
+            return app_data
+
         except Exception as e:
             print(f"App data fetch error: {e}")
             return None
