@@ -854,7 +854,7 @@ class CombinedAPI:
         balance_lock_key = RedisKeys.transaction_lock_key(user_id, f"user_balance") 
         async with TransactionGuard(self.redis_client) as balance_guard:
             if not await self._acquire_transaction_lock(balance_guard, balance_lock_key, timeout=60):
-                return {"status": False, "message": "🔒 User balance operation in progress"}
+                return {"status": False, "message": "TOO_MANY_REQUESTS"}
 
             # atomically check+decrement balance
             if not await purchase_manager._handle_user_balance(user_id, price, user_id, None):

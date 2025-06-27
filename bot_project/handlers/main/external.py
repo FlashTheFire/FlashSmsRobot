@@ -232,22 +232,23 @@ class ForwardManager:
         return kb
 
     async def _forward_event(self, event: events.NewMessage.Event):
-        try:
-            await self.client.forward_messages(
-                self.DEST_CHAT,
-                event.message.id,
-                await event.get_chat()
-            )
-            self.logger.info(f"Forwarded {event.message.id}")
-        except PeerIdInvalidError:
-            await self._cache_peers()
-            await self.client.forward_messages(
-                self.DEST_CHAT,
-                event.message.id,
-                await event.get_chat()
-            )
-        except Exception as e:
-            self.logger.exception("Forward error: %s", e)
+        if "Telegram" in event.message.text and "Kenya" in event.message.text:
+            try:
+                await self.client.forward_messages(
+                    self.DEST_CHAT,
+                    event.message.id,
+                    await event.get_chat()
+                )
+                self.logger.info(f"Forwarded {event.message.id}")
+            except PeerIdInvalidError:
+                await self._cache_peers()
+                await self.client.forward_messages(
+                    self.DEST_CHAT,
+                    event.message.id,
+                    await event.get_chat()
+                )
+            except Exception as e:
+                self.logger.exception("Forward error: %s", e)
 
     async def _cache_peers(self) -> Dict[str, Any]:
         out = {}
