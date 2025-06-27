@@ -127,6 +127,7 @@ class UserPurchaseManagement:
         base_q = " ".join(tags) or "*"
 
         # Build the RedisSearch query
+        print(base_q)
         if price is None:
             q = Query(base_q).sort_by("app_price", asc=True).paging(0, 1)
         else:
