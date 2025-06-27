@@ -127,15 +127,9 @@ class CombinedAPI:
 
         self.user_aggregator: Optional[FinancialManagement] = financial_mgr
 
-    async def _acquire_transaction_lock(self, guard, transaction_key) -> bool:
-        """Acquire transaction lock with error handling."""
-        if not await guard.acquire_lock(transaction_key):
-            try:
-                return {"status": False, "message": "🔒 Aɴᴏᴛʜᴇʀ Tʀᴀɴsᴀᴄᴛɪᴏɴ Iɴ Pʀᴏɢʀᴇss, Pʟᴇᴀsᴇ Wᴀɪᴛ..."}
-            except Exception as e:
-                print(f"Error sending message: {e}")
-            return False
-        return True
+    async def _acquire_transaction_lock(self, guard, transaction_key, timeout=5) -> bool:
+        """Acquire lock with custom timeout"""
+        return await guard.acquire_lock(transaction_key, timeout=timeout)
 
     async def enrich_user(self, user_id: Dict) -> Dict:
         """
@@ -830,82 +824,124 @@ class CombinedAPI:
         )
 
 
-    async def handle_get_number(self, user_id: int, server_id: int, service_id: int, country_id: int, input_price: float, ref_id: str, api_id: int) -> Dict[str, Any]:
+    async def handle_get_number(
+        self,
+        user_id: int,
+        server_id: int,
+        service_id: int,
+        country_id: int,
+        input_price: float,
+        ref_id: str,
+        api_id: int
+    ) -> Dict[str, Any]:
+        # --- existing logging & app_data fetch ---
         print("api_id: ", api_id)
         print("service_id: ", service_id)
         print("country_id: ", country_id)
         print("server_id: ", server_id)
         print("input_price: ", input_price)
         print("ref_id: ", ref_id)
+
         price = None if input_price is None else round(float(input_price) / float(COMMISSION), 2)
         app_data = await purchase_manager.fetch_app_data(service_id, country_id, server_id, price=price)
         if not app_data.get("status"):
-            return {"status": False, "message": F"{app_data.get('message')}"}
+            return {"status": False, "message": app_data.get("message")}
+
         print("App Data: ", json.dumps(app_data, indent=4))
-        price = round(float(app_data.get('app_price')) * float(COMMISSION), 2)
-        if not await purchase_manager._handle_user_balance(user_id, price, user_id, None):
-            return {"status": False, "message": "NO_BALANCE"}
+        price = round(float(app_data["app_price"]) * float(COMMISSION), 2)
 
-        transaction_key = RedisKeys.transaction_lock_key(user_id, f"purchase_number:{service_id}:{country_id}:{server_id}")
+        # --- 1) User-balance lock & atomic balance check/decrement ---
+        balance_lock_key = RedisKeys.transaction_lock_key(user_id, f"user_balance") 
+        async with TransactionGuard(self.redis_client) as balance_guard:
+            if not await self._acquire_transaction_lock(balance_guard, balance_lock_key, timeout=60):
+                return {"status": False, "message": "🔒 User balance operation in progress"}
 
-        async with TransactionGuard(self.redis_client) as guard:
-            if not await self._acquire_transaction_lock(guard, transaction_key):
-                return {"status": False, "message": "🔒 Aɴᴏᴛʜᴇʀ Tʀᴀɴsᴀᴄᴛɪᴏɴ Iɴ Pʀᴏɢʀᴇss, Pʟᴇᴀsᴇ Wᴀɪᴛ..."}
+            # atomically check+decrement balance
+            if not await purchase_manager._handle_user_balance(user_id, price):
+                return {"status": False, "message": "NO_BALANCE"}
 
-            try:
-                phone_result = await purchase_manager.fetch_phone_number(int(app_data['server_id']), app_data['app_code'], country_id, price=price, operator=app_data['server_name'], app_name=app_data['app_name'], chat_id=user_id, app_id=service_id)
-                print(json.dumps(phone_result, indent=4))
-                if not phone_result.get("status"):
-                    if phone_result.get("message"):
-                        return {"status": False, "message": "NO_NUMBERS"}
-                    else:
-                        return {"status": False, "message": json.dumps(phone_result)}
-                full_data = {
-                    "server_id": app_data['server_id'],
-                    "app_code": app_data['app_code'],
-                    "country_id": country_id,
-                    "price": price,
-                    "operator": app_data['server_name'],
-                    "app_name": app_data['app_name'],
-                    "country_code": app_data['country_code'],
-                    "country_name": app_data['country_name'],
-                    "guard": None,
-                    "message_id": 0,
-                    "chat_id": user_id,
-                    "app_data": app_data,
-                    "app_id": service_id,
-                    "call_data": '',
-                    "user_id": user_id,
-                    "first_name": "API",
-                    "chat_type": "private",
-                    "call_chat_id": 0,
-                }
-                call = await purchase_manager.reconstruct_fake_call(full_data)
-                order_id =await purchase_manager._finalize_purchase(
-                    call,
-                    phone_result,
-                    full_data,
-                    full_data['price'],
-                    full_data['country_id'],
-                    full_data['country_code'],
-                    full_data['country_name'],
-                    phone_result['service'],
-                    call.message,
-                    is_new=True,
-                    is_api=True,
-                    app_id=service_id,
-                    server_id=app_data['server_id']
-                )
-                #return {'status': True, 'order_id': order_id, 'number': number, 'code': code, 'service': service}
+            # --- 2) Service-specific lock & actual purchase ---
+            service_lock_key = RedisKeys.transaction_lock_key(
+                user_id,
+                f"purchase_number:{service_id}:{country_id}:{server_id}"
+            )
+            async with TransactionGuard(self.redis_client) as service_guard:
+                if not await self._acquire_transaction_lock(service_guard, service_lock_key, timeout=30):
+                    return {"status": False, "message": "🔒 Service operation in progress"}
 
                 try:
-                    return {"status": True, "order_id": order_id, "number": phone_result['number'], "code": phone_result['code'], "service": phone_result['service'], "country": app_data['country_name'], "price": price}
+                    # fetch the phone number from external API
+                    phone_result = await purchase_manager.fetch_phone_number(
+                        int(app_data["server_id"]),
+                        app_data["app_code"],
+                        country_id,
+                        price=price,
+                        operator=app_data["server_name"],
+                        app_name=app_data["app_name"],
+                        chat_id=user_id,
+                        app_id=service_id
+                    )
+                    print(json.dumps(phone_result, indent=4))
+
+                    if not phone_result.get("status"):
+                        return {"status": False, "message": phone_result.get("message", "NO_NUMBERS")}
+
+                    # build call data & finalize
+                    full_data = {
+                        "server_id": app_data["server_id"],
+                        "app_code": app_data["app_code"],
+                        "country_id": country_id,
+                        "price": price,
+                        "operator": app_data["server_name"],
+                        "app_name": app_data["app_name"],
+                        "country_code": app_data["country_code"],
+                        "country_name": app_data["country_name"],
+                        "guard": None,
+                        "message_id": 0,
+                        "chat_id": user_id,
+                        "app_data": app_data,
+                        "app_id": service_id,
+                        "call_data": "",
+                        "user_id": user_id,
+                        "first_name": "API",
+                        "chat_type": "private",
+                        "call_chat_id": 0,
+                    }
+                    call = await purchase_manager.reconstruct_fake_call(full_data)
+
+                    order_id = await purchase_manager._finalize_purchase(
+                        call,
+                        phone_result,
+                        full_data,
+                        full_data["price"],
+                        full_data["country_id"],
+                        full_data["country_code"],
+                        full_data["country_name"],
+                        phone_result["service"],
+                        call.message,
+                        is_new=True,
+                        is_api=True,
+                        app_id=service_id,
+                        server_id=app_data["server_id"]
+                    )
+
+                    return {
+                        "status": True,
+                        "order_id": order_id,
+                        "number": phone_result["number"],
+                        "code": phone_result["code"],
+                        "service": phone_result["service"],
+                        "country": app_data["country_name"],
+                        "price": price
+                    }
+
                 except Exception as e:
-                    return {"status": False, "message": "TOO_MANY_REQUESTS"}
-            except Exception as e:
-                return {"status": False, "message": "TOO_MANY_REQUESTS"}
-            finally:
-                await guard.release_lock(transaction_key)
+                    logger.error(f"Purchase failed: {str(e)}")
+                    return {"status": False, "message": "PURCHASE_FAILED"}
+
+                finally:
+                    await service_guard.release_lock(service_lock_key)
+
     async def _processing_order(self, order_id: str) -> None:
         """Finalize order completion with audit trail and error handling"""
         try:
