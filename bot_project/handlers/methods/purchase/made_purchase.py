@@ -147,11 +147,16 @@ class UserPurchaseManagement:
 
         res = await self.redis_client.ft(SERVICE_INDEX).search(q)
         if not res.docs:
-            print("No documents found")
-            return None
+            q = Query(base_q).sort_by("app_price", asc=True).paging(0, 1)
+            res = await self.redis_client.ft(SERVICE_INDEX).search(q)
+            if not res.docs:
+                return {'status': False, 'message': 'BAD_REQUEST'}
+            else:
+                return {'status': False, 'message': f'WRONG_MAX_PRICE:{res.docs[0].app_price}'}
 
         # Process the first document
         app_data = await self._process_app_documents(res.docs[:1])
+        app_data['status'] = True
         return app_data
 
     async def _process_app_documents(self, docs) -> Dict:
@@ -321,12 +326,11 @@ class UserPurchaseManagement:
         if not await self._handle_user_balance(user_id, price, chat_id, progress_msg):
             return False
         
-        app_data = await self.fetch_app_data(app_id,  country_id, server_id)
+        app_data = await self.fetch_app_data(app_id, country_id, server_id)
         print(app_data)
-        if not app_data:
-            raise ValueError("🚫 Iɴᴠᴀʟɪᴅ Aᴘᴘʟɪᴄᴀᴛɪᴏɴ Cᴏɴғɪɢᴜʀᴀᴛɪᴏɴ")
-        #logging.info(app_data)
- 
+        if not app_data.get("status"):
+            raise ValueError(f"🚫 Iɴᴠᴀʟɪᴅ Aᴘᴘʟɪᴄᴀᴛɪᴏɴ Cᴏɴғɪɢᴜʀᴀᴛɪᴏɴ, {app_data.get('message')}")
+
         await self.bot.edit_message_text(
             chat_id=chat_id,
             message_id=progress_msg.message_id,

@@ -831,24 +831,22 @@ class CombinedAPI:
 
 
     async def handle_get_number(self, user_id: int, server_id: int, service_id: int, country_id: int, input_price: float, ref_id: str, api_id: int) -> Dict[str, Any]:
-        print("API ID: ", api_id)
-        print("Service ID: ", service_id)
-        print("server_id ID: ", server_id)
-        print("Country ID: ", country_id)
-        print("Server ID: ", server_id)
-        print("Input Price: ", input_price)
-        print("Ref ID: ", ref_id)
+        print("api_id: ", api_id)
+        print("service_id: ", service_id)
+        print("country_id: ", country_id)
+        print("server_id: ", server_id)
+        print("input_price: ", input_price)
+        print("ref_id: ", ref_id)
         price = None if input_price is None else round(float(input_price) / float(COMMISSION), 2)
-        app_data = await purchase_manager.fetch_app_data(server_id, country_id, server_id, price=price)
-        if not app_data:
-            return {"status": False, "message": F"WRONG_MAX_PRICE"}
+        app_data = await purchase_manager.fetch_app_data(service_id, country_id, server_id, price=price)
+        if not app_data.get("status"):
+            return {"status": False, "message": F"{app_data.get('message')}"}
         print("App Data: ", json.dumps(app_data, indent=4))
         price = round(float(app_data.get('app_price')) * float(COMMISSION), 2)
         if not await purchase_manager._handle_user_balance(user_id, price, user_id, None):
             return {"status": False, "message": "NO_BALANCE"}
-        
 
-        transaction_key = RedisKeys.transaction_lock_key(user_id, f"purchase_number:{server_id}:{country_id}:{server_id}")
+        transaction_key = RedisKeys.transaction_lock_key(user_id, f"purchase_number:{service_id}:{country_id}:{server_id}")
 
         async with TransactionGuard(self.redis_client) as guard:
             if not await self._acquire_transaction_lock(guard, transaction_key):
@@ -1077,7 +1075,7 @@ class CombinedAPI:
             # Common parsing helpers
             def parse_int(key: str, error_code: str) -> Optional[int]:
                 val = params.get(key)
-                if val is None:
+                if val is None or val == "None":
                     return None
                 try:
                     return int(val)
@@ -1086,7 +1084,7 @@ class CombinedAPI:
 
             def parse_float(key: str, error_code: str) -> Optional[float]:
                 val = params.get(key)
-                if val is None:
+                if val is None or val == "None":
                     return None
                 try:
                     return float(val)
