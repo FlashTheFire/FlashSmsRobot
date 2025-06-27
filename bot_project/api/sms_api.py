@@ -857,7 +857,7 @@ class CombinedAPI:
                 return {"status": False, "message": "🔒 User balance operation in progress"}
 
             # atomically check+decrement balance
-            if not await purchase_manager._handle_user_balance(user_id, price):
+            if not await purchase_manager._handle_user_balance(user_id, price, user_id, None):
                 return {"status": False, "message": "NO_BALANCE"}
 
             # --- 2) Service-specific lock & actual purchase ---
