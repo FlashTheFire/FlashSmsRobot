@@ -63,7 +63,7 @@ from utils.config import (
 from utils.functions import small_caps, decode_barcode_id, encode_order_id, AdvancedLogger, convert_usd_to_rub, convert_rub_to_usd
 from utils.redis_manager import RedisManager, redis_manager
 from utils.redis_keys import RedisKeys
-from handlers.manager.operation_lock import OperationLockManager, OperationType, AsyncOperationContext, operation_lock_manager
+from handlers.manager.operation_lock import  OperationType, AsyncOperationContext, operation_lock_manager
 
 SMS_BOWER_TAX = 1.27
 GRIZZLY_SMS_TAX = 1.208
