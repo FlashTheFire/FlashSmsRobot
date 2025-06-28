@@ -68,6 +68,7 @@ class ForwardManager:
         self.source_chats = source_chats
         self.dest_chat = dest_chat
         self.bot: Optional[AsyncTeleBot] = None
+        self.client: Optional[TelegramClient] = None  # Added client initialization
 
         # Forward control
         self.enabled = False
@@ -96,8 +97,32 @@ class ForwardManager:
         try:
             self.user_manager = user_mgr
             self.order_manager = order_mgr
-            if bot:
-                self.bot = bot
+            self.bot = bot
+            
+            # Initialize Telegram client
+            session_path = self._session_file(self.ADMIN_ID)
+            self.client = TelegramClient(session_path, self.api_id, self.api_hash)
+            await self.client.connect()
+            
+            # Check authorization
+            if not await self.client.is_user_authorized():
+                self.logger.error("Admin session not authorized")
+                if self.bot:
+                    await self.bot.send_message(
+                        self.ADMIN_ID, 
+                        "🔒 Please log in to the admin session using TelegramClient"
+                    )
+                return False
+                
+            # Register event handlers
+            self.client.add_event_handler(
+                self._forward_event,
+                events.NewMessage(chats=self.source_chats)
+            )
+            
+            # Start client in background
+            asyncio.create_task(self.client.run_until_disconnected())
+            
             return True
         except Exception as e:
             self.logger.exception("Init managers error: %s", e)
@@ -309,39 +334,26 @@ class ForwardManager:
             
             self.bot.current_states.delete_state(uid, chat_id)
 
-        # Forwarding handler
-        @self.bot._bot.on(events.NewMessage(chats=self.source_chats))
-        async def on_new(event):
-            if not self.enabled: 
-                return
-                
-            txt = event.message.text or ''
-            # Only forward if message contains at least one app AND one country
-            if any(app in txt for app in self.app_list) and any(c in txt for c in self.country_list):
-                try:
-                    await self.bot._client.forward_messages(
-                        self.dest_chat, event.message.id, await event.get_chat()
-                    )
-                    self.logger.info(f"Forwarded {event.message.id}")
-                    self.log_buffer.append(f"Forwarded {event.message.id}")
-                except errors.PeerIdInvalidError:
-                    await self._cache_peers()
-                    await self.bot._client.forward_messages(
-                        self.dest_chat, event.message.id, await event.get_chat()
-                    )
-                except Exception as e:
-                    self.logger.exception("Forward error: %s", e)
-                    self.log_buffer.append(f"Error: {e}")
-
-    async def _cache_peers(self) -> Dict[str, Any]:
-        out = {}
-        for chat in [*self.source_chats, self.dest_chat]:
+    async def _forward_event(self, event: events.NewMessage.Event):
+        """Handle new messages and forward them if enabled and matching filters"""
+        if not self.enabled or not self.bot: 
+            return
+            
+        txt = event.message.text or ''
+        # Only forward if message contains at least one app AND one country
+        if any(app in txt for app in self.app_list) and any(c in txt for c in self.country_list):
             try:
-                ent = await self.bot._client.get_entity(chat)
-                out[chat] = ent
+                # Forward using bot API
+                await self.bot.forward_message(
+                    chat_id=self.dest_chat,
+                    from_chat_id=event.chat_id,
+                    message_id=event.message.id
+                )
+                self.logger.info(f"Forwarded {event.message.id}")
+                self.log_buffer.append(f"Forwarded {event.message.id}")
             except Exception as e:
-                self.logger.error(f"Cache failed {chat}: {e}")
-        return out
+                self.logger.exception("Forward error: %s", e)
+                self.log_buffer.append(f"Error: {e}")
 
     # Contact checker methods
     async def start_contact_login(self, user_id: int, chat_id: int, pending_numbers: List[str] = None):
@@ -547,7 +559,7 @@ forward_manager = ForwardManager(
 )
 
 async def init_managers(user_manager=None, order_manager=None, bot: AsyncTeleBot = None) -> bool:
-    return await forward_manager.init_managers(bot=bot)
+    return await forward_manager.init_managers(user_manager, order_manager, bot)
 
 async def register_handlers(bot: AsyncTeleBot):
     await forward_manager.register_handlers()
