@@ -1652,3 +1652,64 @@ TypeError: TransactionGuard.acquire_lock() got an unexpected keyword argument 't
 2025-06-27 13:48:28,630 - aiohttp.access - INFO - 172.18.0.1 [27/Jun/2025:13:48:28 +0000] "GET /ads.txt HTTP/1.0" 200 159 "-" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.3"
 2025-06-27 13:48:29,032 - aiohttp.access - INFO - 172.18.0.1 [27/Jun/2025:13:48:29 +0000] "GET /app-ads.txt HTTP/1.0" 200 159 "-" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.3"
 2025-06-27 13:48:29,428 - aiohttp.access - INFO - 172.18.0.1 [27/Jun/2025:13:48:29 +0000] "GET /sellers.json HTTP/1.0" 200 159 "-" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.3"
+2025-06-28 19:20:09,843 - telethon.crypto.aes - INFO - libssl detected, it will be used for encryption
+2025-06-28 19:20:12,858 - redis_manager - INFO - Successfully connected to Redis
+2025-06-28 19:20:13,012 - advanced_logger - INFO - UserManagement and Service indexes verified/created successfully
+2025-06-28 19:20:13,774 - advanced_logger - INFO - OrderManagement indexes created successfully
+2025-06-28 19:20:14,014 - advanced_logger - INFO - DepositManagement indexes created successfully
+2025-06-28 19:20:14,095 - handlers.methods.purchase.order_tracker - INFO - Order tracker initialized successfully
+2025-06-28 19:20:14,095 - handlers.methods.purchase.order_tracker - INFO - Order tracker initialized successfully
+2025-06-28 19:20:14,097 - handlers.methods.purchase.order_tracker - INFO - Order tracker initialized successfully
+2025-06-28 19:20:14,135 - advanced_logger - INFO - Managers and security components initialized successfully
+2025-06-28 19:20:14,934 - advanced_logger - INFO - ✅ Combined server started on port 8443
+2025-06-28 19:20:15,013 - advanced_logger - INFO - Handler Managers Initialized Successfully!
+2025-06-28 19:20:15,013 - advanced_logger - INFO - Handlers registered successfully.
+2025-06-28 19:20:15,014 - advanced_logger - INFO - Handler registered: show_menu
+2025-06-28 19:20:15,014 - advanced_logger - ERROR - Failed to register handler external: 'AsyncTeleBot' object has no attribute '_bot'
+2025-06-28 19:20:15,769 - advanced_logger - INFO - Handler registered: show_wallet
+2025-06-28 19:20:15,889 - advanced_logger - INFO - Handler registered: made_purchase
+2025-06-28 19:20:16,331 - advanced_logger - INFO - Handler registered: order_status
+2025-06-28 19:20:16,371 - advanced_logger - INFO - Handler registered: show_servers
+2025-06-28 19:20:16,531 - advanced_logger - INFO - Handler registered: show_country
+2025-06-28 19:20:16,571 - advanced_logger - INFO - Handler registered: show_deposit
+2025-06-28 19:20:17,088 - handlers.methods.history.show_history - INFO - History managers initialized successfully
+2025-06-28 19:20:17,090 - advanced_logger - INFO - Handler registered: show_history
+2025-06-28 19:20:17,211 - advanced_logger - INFO - Handler registered: support_management
+2025-06-28 19:20:18,568 - advanced_logger - INFO - Handler registered: top_services
+2025-06-28 19:20:18,688 - advanced_logger - INFO - Handler registered: show_refferal
+2025-06-28 19:20:18,730 - advanced_logger - INFO - Handler registered: show_support
+2025-06-28 19:20:25,277 - handlers.methods.admin.admin_panel - INFO - Admin panel managers initialized successfully.
+2025-06-28 19:20:25,277 - handlers.methods.admin.admin_panel - INFO - Admin panel handlers registered successfully.
+2025-06-28 19:20:25,439 - advanced_logger - INFO - Handler registered: admin_panel
+2025-06-28 19:20:27,769 - advanced_logger - INFO - Handler managers initialized successfully
+2025-06-28 19:20:27,972 - root - INFO - Inline query handlers registered successfully
+2025-06-28 19:20:28,051 - advanced_logger - INFO - Handler registered: inline_query
+2025-06-28 19:21:32,898 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:21:32 +0000] "HEAD /AutoCheck.php HTTP/1.0" 200 153 "https://flashsms.in/AutoCheck.php" "Mozilla/5.0+(compatible; UptimeRobot/2.0; http://www.uptimerobot.com/)"
+2025-06-28 19:22:43,037 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:22:43 +0000] "GET /wp-login.php HTTP/1.0" 200 159 "-" "python-requests/2.32.3"
+2025-06-28 19:22:43,118 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:22:43 +0000] "POST /wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.101 Safari/537.36"
+2025-06-28 19:25:57,745 - advanced_logger - INFO - Aggregation query: @user_id:1310162600 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 19:26:07,118 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:26:07 +0000] "GET /wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Linux; Android 12; Redmi Note 9 Pro Build/SKQ1.211019.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/126.0.6478.71 Mobile Safari/537.36"
+2025-06-28 19:26:36,048 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:26:36 +0000] "HEAD /AutoCheck.php HTTP/1.0" 200 153 "https://flashsms.in/AutoCheck.php" "Mozilla/5.0+(compatible; UptimeRobot/2.0; http://www.uptimerobot.com/)"
+2025-06-28 19:28:59,817 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:28:59 +0000] "GET / HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4240.193 Safari/537.36"
+2025-06-28 19:28:59,939 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:28:59 +0000] "GET ////wp-includes/wlwmanifest.xml HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4240.193 Safari/537.36"
+2025-06-28 19:29:00,059 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:29:00 +0000] "GET ////xmlrpc.php?rsd HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4240.193 Safari/537.36"
+2025-06-28 19:29:00,181 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:29:00 +0000] "GET / HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4240.193 Safari/537.36"
+2025-06-28 19:29:00,301 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:29:00 +0000] "GET ////blog/wp-includes/wlwmanifest.xml HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4240.193 Safari/537.36"
+2025-06-28 19:29:00,422 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:29:00 +0000] "GET ////web/wp-includes/wlwmanifest.xml HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4240.193 Safari/537.36"
+2025-06-28 19:29:00,541 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:29:00 +0000] "GET ////wordpress/wp-includes/wlwmanifest.xml HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4240.193 Safari/537.36"
+2025-06-28 19:29:00,662 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:29:00 +0000] "GET ////website/wp-includes/wlwmanifest.xml HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4240.193 Safari/537.36"
+2025-06-28 19:29:00,779 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:29:00 +0000] "GET ////wp/wp-includes/wlwmanifest.xml HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4240.193 Safari/537.36"
+2025-06-28 19:29:00,899 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:29:00 +0000] "GET ////news/wp-includes/wlwmanifest.xml HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4240.193 Safari/537.36"
+2025-06-28 19:29:01,020 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:29:01 +0000] "GET ////2020/wp-includes/wlwmanifest.xml HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4240.193 Safari/537.36"
+2025-06-28 19:29:01,140 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:29:01 +0000] "GET ////2019/wp-includes/wlwmanifest.xml HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4240.193 Safari/537.36"
+2025-06-28 19:29:01,259 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:29:01 +0000] "GET ////shop/wp-includes/wlwmanifest.xml HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4240.193 Safari/537.36"
+2025-06-28 19:29:01,380 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:29:01 +0000] "GET ////wp1/wp-includes/wlwmanifest.xml HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4240.193 Safari/537.36"
+2025-06-28 19:29:01,499 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:29:01 +0000] "GET ////test/wp-includes/wlwmanifest.xml HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4240.193 Safari/537.36"
+2025-06-28 19:29:01,621 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:29:01 +0000] "GET ////wp2/wp-includes/wlwmanifest.xml HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4240.193 Safari/537.36"
+2025-06-28 19:29:01,740 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:29:01 +0000] "GET ////site/wp-includes/wlwmanifest.xml HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4240.193 Safari/537.36"
+2025-06-28 19:29:01,860 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:29:01 +0000] "GET ////cms/wp-includes/wlwmanifest.xml HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4240.193 Safari/537.36"
+2025-06-28 19:29:01,978 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:29:01 +0000] "GET ////sito/wp-includes/wlwmanifest.xml HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4240.193 Safari/537.36"
+2025-06-28 19:30:11,241 - root - INFO - Running save_data_cycle at 2025-06-29 01:00:11.239570+05:30
+2025-06-28 19:30:57,468 - root - ERROR - [AutoUpdate.save_data_cycle] Failed cycle: Timeout reading from redis:6379
+2025-06-28 19:31:08,424 - advanced_logger - INFO - Aggregation query: @user_id:1310162600 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 19:31:41,508 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:31:41 +0000] "HEAD /AutoCheck.php HTTP/1.0" 200 153 "https://flashsms.in/AutoCheck.php" "Mozilla/5.0+(compatible; UptimeRobot/2.0; http://www.uptimerobot.com/)"
