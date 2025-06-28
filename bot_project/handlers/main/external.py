@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 import re
@@ -10,12 +11,14 @@ from telebot.async_telebot import AsyncTeleBot
 from telebot.types import (InlineKeyboardMarkup, InlineKeyboardButton, 
                           CallbackQuery, ForceReply, Message)
 
-# Constants for contact checker
-CONTACT_CHECKER_API_ID = 20729573
-CONTACT_CHECKER_API_HASH = "6bc09cbaa7d0471944875c202fec8b5b"
+# Constants
 ADMIN_USER_ID = 1889471360  # Replace with your admin ID
 SESSIONS_DIR = "sessions"
 os.makedirs(SESSIONS_DIR, exist_ok=True)
+
+# Contact Checker API Credentials (Admin provides these)
+CONTACT_CHECKER_API_ID = 20729573
+CONTACT_CHECKER_API_HASH = "6bc09cbaa7d0471944875c202fec8b5b"
 
 class TelegramLogHandler(logging.Handler):
     """Logging handler that sends log records to a Telegram user."""
@@ -156,9 +159,9 @@ class ForwardManager:
     async def register_handlers(self):
         if not self.bot:
             return
-        else:
-            self._setup_logging()
             
+        self._setup_logging()
+        
         @self.bot.message_handler(commands=['forward_control'])
         async def cmd_control(message: Message):
             await self.bot.send_message(
@@ -185,7 +188,8 @@ class ForwardManager:
             chat_id = message.chat.id
             
             # Extract numbers from message (first 19 lines)
-            numbers = [line.strip() for line in message.text.splitlines()[1:20] if line.strip()]
+            numbers = [line.strip() for line in message.text.split('\n')[1:20] if line.strip()]
+            
             # Validate numbers
             valid_numbers = []
             for num in numbers:
@@ -349,7 +353,7 @@ class ForwardManager:
         }
         await self.bot.send_message(
             chat_id,
-            "🔑 Please send your phone number (with country code, without '+' or spaces):",
+            "📱 Please send your phone number (with country code, without '+' or spaces):",
             reply_markup=ForceReply(selective=True)
         )
 
@@ -486,7 +490,14 @@ class ForwardManager:
         """Process and display number check results"""
         try:
             session_path = self._contact_session_file(user_id)
+            
+            # Create client using fixed API credentials
             async with TelegramClient(session_path, CONTACT_CHECKER_API_ID, CONTACT_CHECKER_API_HASH) as client:
+                # Ensure we're authorized
+                if not await client.is_user_authorized():
+                    await self.bot.send_message(chat_id, "❌ Session expired. Please log in again with /login")
+                    return
+                    
                 results = await self.check_numbers_registered(client, numbers)
                 response = []
                 
@@ -517,6 +528,11 @@ class ForwardManager:
         session_path = self._contact_session_file(user_id)
         if os.path.exists(session_path):
             os.remove(session_path)
+            
+        # Clear any active login state
+        if user_id in self.login_states:
+            del self.login_states[user_id]
+            
         await self.bot.send_message(
             chat_id,
             "✅ You have been logged out. Send any command to log in again."
@@ -534,8 +550,6 @@ async def init_managers(user_manager=None, order_manager=None, bot: AsyncTeleBot
     return await forward_manager.init_managers(bot=bot)
 
 async def register_handlers(bot: AsyncTeleBot):
-    return await forward_manager.register_handlers(bot)
-    # Handlers are registered inside init_managers
-    pass
+    await forward_manager.register_handlers()
 
 __all__ = ['init_managers', 'register_handlers', 'forward_manager']
