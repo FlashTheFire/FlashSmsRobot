@@ -5,3 +5,4 @@ venv/
 *.log
 bot_project/images/current/*.jpg
 sessions/*.session
+fsupdate-safe.sh
