@@ -166,3 +166,7 @@
 2025-06-28 19:12:14,261 - advanced_logger - INFO - Deposit 7292600964917018 was already TIMEOUT
 2025-06-28 19:12:36,958 - advanced_logger - INFO - Aggregation query: @user_id:1310162600 @deposit_status:(COMPLETED|PROCESSING)
 2025-06-28 19:15:05,563 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:15:05 +0000] "GET / HTTP/1.0" 200 159 "-" "Mozilla/5.0 (compatible; CensysInspect/1.1; +https://about.censys.io/)"
+2025-06-28 19:15:16,590 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:15:16 +0000] "GET /favicon.ico HTTP/1.0" 200 159 "-" "Mozilla/5.0 (compatible; CensysInspect/1.1; +https://about.censys.io/)"
+2025-06-28 19:15:32,164 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:15:32 +0000] "GET /favicon.ico HTTP/1.0" 200 159 "-" "Mozilla/5.0 (compatible; CensysInspect/1.1; +https://about.censys.io/)"
+2025-06-28 19:15:36,056 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:15:36 +0000] "GET /robots.txt HTTP/1.0" 200 159 "-" "Mozilla/5.0 (compatible; CensysInspect/1.1; +https://about.censys.io/)"
+2025-06-28 19:16:27,613 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:16:27 +0000] "HEAD /AutoCheck.php HTTP/1.0" 200 153 "https://flashsms.in/AutoCheck.php" "Mozilla/5.0+(compatible; UptimeRobot/2.0; http://www.uptimerobot.com/)"
