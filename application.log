@@ -1,0 +1,168 @@
+2025-06-28 18:44:38,761 - telethon.crypto.aes - INFO - libssl detected, it will be used for encryption
+2025-06-28 18:44:42,451 - redis_manager - INFO - Successfully connected to Redis
+2025-06-28 18:44:42,529 - advanced_logger - INFO - UserManagement and Service indexes verified/created successfully
+2025-06-28 18:44:42,610 - advanced_logger - INFO - OrderManagement indexes created successfully
+2025-06-28 18:44:42,806 - advanced_logger - INFO - DepositManagement indexes created successfully
+2025-06-28 18:44:42,886 - handlers.methods.purchase.order_tracker - INFO - Order tracker initialized successfully
+2025-06-28 18:44:42,886 - handlers.methods.purchase.order_tracker - INFO - Order tracker initialized successfully
+2025-06-28 18:44:42,886 - handlers.methods.purchase.order_tracker - INFO - Order tracker initialized successfully
+2025-06-28 18:44:42,888 - advanced_logger - INFO - Managers and security components initialized successfully
+2025-06-28 18:44:43,409 - advanced_logger - INFO - ✅ Combined server started on port 8443
+2025-06-28 18:44:43,410 - advanced_logger - INFO - Handler Managers Initialized Successfully!
+2025-06-28 18:44:43,487 - advanced_logger - INFO - Handlers registered successfully.
+2025-06-28 18:44:43,488 - advanced_logger - INFO - Handler registered: show_menu
+2025-06-28 18:44:43,488 - advanced_logger - ERROR - Failed to register handler external: ForwardManager.register_handlers() takes 1 positional argument but 2 were given
+2025-06-28 18:44:43,810 - advanced_logger - INFO - Handler registered: show_wallet
+2025-06-28 18:44:43,968 - advanced_logger - INFO - Handler registered: made_purchase
+2025-06-28 18:44:44,286 - advanced_logger - INFO - Handler registered: order_status
+2025-06-28 18:44:44,325 - advanced_logger - INFO - Handler registered: show_servers
+2025-06-28 18:44:44,407 - advanced_logger - INFO - Handler registered: show_country
+2025-06-28 18:44:44,686 - advanced_logger - INFO - Handler registered: show_deposit
+2025-06-28 18:44:45,041 - handlers.methods.history.show_history - INFO - History managers initialized successfully
+2025-06-28 18:44:45,124 - advanced_logger - INFO - Handler registered: show_history
+2025-06-28 18:44:45,244 - advanced_logger - INFO - Handler registered: support_management
+2025-06-28 18:45:43,161 - telethon.crypto.aes - INFO - libssl detected, it will be used for encryption
+2025-06-28 18:45:47,583 - redis_manager - INFO - Successfully connected to Redis
+2025-06-28 18:45:47,703 - advanced_logger - INFO - UserManagement and Service indexes verified/created successfully
+2025-06-28 18:45:47,902 - advanced_logger - INFO - OrderManagement indexes created successfully
+2025-06-28 18:45:48,022 - advanced_logger - INFO - DepositManagement indexes created successfully
+2025-06-28 18:45:48,102 - handlers.methods.purchase.order_tracker - INFO - Order tracker initialized successfully
+2025-06-28 18:45:48,103 - handlers.methods.purchase.order_tracker - INFO - Order tracker initialized successfully
+2025-06-28 18:45:48,104 - handlers.methods.purchase.order_tracker - INFO - Order tracker initialized successfully
+2025-06-28 18:45:48,142 - advanced_logger - INFO - Managers and security components initialized successfully
+2025-06-28 18:45:48,982 - advanced_logger - INFO - ✅ Combined server started on port 8443
+2025-06-28 18:45:49,065 - advanced_logger - INFO - Handler Managers Initialized Successfully!
+2025-06-28 18:45:49,066 - advanced_logger - INFO - Handlers registered successfully.
+2025-06-28 18:45:49,067 - advanced_logger - INFO - Handler registered: show_menu
+2025-06-28 18:45:49,144 - advanced_logger - ERROR - Failed to register handler external: ForwardManager.register_handlers() takes 1 positional argument but 2 were given
+2025-06-28 18:45:49,926 - advanced_logger - INFO - Handler registered: show_wallet
+2025-06-28 18:45:50,087 - advanced_logger - INFO - Handler registered: made_purchase
+2025-06-28 18:45:50,407 - advanced_logger - INFO - Handler registered: order_status
+2025-06-28 18:45:50,484 - advanced_logger - INFO - Handler registered: show_servers
+2025-06-28 18:45:50,686 - advanced_logger - INFO - Handler registered: show_country
+2025-06-28 18:45:50,726 - advanced_logger - INFO - Handler registered: show_deposit
+2025-06-28 18:45:50,930 - handlers.methods.history.show_history - INFO - History managers initialized successfully
+2025-06-28 18:45:51,088 - advanced_logger - INFO - Handler registered: show_history
+2025-06-28 18:45:51,249 - advanced_logger - INFO - Handler registered: support_management
+2025-06-28 18:45:52,768 - advanced_logger - INFO - Handler registered: top_services
+2025-06-28 18:45:53,009 - advanced_logger - INFO - Handler registered: show_refferal
+2025-06-28 18:45:53,010 - advanced_logger - INFO - Handler registered: show_support
+2025-06-28 18:46:02,442 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:46:02 +0000] "GET /AutoCheck.php HTTP/1.0" 200 159 "https://flashsms.in/AutoCheck.php" "Mozilla/5.0+(compatible; UptimeRobot/2.0; http://www.uptimerobot.com/)"
+2025-06-28 18:46:02,962 - handlers.methods.admin.admin_panel - INFO - Admin panel managers initialized successfully.
+2025-06-28 18:46:02,963 - handlers.methods.admin.admin_panel - INFO - Admin panel handlers registered successfully.
+2025-06-28 18:46:03,317 - advanced_logger - INFO - Handler registered: admin_panel
+2025-06-28 18:46:09,108 - advanced_logger - INFO - Handler managers initialized successfully
+2025-06-28 18:46:10,029 - root - INFO - Inline query handlers registered successfully
+2025-06-28 18:46:10,030 - advanced_logger - INFO - Handler registered: inline_query
+2025-06-28 18:47:48,115 - advanced_logger - INFO - Aggregation query: @user_id:5716978793 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 18:47:50,803 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:47:50 +0000] "GET /wp-login.php HTTP/1.0" 200 159 "-" "python-requests/2.32.3"
+2025-06-28 18:47:50,841 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:47:50 +0000] "POST /wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.101 Safari/537.36"
+2025-06-28 18:48:38,110 - advanced_logger - INFO - Aggregation query: @user_id:1889471360 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 18:50:48,917 - root - INFO - Search message processing time: 19.827s
+2025-06-28 18:51:07,619 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:51:07 +0000] "HEAD /AutoCheck.php HTTP/1.0" 200 153 "https://flashsms.in/AutoCheck.php" "Mozilla/5.0+(compatible; UptimeRobot/2.0; http://www.uptimerobot.com/)"
+2025-06-28 18:52:15,967 - advanced_logger - INFO - Aggregation query: @user_id:1310162600 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 18:52:22,505 - root - INFO - Search message processing time: 0.677s
+2025-06-28 18:55:42,159 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:42 +0000] "GET /wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:42,279 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:42 +0000] "GET /wp-admin HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:42,403 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:42 +0000] "GET /admin HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:42,522 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:42 +0000] "GET /user HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:42,722 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:42 +0000] "GET /login HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:42,883 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:42 +0000] "GET /site/wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:43,004 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:43 +0000] "GET /wp/wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:43,243 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:43 +0000] "GET /new/wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:43,404 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:43 +0000] "GET /wordpress/wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:43,524 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:43 +0000] "GET /blog/wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:43,684 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:43 +0000] "POST /wp-login.php HTTP/1.0" 200 159 "https://flashsms.in/wp-admin/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:43,800 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:43 +0000] "GET /wp-admin/ HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:44,202 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:44 +0000] "GET /wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:44,322 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:44 +0000] "GET /wp-admin HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:44,442 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:44 +0000] "GET /admin HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:44,563 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:44 +0000] "GET /user HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:44,682 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:44 +0000] "GET /login HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:44,804 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:44 +0000] "GET /site/wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:44,962 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:44 +0000] "GET /wp/wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:45,084 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:45 +0000] "GET /new/wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:45,206 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:45 +0000] "GET /wordpress/wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:45,327 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:45 +0000] "GET /blog/wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:45,526 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:45 +0000] "POST /wp-login.php HTTP/1.0" 200 159 "https://www.flashsms.in/wp-admin/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:45,688 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:45 +0000] "GET /wp-admin/ HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:46,089 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:46 +0000] "GET /wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:46,214 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:46 +0000] "GET /wp-admin HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:46,371 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:46 +0000] "GET /admin HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:46,492 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:46 +0000] "GET /user HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:46,611 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:46 +0000] "GET /login HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:46,728 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:46 +0000] "GET /site/wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:46,848 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:46 +0000] "GET /wp/wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:46,969 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:46 +0000] "GET /new/wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:47,089 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:47 +0000] "GET /wordpress/wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:47,209 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:47 +0000] "GET /blog/wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:47,330 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:47 +0000] "POST /wp-login.php HTTP/1.0" 200 159 "https://flashsms.in/wp-admin/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:55:47,450 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:55:47 +0000] "GET /wp-admin/ HTTP/1.0" 200 159 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+2025-06-28 18:56:10,950 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:18:56:10 +0000] "HEAD /AutoCheck.php HTTP/1.0" 200 153 "https://flashsms.in/AutoCheck.php" "Mozilla/5.0+(compatible; UptimeRobot/2.0; http://www.uptimerobot.com/)"
+2025-06-28 18:56:23,527 - advanced_logger - INFO - Aggregation query: @user_id:612669743 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 18:56:27,390 - advanced_logger - INFO - Aggregation query: @user_id:612669743 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 18:56:29,538 - advanced_logger - INFO - Sending order report for order_id: 7787311324312268, user_id: 612669743
+2025-06-28 18:56:29,563 - advanced_logger - INFO - Aggregation query: @user_id:612669743 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 18:56:29,643 - advanced_logger - INFO - Retrieved forum_id: 22863
+2025-06-28 18:56:29,682 - advanced_logger - INFO - Sending new message to channel: -1002203139746
+2025-06-28 18:56:30,167 - advanced_logger - INFO - Storing message_id: 24242 for order: 7787311324312268
+2025-06-28 18:56:30,838 - handlers.security.transaction_guard - WARNING - Failed to release lock: lock:transaction:612669743:purchase:612669743
+2025-06-28 18:56:34,786 - advanced_logger - INFO - Attempting to cancel order 7787311324312268 for user 612669743
+2025-06-28 18:56:34,825 - advanced_logger - INFO - Updating order status to cancelled for order 7787311324312268
+2025-06-28 18:56:34,894 - advanced_logger - INFO - Successfully cancelled order 7787311324312268 with refund
+2025-06-28 18:56:35,613 - advanced_logger - INFO - Sending order report for order_id: 7787311324312268, user_id: 612669743
+2025-06-28 18:56:35,645 - advanced_logger - INFO - Aggregation query: @user_id:612669743 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 18:56:35,682 - advanced_logger - INFO - Aggregation query: @user_id:612669743 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 18:56:35,748 - advanced_logger - INFO - Retrieved forum_id: 22863
+2025-06-28 18:56:36,045 - advanced_logger - INFO - Editing message with ID: 24242
+2025-06-28 18:56:41,868 - advanced_logger - INFO - Aggregation query: @user_id:612669743 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 18:56:48,222 - advanced_logger - INFO - Aggregation query: @user_id:612669743 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 18:57:07,941 - advanced_logger - INFO - Aggregation query: @user_id:7096014450 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 18:57:11,709 - advanced_logger - INFO - Aggregation query: @user_id:7096014450 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 18:57:13,431 - advanced_logger - INFO - Sending order report for order_id: 987654321254768888977, user_id: 7096014450
+2025-06-28 18:57:13,474 - advanced_logger - INFO - Aggregation query: @user_id:7096014450 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 18:57:13,553 - advanced_logger - INFO - Retrieved forum_id: 17550
+2025-06-28 18:57:13,592 - advanced_logger - INFO - Sending new message to channel: -1002203139746
+2025-06-28 18:57:13,912 - advanced_logger - INFO - Storing message_id: 24243 for order: 987654321254768888977
+2025-06-28 18:57:14,741 - handlers.security.transaction_guard - WARNING - Failed to release lock: lock:transaction:7096014450:purchase:7096014450
+2025-06-28 18:57:21,737 - advanced_logger - INFO - Aggregation query: @user_id:1310162600 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 19:00:11,655 - root - INFO - Running save_data_cycle at 2025-06-29 00:30:11.653063+05:30
+2025-06-28 19:00:21,340 - handlers.main.show_menu - INFO - Received join request from user 6507159188 for chat -1001886867129
+2025-06-28 19:00:21,437 - advanced_logger - INFO - Aggregation query: @user_id:6507159188 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 19:00:21,515 - advanced_logger - WARNING - Failed to retrieve user profile for user 6507159188
+2025-06-28 19:01:15,494 - root - ERROR - [AutoUpdate.save_data_cycle] Failed cycle: Timeout reading from redis:6379
+2025-06-28 19:01:16,130 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:01:16 +0000] "HEAD /AutoCheck.php HTTP/1.0" 200 153 "https://flashsms.in/AutoCheck.php" "Mozilla/5.0+(compatible; UptimeRobot/2.0; http://www.uptimerobot.com/)"
+2025-06-28 19:01:23,471 - advanced_logger - INFO - Aggregation query: @user_id:6507159188 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 19:01:30,401 - advanced_logger - INFO - Aggregation query: @user_id:6507159188 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 19:02:23,472 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:02:23 +0000] "GET /wp-login.php HTTP/1.0" 200 159 "-" "python-requests/2.32.3"
+2025-06-28 19:02:23,711 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:02:23 +0000] "POST /wp-login.php HTTP/1.0" 200 159 "-" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.101 Safari/537.36"
+2025-06-28 19:02:30,539 - advanced_logger - INFO - Aggregation query: @user_id:1310162600 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 19:06:19,417 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:06:19 +0000] "HEAD /AutoCheck.php HTTP/1.0" 200 153 "https://flashsms.in/AutoCheck.php" "Mozilla/5.0+(compatible; UptimeRobot/2.0; http://www.uptimerobot.com/)"
+2025-06-28 19:07:12,266 - advanced_logger - INFO - Attempting to cancel order 987654321254768888977 for user 7096014450
+2025-06-28 19:07:12,266 - advanced_logger - INFO - Sending order report for order_id: 987654321254768888977, user_id: 7096014450
+2025-06-28 19:07:12,346 - advanced_logger - INFO - Aggregation query: @user_id:7096014450 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 19:07:12,348 - advanced_logger - INFO - Aggregation query: @user_id:7096014450 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 19:07:12,388 - advanced_logger - INFO - Updating order status to timeout for order 987654321254768888977
+2025-06-28 19:07:12,456 - advanced_logger - INFO - Successfully timeout order 987654321254768888977 with refund
+2025-06-28 19:07:12,479 - advanced_logger - INFO - Retrieved forum_id: 17550
+2025-06-28 19:07:12,598 - advanced_logger - INFO - Editing message with ID: 24243
+2025-06-28 19:07:33,706 - advanced_logger - INFO - Aggregation query: @user_id:1310162600 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 19:07:57,135 - advanced_logger - INFO - Aggregation query: @user_id:7096014450 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 19:07:59,014 - advanced_logger - INFO - Sending order report for order_id: 7214780088651263, user_id: 7096014450
+2025-06-28 19:07:59,089 - advanced_logger - INFO - Aggregation query: @user_id:7096014450 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 19:07:59,129 - advanced_logger - INFO - Retrieved forum_id: 17550
+2025-06-28 19:07:59,174 - advanced_logger - INFO - Sending new message to channel: -1002203139746
+2025-06-28 19:07:59,485 - advanced_logger - INFO - Storing message_id: 24245 for order: 7214780088651263
+2025-06-28 19:08:00,380 - handlers.security.transaction_guard - WARNING - Failed to release lock: lock:transaction:7096014450:purchase:7096014450
+2025-06-28 19:11:23,967 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:11:23 +0000] "HEAD /AutoCheck.php HTTP/1.0" 200 153 "https://flashsms.in/AutoCheck.php" "Mozilla/5.0+(compatible; UptimeRobot/2.0; http://www.uptimerobot.com/)"
+2025-06-28 19:12:13,992 - advanced_logger - INFO - Successfully retrieved deposit data for ID: 7292600964917018
+2025-06-28 19:12:13,995 - advanced_logger - INFO - Successfully retrieved deposit data for ID: 7292600964917018
+2025-06-28 19:12:14,073 - advanced_logger - INFO - Attempting to cancel deposit 7292600964917018 for user 6507159188
+2025-06-28 19:12:14,113 - advanced_logger - INFO - Successfully retrieved deposit data for ID: 7292600964917018
+2025-06-28 19:12:14,115 - advanced_logger - INFO - Updating deposit status to timeout for deposit 7292600964917018
+2025-06-28 19:12:14,180 - advanced_logger - INFO - Successfully timeout deposit 7292600964917018
+2025-06-28 19:12:14,182 - advanced_logger - INFO - Attempting to cancel deposit 7292600964917018 for user 6507159188
+2025-06-28 19:12:14,223 - advanced_logger - INFO - Successfully retrieved deposit data for ID: 7292600964917018
+2025-06-28 19:12:14,261 - advanced_logger - INFO - Deposit 7292600964917018 was already TIMEOUT
+2025-06-28 19:12:36,958 - advanced_logger - INFO - Aggregation query: @user_id:1310162600 @deposit_status:(COMPLETED|PROCESSING)
+2025-06-28 19:15:05,563 - aiohttp.access - INFO - 172.18.0.1 [28/Jun/2025:19:15:05 +0000] "GET / HTTP/1.0" 200 159 "-" "Mozilla/5.0 (compatible; CensysInspect/1.1; +https://about.censys.io/)"
