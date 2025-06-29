@@ -413,7 +413,6 @@ class ForwardManager:
             text = re.sub(r"</a><b>\]", "</a>]", text)
 
             # Send the fully‑processed message
-            print(f"data: {text}")
             return await self.bot.send_message(chat_id, text, **kwargs)
 
         except Exception as e:
@@ -602,8 +601,7 @@ class ForwardManager:
                     'phone': phone,
                     'client': client
                 })
-                print(f"Code Sent: <a href='https://i.ibb.co/bM7nJ5bv/IMG-20250629-063110-295.jpg'>✉️</a> <b>Code Sent</b>\nPlease reply with the 5-digit code:")
-                await self.safe_send(
+                await self.bot.send_message(
                     chat_id,
                     "<a href='https://i.ibb.co/bM7nJ5bv/IMG-20250629-063110-295.jpg'>✉️</a> <b>Code Sent</b>\nPlease reply with the 5-digit code:",
                     parse_mode="HTML",
