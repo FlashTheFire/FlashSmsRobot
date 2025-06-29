@@ -83,9 +83,17 @@ class ForwardManager:
         self.source_chats = source_chats
         self.dest_chat = dest_chat
         self.bot: Optional[AsyncTeleBot] = None
-        self.forward_client: Optional[TelegramClient] = None
         self.contact_clients: Dict[int, TelegramClient] = {}
         self.session_manager = SessionManager()
+
+        session_path = self._contact_session_file(ADMIN_USER_ID) # Get session file path
+        self.forward_client: Optional[TelegramClient]  = TelegramClient(
+            session_path, 
+            FORWARD_API_ID, 
+            FORWARD_API_HASH,
+            connection_retries=5,
+            auto_reconnect=True
+        )
 
         # Control states
         self.enabled = False
@@ -116,9 +124,6 @@ class ForwardManager:
             self.logger.exception("Init error: %s", e)
             await self.send_to_admin(f"<b>❌ Initialization Failed</b>\n<code>{e}</code>")
             return False
-
-    def _session_file(self, user_id: int) -> str:
-        return os.path.join(SESSIONS_DIR, f"forward_{user_id}.session")
 
     def _contact_session_file(self, user_id: int) -> str:
         return os.path.join(SESSIONS_DIR, f"contact_{user_id}.session")
@@ -185,6 +190,16 @@ class ForwardManager:
                 parse_mode="HTML",
                 reply_markup=self._control_keyboard(user_id)
             )
+        @self.forward_client.on(events.NewMessage(chats=self.source_chats))
+        async def on_new(event):
+            if not self.enabled:
+                return
+            try:
+                await self._forward_event(event)
+            except (errors.ConnectionSystemEmptyError, errors.AlreadyInConversationError) as e:
+                self.logger.warning(f"Connection issue: {e}")
+                await asyncio.sleep(5)
+            
 
         @self.bot.callback_query_handler(func=lambda call: call.data in self.cb_list)
         async def handle_callbacks(call: CallbackQuery):
@@ -473,43 +488,26 @@ class ForwardManager:
                 
     async def start_forward_client(self):
         try:
-            session_path = self._session_file(ADMIN_USER_ID) # Get session file path
-            self.forward_client = TelegramClient(
-                session_path, 
-                FORWARD_API_ID, 
-                FORWARD_API_HASH,
-                connection_retries=5,
-                auto_reconnect=True
-            )
             await self.forward_client.connect()
-            
             if not await self.forward_client.is_user_authorized():
-                await self.send_to_admin(" Forward Client Not Authorized ")
-                await self.logout_user(ADMIN_USER_ID, ADMIN_USER_ID, file_path=session_path)
+                self.logger.info("Awaiting login command")
+                if self.bot:
+                    user_id = ADMIN_USER_ID
+                    await self.bot.send_message(
+                        user_id,
+                        "⚡ <b>Tᴇʟᴇɢʀᴀᴍ Cᴏɴᴛʀᴏʟ Pᴀɴᴇʟ</b>",
+                        parse_mode="HTML",
+                        reply_markup=self._control_keyboard(user_id)
+                    )
                 return
+            else:
+                await self._cache_peers()
+                self.logger.info("Client ready")
             
             # Add proper task management
             self.forward_client_task = asyncio.create_task(
                 self.forward_client.run_until_disconnected()
             )
-            
-            # Add DC migration handling
-            @self.forward_client.on(events.DCChangeEvent)
-            async def handle_dc_change(event):
-                self.logger.info(f"Migrated to DC {event.new_dc}")
-                await asyncio.sleep(1)  # Brief pause before reconnecting
-                await self.forward_client.reconnect()
-
-            
-            @self.forward_client.on(events.NewMessage(chats=self.source_chats))
-            async def on_new(event):
-                if not self.enabled:
-                    return
-                try:
-                    await self._forward_event(event)
-                except (errors.ConnectionError, errors.AlreadyInConversationError) as e:
-                    self.logger.warning(f"Connection issue: {e}")
-                    await asyncio.sleep(5)
             
             self.logger.info("Forward client started")
         except Exception as e:
@@ -520,6 +518,7 @@ class ForwardManager:
         """Handle new messages and forward them"""
         if not self.enabled or not self.bot:
             return
+        print(event.message)
             
         txt = event.message.text or ''
         
@@ -549,7 +548,17 @@ class ForwardManager:
         """Send message to admin"""
         if self.bot:
             await self.safe_send(ADMIN_USER_ID, message, parse_mode="HTML")
-
+    
+    async def _cache_peers(self) -> Dict[str, Any]:
+        out = {}
+        for chat in [*self.source_chats, self.dest_chat]:
+            try:
+                ent = await self.forward_client.get_entity(chat)
+                out[chat] = ent
+                self.logger.info(f"Cached {chat}")
+            except Exception as e:
+                self.logger.error(f"Cache failed {chat}: {e}")
+        return out
     # Contact checker methods
     async def start_contact_login(self, user_id: int, chat_id: int):
         """Initiate login flow for contact checker"""
@@ -666,6 +675,9 @@ class ForwardManager:
                 await self.safe_send(chat_id, "✅ <b>Login Successful</b>\nYou can now check numbers", parse_mode="HTML")
                 await client.disconnect()
                 self.login_states[user_id]['state'] = 'logged_in'
+                if user_id == ADMIN_USER_ID:
+                    await self.start_forward_client()
+
 
             except errors.SessionPasswordNeededError:
                 state_data['state'] = 'awaiting_password'
