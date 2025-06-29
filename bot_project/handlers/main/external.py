@@ -205,7 +205,7 @@ class ForwardManager:
             if re.fullmatch(pattern, num):
                 return num
         return masked
-    def wrap(self, s: str, n: int = 24) -> str:
+    def wrap(self, s: str, n: int = 30) -> str:
         """
         Word‑aware wrap per original line: no line exceeds n letters/spaces, and words aren't split.
         Preserves empty lines and wraps each input line independently.
