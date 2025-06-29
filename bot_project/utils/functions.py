@@ -390,6 +390,12 @@ async def large_caps() -> dict:
         'abcdefghijklmnopqrstuvwxyz1234567890'
     )
 
+async def large_nums() -> dict:
+    """Returns translation table for large numbers conversion"""
+    return str.maketrans(
+        '𝟷𝟸𝟹𝟺𝟻𝟼𝟽𝟾𝟿𝟶',
+        '1234567890'
+    )
 
 async def get_sms_text_by_code(order_id: str, sms: str, server_id: int) -> Optional[str]:
     """
