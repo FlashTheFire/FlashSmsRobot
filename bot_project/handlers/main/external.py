@@ -301,7 +301,7 @@ class ForwardManager:
                     f"💎 <b>Aᴍᴏᴜɴᴛ</b> » <code>{str(data['amount']).translate(small_cap)}</code> <i>Pᴏɪɴᴛs</i>\n"
                     f"🌍 <b>Rᴇɢɪᴏɴ</b> » <b>{str(data['country']).translate(small_cap)}</b> <b>[</b> <code>{data['flag']}</code> <b>]</b>\n\n"
 
-                    f"📞 <b>Nᴜᴍʙᴇʀ</b> » <code>{str(data['number_data']['national_code']).translate(small_cap)}</code> {str(mask(str(data['number_data']['national_number']))).translate(small_cap)}\n"
+                    f"📞 <b>Nᴜᴍʙᴇʀ</b> » <code>{str(data['number_data']['national_code']).translate(small_cap)}</code> <code>{str(mask(str(data['number_data']['national_number']))).translate(small_cap)}</code>\n"
                     f"💬 <b>Sᴍs Lɪsᴛ</b> » <code>{data['otp']}</code>\n\n"
                     
                     f"✅ <b>Sᴛᴀᴛᴜs</b> » <code>Cᴏᴍᴘʟᴇᴛᴇᴅ</code>\n"
