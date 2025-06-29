@@ -264,7 +264,7 @@ class ForwardManager:
                 await self.safe_callback_query(call.id)
 
             elif data == self.CB_CHECK_NUM:
-                if self.login_states.get(user_id).get('state') == 'logged_in' or os.path.exists(self._contact_session_file(user_id)):
+                if self.login_states.get(user_id, {"state": "logged_out"}).get('state') == 'logged_in' or os.path.exists(self._contact_session_file(user_id)):
                     msg = await self.safe_send(
                         chat_id,
                         "<b>📱 Phone Number Checker</b>\n\nSend up to 20 phone numbers (one per line, without '+' or spaces):\n\n<code>919027839273</code>\n<code>918372673883</code>\n<code>918373737373</code>",
