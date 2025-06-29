@@ -358,6 +358,7 @@ class ForwardManager:
                 await self.safe_send(chat_id, f"❌ <b>{label} Removed</b>\n<code>{text}</code>", parse_mode="HTML")
             else:
                 await self.safe_send(chat_id, f"⚠️ <b>{label} Not Found</b>\n<code>{text}</code>", parse_mode="HTML")
+    
     async def safe_send(self, chat_id, text, **kwargs):
         """Safely send formatted messages with HTML + small caps + expandable blockquote."""
         try:
@@ -412,6 +413,7 @@ class ForwardManager:
             text = re.sub(r"</a><b>\]", "</a>]", text)
 
             # Send the fully‑processed message
+            print(f"data: {text}")
             return await self.bot.send_message(chat_id, text, **kwargs)
 
         except Exception as e:
