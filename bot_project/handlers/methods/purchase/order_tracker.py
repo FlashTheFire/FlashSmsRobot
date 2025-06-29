@@ -33,7 +33,7 @@ class UserOrderTrackerManagement:
     __slots__ = (
         'check_interval', 'base_timeout', 'extended_timeout', 'update_interval',
         'logging', 'bot', 'order_manager', '_tracking_task', 'transaction_guard',
-        '_initialized', '_keyboard_cache', '_adaptive_batch_size',
+        '_initialized', '_adaptive_batch_size',
         '_load_window', '_circuit_state', '_circuit_errors', '_semaphore', 'redis_client'
     )
 
@@ -52,10 +52,10 @@ class UserOrderTrackerManagement:
         
         self._tracking_task: Optional[asyncio.Task] = None
         self._initialized = False
-        self._keyboard_cache: Dict[str, InlineKeyboardMarkup] = {}
+
         
         self._adaptive_batch_size = int(BATCH_SIZE)
-        self._load_window = deque(maxlen=10)
+        self._load_window = deque(maxlen=20)
         self._circuit_state = "closed"
         self._circuit_errors = 0 
     async def init_managers(self, order_mgr: OrderManagement, bot: AsyncTeleBot) -> bool:
@@ -153,7 +153,7 @@ class UserOrderTrackerManagement:
         try:
             offset = 0
             while True:
-                orders = await self._fetch_orders_batch(batch_size, offset)
+                orders = await self._fetch_orders_batch(offset, batch_size)
                 if not orders:
                     break
 
@@ -177,10 +177,10 @@ class UserOrderTrackerManagement:
             self._circuit_errors += 1
             if self._circuit_errors >= 3:
                 await self._trip_circuit()
-    async def _fetch_orders_batch(self, batch_size: int, offset: int) -> List[Dict]:
+    async def _fetch_orders_batch(self, offset: int = 0, batch_size: int = _adaptive_batch_size, query_str: str = None) -> List[Dict]:
         """Optimized Redis batch fetch with validation"""
         response = await self.order_manager.search_current_orders(
-            query_str="*", 
+            query_str=query_str or "*", 
             limit=batch_size,
             offset=offset
         )
@@ -724,7 +724,7 @@ class UserOrderTrackerManagement:
         try:
             offset = 0
             while True:
-                orders = await self._fetch_orders_batch(batch_size, offset)
+                orders = await self._fetch_orders_batch(offset, batch_size)
                 if not orders:
                     break
 
@@ -771,7 +771,7 @@ class UserOrderTrackerManagement:
     async def _trip_circuit(self) -> None:
         """Overload protection mechanism"""
         self._circuit_state = "open"
-        await self._log('critical', "Circuit tripped - entering cooldown")
+        print(colored("Circuit tripped - entering cooldown", "red"))
         asyncio.create_task(self._reset_circuit())
     async def _reset_circuit(self) -> None:
         """Automatic system recovery"""
@@ -845,6 +845,7 @@ class UserOrderTrackerManagement:
         except Exception as e:
             # Log any other errors
             await self._log('error', f"Task execution failed: {repr(e)}")
+    
     async def _process_single_order(self, order: Dict, is_expired: bool) -> None:
         """Handle expired orders based on their status"""
         order_id = order.get('id', '').split(':')[-1]

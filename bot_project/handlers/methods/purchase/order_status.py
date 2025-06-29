@@ -6,6 +6,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQu
 from telebot.async_telebot import AsyncTeleBot
 from handlers.security import RateLimiter, InputValidator, TransactionGuard
 from typing import Dict, Any, Optional, Union
+from handlers.methods.purchase.order_tracker import order_tracker, UserOrderTrackerManagement
 import asyncio
 import json
 import aiohttp
@@ -59,9 +60,6 @@ class UserPurchaseStatusManagement:
     async def cancel_number_api(self, server_id: int, order_id: str, sms_list: Optional[str] = None) -> Dict[str, Any]:
         """Call external API to cancel the phone number/order."""
         try:
-            server_name, api_key = await get_api_info(int(server_id))
-            url = f"https://{server_name}/stubs/handler_api.php?api_key={api_key}&action=setStatus&id={order_id}&status=8"
-            print(url)
             if str(order_id).startswith("987654321"):
                 order_data = (await self.order_manager.get_order_data(order_id))['result']
                 print(colored(f"Order Data: {order_data}", "yellow"))
@@ -79,6 +77,10 @@ class UserPurchaseStatusManagement:
                     return {"response": True, "text": "<blockquote><b>✅ Nᴜᴍʙᴇʀ Cᴀɴᴄᴇʟʟᴇᴅ Sᴜᴄᴄᴇssғᴜʟʟʏ</b></blockquote>"}
                 return {"response": False, "text": "<blockquote><b>⚠️ Nᴇᴛᴡᴏʀᴋ Eʀʀᴏʀ Wʜɪʟᴇ Cᴀɴᴇʟʟɪɴɢ Tʜᴇ Nᴜᴍʙᴇʀ...</b></blockquote>"}
 
+            server_name, api_key = await get_api_info(int(server_id))
+            url = f"https://{server_name}/stubs/handler_api.php?api_key={api_key}&action=setStatus&id={order_id}&status=8"
+            print(url)
+
             async with aiohttp.ClientSession() as session:
                 async with session.get(url) as response:
                     if response.status == 200:
@@ -94,11 +96,25 @@ class UserPurchaseStatusManagement:
                             return {"response": False, "text": "<blockquote><b>🕔 Yᴏᴜ Nᴇᴇᴅ Tᴏ Wᴀɪᴛ Lᴏɴɢᴇʀ Bᴇᴄᴀᴜsᴇ Eᴀʀʟʏ Cᴀɴᴇʟʟᴀᴛɪᴏɴ Wᴀs Dᴇɴɪᴇᴅ..</b></blockquote>"}
                         elif text in ["ACCESS_CANCEL", "ACCESS_CANCEL_ALREADY", "STATUS_CANCEL", "ALREADY_CANCELED"]:
                             return {"response": True, "text": "<blockquote><b>✅ Nᴜᴍʙᴇʀ Cᴀɴᴄᴇʟʟᴇᴅ Sᴜᴄᴄᴇssғᴜʟʟʏ</b></blockquote>"}
+                        elif text in {"BAD_ACTION"}:
+                            return await self._check_sms(order_id=order_id, server_name=server_name, api_key=api_key)
                     return {"response": False, "text": f"<blockquote><b>❌ Fᴀɪʟᴇᴅ Tᴏ Cᴀɴᴇʟ Nᴜᴍʙᴇʀ: {text}</b></blockquote>"}
         except aiohttp.ClientError as e:
             return {"response": False, "text": "<blockquote><b>⚠️ Nᴇᴛᴡᴏʀᴋ Eʀʀᴏʀ Wʜɪʟᴇ Cᴀɴᴇʟʟɪɴɢ Tʜᴇ Nᴜᴍʙᴇʀ...</b></blockquote>"}
         except Exception as e:
             return {"response": False, "text": "<blockquote><b>⚠️ Uɴᴇxᴘᴇᴄᴛᴇᴅ Eʀʀᴏʀ Wʜɪʟᴇ Cᴀɴᴇʟʟɪɴɢ Tʜᴇ Nᴜᴍʙᴇʀ...</b></blockquote>"}
+
+    async def _check_sms(self, order_id):
+        orders = await order_tracker._fetch_orders_batch(0, 1, f"@order_id:({order_id})")
+        valid, expired = await order_tracker._categorize_orders(orders)
+        processing_tasks = [
+            *[order_tracker._process_single_order(o, True) for o in expired],
+            *[order_tracker._process_single_order(o, False) for o in valid]
+        ]
+        if processing_tasks:
+            await asyncio.gather(*processing_tasks, return_exceptions=True)
+
+        return {"response": False, "text": "<blockquote><b>⚠️ Uɴᴇxᴘᴇᴄᴛᴇᴅ Eʀʀᴏʀ Wʜɪʟᴇ Cᴀɴᴇʟʟɪɴɢ Tʜᴇ Nᴜᴍʙᴇʀ...</b></blockquote>"}
 
     async def _acquire_transaction_lock(self, guard, transaction_key, input_data) -> bool:
         """Acquire transaction lock with error handling."""
@@ -276,6 +292,9 @@ class UserPurchaseStatusManagement:
                     text=f"<blockquote><b>{result.get('text', 'Uɴᴋɴᴏᴡɴ Eʀʀᴏʀ')}</b></blockquote>",
                     parse_mode='html'
                 )
+            return
+        elif not result.get('response') and str(result.get('text')).startswith("<blockquote><b>⚠️ Uɴᴇxᴘᴇᴄᴛᴇᴅ Eʀʀᴏʀ Wʜɪʟᴇ"):
+            await self.bot.answer_callback_query(input_data.id)
             return
 
         cancel_result = await self.order_manager.cancel_order(order_id, order_user_id, status='CANCELLED')
