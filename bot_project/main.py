@@ -22,6 +22,7 @@ from handlers.manager.operation import (
 from handlers.security import InputValidator, TransactionGuard
 from handlers.methods.purchase import made_purchase, show_country, show_servers, order_status
 from handlers.main import inline_query, message_handler, show_refferal, show_menu, top_services, show_wallet, show_support, support_management, external
+from handlers.main.external import forward_manager, ForwardManager
 from handlers.methods.purchase.order_tracker import init_managers as order_tracker_init, register_handlers as order_tracker_register, order_tracker
 from handlers.methods.recharge.deposit_tracker import init_managers as deposit_tracker_init, register_handlers as deposit_tracker_register, deposit_tracker
 from handlers.methods.recharge import show_deposit
@@ -41,6 +42,7 @@ class TelegramBot:
         self.user_manager: Optional[UserManagement] = None
         self.order_manager: Optional[OrderManagement] = None
         self.deposit_manager: Optional[DepositManagement] = None
+        self.forward_manager: Optional[ForwardManager] = None
         
         # Webhook configuration
         self.use_webhook: bool = os.getenv("USE_WEBHOOK", "false").lower() == "true"
@@ -268,6 +270,7 @@ class TelegramBot:
                 self.order_manager, 
                 self.user_manager
             )
+            self.forward_manager = self.forward_manager
 
             # Initialize trackers
             await self._initialize_trackers()
@@ -297,6 +300,8 @@ class TelegramBot:
             await deposit_tracker.stop()
         if self.bot:
             await self.bot.close_session()
+        if self.forward_manager:
+            await self.forward_manager.shutdown()
 
     async def register_handlers(self) -> bool:
         """Register all message handlers with the bot."""

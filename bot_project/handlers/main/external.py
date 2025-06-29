@@ -3,7 +3,7 @@ import logging
 import os
 import re
 import sqlite3
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Set
 
 from telethon import TelegramClient, functions, types, errors, events
 from telebot.async_telebot import AsyncTeleBot
@@ -106,6 +106,7 @@ class ForwardManager:
         self.logging_enabled = True
         self.app_list: List[str] = []
         self.country_list: List[str] = []
+        self.active_tasks: Set[asyncio.Task] = set()
 
         # Setup logger
         self.logger = logging.getLogger("ForwardManager")
@@ -192,7 +193,12 @@ class ForwardManager:
         async def on_new(event):
             if not self.enabled:
                 return
-            await self._forward_event(event)
+            try:
+                await self._forward_event(event)
+            except (errors.ConnectionError, errors.AlreadyInConversationError) as e:
+                self.logger.warning(f"Connection issue: {e}")
+                await asyncio.sleep(5)
+                await self.start_forward_client()  # Reinitialize client
 
         @self.bot.message_handler(commands=['user_control'])
         async def cmd_control(message: Message):
@@ -399,21 +405,60 @@ class ForwardManager:
             self.logger.exception(f"Failed to answer callback query: {e}")
 
 
+    async def shutdown(self):
+        """Clean up clients and tasks on shutdown"""
+        if self.forward_client:
+            try:
+                await self.forward_client.disconnect()
+                if hasattr(self, 'forward_client_task'):
+                    self.forward_client_task.cancel()
+                    try:
+                        await self.forward_client_task
+                    except asyncio.CancelledError:
+                        pass
+            except Exception as e:
+                self.logger.warning(f"Shutdown error: {e}")
+        
+        for user_id, client in list(self.contact_clients.items()):
+            try:
+                await client.disconnect()
+            except Exception:
+                pass
+            finally:
+                self.contact_clients.pop(user_id, None)
+                
     async def start_forward_client(self):
-        """Start the Telegram client for forwarding"""
         try:
             session_path = self._session_file(ADMIN_USER_ID)
-            self.forward_client = TelegramClient(session_path, FORWARD_API_ID, FORWARD_API_HASH)
+            self.forward_client = TelegramClient(
+                session_path, 
+                FORWARD_API_ID, 
+                FORWARD_API_HASH,
+                connection_retries=5,
+                auto_reconnect=True
+            )
             await self.forward_client.connect()
             
             if not await self.forward_client.is_user_authorized():
-                await self.send_to_admin("🔒 <b>Forward Client Not Authorized</b>")
+                await self.send_to_admin(" Forward Client Not Authorized ")
                 return
+            
+            # Add proper task management
+            self.forward_client_task = asyncio.create_task(
+                self.forward_client.run_until_disconnected()
+            )
+            
+            # Add DC migration handling
+            @self.forward_client.on(events.DCChangeEvent)
+            async def handle_dc_change(event):
+                self.logger.info(f"Migrated to DC {event.new_dc}")
+                await asyncio.sleep(1)  # Brief pause before reconnecting
+                await self.forward_client.reconnect()
             
             self.logger.info("Forward client started")
         except Exception as e:
             self.logger.exception("Client error: %s", e)
-            await self.send_to_admin(f"🔥 <b>Client Error</b>\n<code>{e}</code>")
+            await self.send_to_admin(f" <b>Client Error</b>\n<code>{e}</code>")
 
     async def _forward_event(self, event: events.NewMessage.Event):
         """Handle new messages and forward them"""
