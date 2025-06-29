@@ -72,18 +72,19 @@ class SessionManager:
 
 class ForwardManager:
     # Callback identifiers
-    CB_START = "start"
-    CB_STOP = "stop"
-    CB_SHOW_LOGS = "show_logs"
-    CB_TOGGLE_LOGS = "toggle_logs"
-    CB_CHECK_NUM = "check_nums"
-    CB_LOGOUT = "logout"
-    CB_LOGIN = "login"
-    CB_ADD_APP = "add_app"
-    CB_REMOVE_APP = "remove_app"
-    CB_ADD_COUNTRY = "add_country"
-    CB_REMOVE_COUNTRY = "remove_country"
-    CB_SHOW_LISTS = "show_lists"
+    entry = "ForwardManager:"
+    CB_START = entry + "start"
+    CB_STOP = entry + "stop"
+    CB_SHOW_LOGS = entry + "show_logs"
+    CB_TOGGLE_LOGS = entry + "toggle_logs"
+    CB_CHECK_NUM = entry + "check_nums"
+    CB_LOGOUT = entry + "logout"
+    CB_LOGIN = entry + "login"
+    CB_ADD_APP = entry + "add_app"
+    CB_REMOVE_APP = entry + "remove_app"
+    CB_ADD_COUNTRY = entry + "add_country"
+    CB_REMOVE_COUNTRY = entry + "remove_country"
+    CB_SHOW_LISTS = entry + "show_lists"
     cb_list = [CB_START, CB_STOP, CB_SHOW_LOGS, CB_TOGGLE_LOGS, CB_CHECK_NUM, 
                CB_LOGOUT, CB_LOGIN, CB_ADD_APP, CB_REMOVE_APP, 
                CB_ADD_COUNTRY, CB_REMOVE_COUNTRY, CB_SHOW_LISTS]
