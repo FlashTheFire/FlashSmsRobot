@@ -146,6 +146,7 @@ class ForwardManager:
         async for key in self.redis_client.scan_iter(match=f"{SERVICE_PREFIX}:*:free", count=1_000):
             m = pattern.match(key)
             if m:
+                await self.bot.send_message(ADMIN_USER_ID, f"<b>Free Number Added</b>\n<code>{m.group(1)}</code>") 
                 service_key = m.group(1).replace("free_numbers:", "service_data:").replace("free", "")
                 app_name = await self.redis_client.hget(service_key, 'app_name')
                 country_name = await self.redis_client.hget(service_key, 'country_name')
