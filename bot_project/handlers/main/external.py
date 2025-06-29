@@ -324,7 +324,7 @@ class ForwardManager:
                 keyboard = InlineKeyboardMarkup()
                 keyboard.add(
                     InlineKeyboardButton(
-                        text="⚡️ Fʟᴀsʜ Sᴍs Bᴏᴛ",
+                        text="⚡️ Sᴍs Bᴏᴛ",
                         url=f"https://t.me/FlashSms_Bot?start=start"), 
                     InlineKeyboardButton(
                         text="🔗 Sʜᴀʀᴇ Us",
