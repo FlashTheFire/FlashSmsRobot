@@ -256,7 +256,11 @@ class ForwardManager:
                     "amount": "0.49",
                     "flag": match["flag"].strip(),
                     "full_message": match["full_message"].strip(),
-                    "time": time
+                    "time": time,
+                    "number_data": {
+                        "national_code": match["number"].strip()[:2],
+                        "national_number": match["number"].strip()[2:]
+                    }
                 }
     
             def build_message(data: Dict[str, Any], small_cap) -> str:
