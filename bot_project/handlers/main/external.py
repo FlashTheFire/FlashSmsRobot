@@ -296,7 +296,7 @@ class ForwardManager:
             def build_message(data: Dict[str, Any], small_cap) -> str:
                 mask = lambda s: s[:4] + "•"*(len(s)-8) + s[-4:]
                 message = (
-                    f"👑 <b>Vᴇʀɪғɪᴇᴅ Oʀᴅᴇʀ Rᴇᴘᴏʀᴛ </b> <b>[</b> <code>{str(data['service']).translate(small_cap)}</code> <b>]</b>\n\n"
+                    f"📜 <b>Oʀᴅᴇʀ Rᴇᴘᴏʀᴛ</b> <b>[</b> <code>{str(data['service']).translate(small_cap)}</code> <b>]</b>\n\n"
 
                     f"💎 <b>Aᴍᴏᴜɴᴛ</b> » <code>{str(data['amount']).translate(small_cap)}</code> <i>Pᴏɪɴᴛs</i>\n"
                     f"🌍 <b>Rᴇɢɪᴏɴ</b> » <b>{str(data['country']).translate(small_cap)}</b> <b>[</b> <code>{data['flag']}</code> <b>]</b>\n\n"
