@@ -738,7 +738,7 @@ class ForwardManager:
                             results = await self.check_numbers_registered(client, number)
                             if results:
                                 main.extend(results)
-                        return results
+                        return main
             except (sqlite3.OperationalError, errors.FloodWaitError) as e:
                 if "database is locked" in str(e).lower() and attempt < max_retries - 1:
                     self.logger.warning(f"Database locked, retrying in {retry_delay}s")
