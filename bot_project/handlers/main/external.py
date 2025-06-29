@@ -755,7 +755,7 @@ async def init_managers(user_manager: None, order_manager=None, bot: Optional[As
     return await forward_manager.init_managers(bot)
 
 async def register_handlers(bot: AsyncTeleBot):
-    await forward_manager.register_handlers()
+    await forward_manager.register_handlers(bot)
 
 
 __all__ = ['init_managers', 'register_handlers', 'forward_manager']
