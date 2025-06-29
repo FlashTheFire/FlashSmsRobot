@@ -311,9 +311,50 @@ class ForwardManager:
                 elif action == self.CB_REMOVE_COUNTRY:
                     await self._update_list(chat_id, text, self.country_list, "Country", False)
                 elif action == self.CB_CHECK_NUM:
-                    numbers = [num.strip() for num in text.splitlines() if num.strip().isdigit()][:19]
-                    if numbers:
-                        await self.process_numbers(user_id, chat_id, numbers)
+                    all_numbers = [
+                        num.strip() 
+                        for num in text.splitlines() 
+                        if num.strip().isdigit()
+                    ][:100]
+
+                    chunks = [
+                        all_numbers[i : i + 19] 
+                        for i in range(0, len(all_numbers), 19)
+                    ]
+
+                    main_results = []
+
+                    for chunk in chunks:
+                        if not chunk:
+                            continue
+                        results = await self.process_numbers(user_id, chat_id, chunk)
+                        main_results.extend(results)
+
+                        response = []
+                        for num, user in results:
+                            if user:
+                                username = f"@{user.username}" if user.username else "No username"
+                                response.append(
+                                    "✅ <code>{}</code>" 
+                                    "<b>[<b><a href='tg://openmessage?user_id={}'>{}</a><b>]</b>\n"
+                                    "{}".format(
+                                        num, user.id, 'Oᴘᴇɴ', 
+                                        f"       • <a href='https://t.me/+{num}'>{username}</a>"
+                                    )
+                                )
+
+                        # Send results
+                        if not response:
+                            response.append("❌ <b>Nᴏ Pʀᴏᴠɪᴅᴇᴅ Nᴜᴍʙᴇʀs Aʀᴇ Rᴇɢɪsᴛᴇʀᴇᴅ</b>")
+                        result_text = "\n\n".join(response)
+                        last_number = all_numbers[-1] if all_numbers else None
+                        result_text += f"\n\n<b>Last Number:</b> <code>{last_number}</code>"
+                        await self.safe_send(
+                            chat_id,
+                            f"📊 <b>Number Check Results</b>\n\n{result_text}",
+                            parse_mode="HTML"
+                        )
+
                     else:
                         await self.safe_send(chat_id, "⚠️ <b>Invalid Input</b>\nNo valid numbers found.", parse_mode="HTML")
 
@@ -673,31 +714,8 @@ class ForwardManager:
                             return
                             
                         results = await self.check_numbers_registered(client, numbers)
-                        response = []
-                        
-                        for num, user in results:
-                            if user:
-                                name = f"{user.first_name or ''} {user.last_name or ''}".strip()
-                                username = f"@{user.username}" if user.username else "No username"
-                                response.append(
-                                    "✅ <code>{}</code>" 
-                                    "<b>[<b><a href='tg://openmessage?user_id={}'>{}</a><b>]</b>\n"
-                                    "{}".format(
-                                        num, user.id, 'Oᴘᴇɴ', 
-                                        f"       • <a href='https://t.me/+{num}'>{username}</a>"
-                                    )
-                                )
-                            else:
-                                response.append(f"❌ <b>{num}</b>\nNot Registered")
-                        
-                        # Send results
-                        result_text = "\n\n".join(response)
-                        await self.safe_send(
-                            chat_id,
-                            f"📊 <b>Number Check Results</b>\n\n{result_text}",
-                            parse_mode="HTML"
-                        )
-                break  # Break on success
+                        return results
+                    break  # Break on success
             except (sqlite3.OperationalError, errors.FloodWaitError) as e:
                 if "database is locked" in str(e).lower() and attempt < max_retries - 1:
                     self.logger.warning(f"Database locked, retrying in {retry_delay}s")
