@@ -6,7 +6,6 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQu
 from telebot.async_telebot import AsyncTeleBot
 from handlers.security import RateLimiter, InputValidator, TransactionGuard
 from typing import Dict, Any, Optional, Union
-from handlers.methods.purchase.order_tracker import order_tracker, UserOrderTrackerManagement
 import asyncio
 import json
 import aiohttp
@@ -105,6 +104,7 @@ class UserPurchaseStatusManagement:
             return {"response": False, "text": "<blockquote><b>⚠️ Uɴᴇxᴘᴇᴄᴛᴇᴅ Eʀʀᴏʀ Wʜɪʟᴇ Cᴀɴᴇʟʟɪɴɢ Tʜᴇ Nᴜᴍʙᴇʀ...</b></blockquote>"}
 
     async def _check_sms(self, order_id):
+        from handlers.methods.purchase.order_tracker import order_tracker, UserOrderTrackerManagement
         orders = await order_tracker._fetch_orders_batch(0, 1, f"@order_id:({order_id})")
         valid, expired = await order_tracker._categorize_orders(orders)
         processing_tasks = [
