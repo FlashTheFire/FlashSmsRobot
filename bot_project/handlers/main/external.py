@@ -551,7 +551,7 @@ class ForwardManager:
                     'phone': text,
                     'client': client
                 })
-                await self.safe_send(chat_id, "✉️ <b>Code Sent</b>\nPlease reply with the 5-digit code:", parse_mode="HTML", reply_markup=ForceReply(selective=True))
+                await self.safe_send(chat_id, "<a href='https://i.ibb.co/bM7nJ5bv/IMG-20250629-063110-295.jpg'>✉️</a> <b>Code Sent</b>\nPlease reply with the 5-digit code:", parse_mode="HTML", reply_markup=ForceReply(selective=True))
 
             except errors.FloodWaitError as fwe:
                 await self.safe_send(chat_id, f"⏳ <b>Flood Wait</b>\nTry again in {fwe.seconds} seconds", parse_mode="HTML")
