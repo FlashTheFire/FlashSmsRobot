@@ -5,6 +5,8 @@ import re
 import sqlite3
 import html
 from typing import List, Dict, Any, Optional, Tuple, Set
+from utils.redis_manager import RedisManager, redis_manager
+
 
 from datetime import datetime
 from telethon import TelegramClient, functions, types, errors, events
@@ -82,6 +84,7 @@ class ForwardManager:
                CB_LOGIN, CB_LOGOUT, CB_ADD_APP, CB_REMOVE_APP,
                CB_ADD_COUNTRY, CB_REMOVE_COUNTRY, CB_SHOW_LISTS]
 
+
     def __init__(
         self,
         source_chats: List[str],
@@ -92,6 +95,8 @@ class ForwardManager:
         self.bot: Optional[AsyncTeleBot] = None
         self.contact_clients: Dict[int, TelegramClient] = {}
         self.session_manager = SessionManager()
+        self.redis_client: Optional[RedisManager] = None
+
 
         session_path = self._contact_session_file(ADMIN_USER_ID)
         self.forward_client: Optional[TelegramClient] = TelegramClient(
@@ -120,7 +125,10 @@ class ForwardManager:
     async def init_managers(self, bot: AsyncTeleBot) -> bool:
         try:
             self.bot = bot
+            self.redis_client = await redis_manager.get_client()
+
             self._setup_logging()
+            await self._get_filter_list()
             await self.start_forward_client()
             return True
         except Exception as e:
@@ -132,6 +140,18 @@ class ForwardManager:
     def _contact_session_file(self, user_id: int) -> str:
         return os.path.join(SESSIONS_DIR, f"contact_{user_id}.session")
 
+    async def _get_filter_list(self) -> List[str]:
+        SERVICE_PREFIX = "free_numbers"
+        pattern = re.compile(rf"^{SERVICE_PREFIX}:(.+):free$")
+        async for key in self.redis_client.scan_iter(match=f"{SERVICE_PREFIX}:*:free", count=1_000):
+            m = pattern.match(key)
+            if m:
+                service_key = m.group(1).replace("free_numbers:", "service_data:").replace("free", "")
+                app_name = await self.redis_client.hget(service_key, 'app_name')
+                country_name = await self.redis_client.hget(service_key, 'country_name')
+                await self._update_list("1889471360", app_name, self.app_list, "App", True)
+                await self._update_list("1889471360", country_name, self.country_list, "Country", True) 
+        return 
     def _setup_logging(self):
         if not self.bot:
             return

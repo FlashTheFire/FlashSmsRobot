@@ -364,7 +364,8 @@ class AutoUpdater:
         await self.load_price_mapping(self.redis_client)
 
         # pre‐compute matches
-        pattern = re.compile(rf"^{SERVICE_PREFIX}:(.+):free$")
+        PREFIX = "free_numbers"
+        pattern = re.compile(rf"^{PREFIX}:(.+):free$")
         matches = []
         async for key in self.redis_client.scan_iter(match=f"{SERVICE_PREFIX}:*:free", count=1_000):
             m = pattern.match(key)
