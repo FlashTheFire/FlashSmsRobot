@@ -588,7 +588,7 @@ class ForwardManager:
     async def handle_login_message(self, message: Message):
         """Handle login process steps"""
         user_id = message.from_user.id
-        state_data = self.login_states.get(user_id)
+        state_data = self.login_states.get(user_id, {"state": "logged_out"})
         if not state_data:
             return
 
