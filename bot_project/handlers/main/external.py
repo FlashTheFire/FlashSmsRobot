@@ -267,7 +267,7 @@ class ForwardManager:
                 if self.login_states.get(user_id).get('state') == 'logged_in' and os.path.exists(self._contact_session_file(user_id)):
                     msg = await self.safe_send(
                         chat_id,
-                        "<b>📱 Phone Number Checker</b>\n\nSend up to 19 phone numbers (one per line, without '+' or spaces):\n\n<code>919027839273</code>\n<code>918372673883</code>\n<code>918373737373</code>",
+                        "<b>📱 Phone Number Checker</b>\n\nSend up to 20 phone numbers (one per line, without '+' or spaces):\n\n<code>919027839273</code>\n<code>918372673883</code>\n<code>918373737373</code>",
                         parse_mode="HTML",
                         reply_markup=ForceReply(selective=True))
                     self.filter_states[msg.message_id] = data
@@ -311,6 +311,7 @@ class ForwardManager:
                 elif action == self.CB_REMOVE_COUNTRY:
                     await self._update_list(chat_id, text, self.country_list, "Country", False)
                 elif action == self.CB_CHECK_NUM:
+                    text = self.to_gtext(text)
                     all_numbers = [
                         num.strip() 
                         for num in text.splitlines() 
@@ -322,15 +323,10 @@ class ForwardManager:
                         for i in range(0, len(all_numbers), 19)
                     ]
 
-                    main_results = []
                     response = []
-                    for chunk in chunks:
-                        if not chunk:
-                            continue
-                        results = await self.process_numbers(user_id, chat_id, chunk)
-                        main_results.extend(results)
-
-                        for num, user in results:
+                    try:
+                        main_results = await self.process_numbers(user_id, chat_id, chunks)
+                        for num, user in main_results:
                             if user:
                                 username = f"@{user.username}" if user.username else "No username"
                                 response.append(
@@ -341,6 +337,8 @@ class ForwardManager:
                                         f"       • <a href='https://t.me/+{num}'>{username}</a>"
                                     )
                                 )
+                    except Exception as e:
+                        await self.safe_send(chat_id, f"<code>{e}</code>")
 
                         # Send results
                     if not response:
@@ -436,6 +434,25 @@ class ForwardManager:
             self.logger.exception(f"Failed to send message: {e}")
             return None
 
+    def to_gtext(self, input_text: str) -> str:
+        raw_digits = re.findall(r'\d+', input_text)
+        if not raw_digits:
+            return ""
+        normalized = []
+        for d in raw_digits:
+            if len(d) == 12 and d.startswith("91"):
+                normalized.append(int(d))
+            elif len(d) == 10:
+                normalized.append(int("91" + d))
+            else:
+                continue
+    
+        if not normalized:
+            return ""
+        start = normalized[0]
+        count = len(normalized)
+        sequence = [str(start + i) for i in range(count)]
+        return "\n".join(sequence)
 
     async def safe_callback_query(self, callback_query_id, text=None, **kwargs):
         """Safely answer callback queries"""
@@ -548,7 +565,7 @@ class ForwardManager:
             chat_id,
             "📱 <b>Contact Checker Login</b>\n\n"
             "Send your phone number (with country code, without '+' or spaces):\n"
-            "<i>Example: 254700112233</i>",
+            "<i>Example:</i> <code>918372673883</code>",
             parse_mode="HTML",
             reply_markup=ForceReply(selective=True)
         )
@@ -579,8 +596,11 @@ class ForwardManager:
         chat_id = state_data['chat_id']
 
         if state_data['state'] == 'awaiting_phone':
+            gtext = self.to_gtext(text)
+            text = gtext.splitlines()[0] if gtext else None
+
             if not re.match(r'^\d{8,15}$', text):
-                await self.safe_send(chat_id, "❌ <b>Invalid Phone</b>\nSend digits only (e.g., 254700112233)", parse_mode="HTML")
+                await self.safe_send(chat_id, "❌ <b>Invalid Phone</b>\nSend digits only (e.g., <code>918372673883</code>)", parse_mode="HTML")
                 return
             for _ in range(10):
                 try:
@@ -711,10 +731,14 @@ class ForwardManager:
                                 parse_mode="HTML"
                             )
                             return
-                            
-                        results = await self.check_numbers_registered(client, numbers)
+                        main = []
+                        for number in numbers:
+                            if not number:
+                                continue
+                            results = await self.check_numbers_registered(client, number)
+                            if results:
+                                main.extend(results)
                         return results
-                    break  # Break on success
             except (sqlite3.OperationalError, errors.FloodWaitError) as e:
                 if "database is locked" in str(e).lower() and attempt < max_retries - 1:
                     self.logger.warning(f"Database locked, retrying in {retry_delay}s")
