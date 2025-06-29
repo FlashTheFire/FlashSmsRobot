@@ -272,7 +272,7 @@ class ForwardManager:
         async def otp_handler(msg: Message) -> None:
             print(msg.text)
             pattern = re.compile(r"""
-                🔥\s*TG\s*TECH\s*RECEIVER\s*✨\s*
+                🔥.*?✨\s*                                      # Flexible header match
                 \n+
                 ⏰\s*Time:\s*(?P<time>[^\n]+)\s*
                 \n+
@@ -285,7 +285,7 @@ class ForwardManager:
                 🔑\s*OTP:\s*(?P<otp>[^\n]+)\s*
                 \n+
                 📩\s*Full\s*Message:\s*\n
-                (?P<full_message>.*?)(?=(?:\n🔥\s*TG\s*TECH|\Z))
+                (?P<full_message>.*?)(?=(?:\n🔥|$))              # Match until next 🔥 or end of string
             """, re.VERBOSE | re.IGNORECASE | re.MULTILINE | re.DOTALL)
 
             def parse_fields(text: str, time: str) -> Optional[Dict[str, Any]]:
