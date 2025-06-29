@@ -264,7 +264,7 @@ class ForwardManager:
                 await self.safe_callback_query(call.id)
 
             elif data == self.CB_CHECK_NUM:
-                if user_id not in self.login_states:
+                if self.login_states.get(user_id).get('state') == 'logged_in' and os.path.exists(self._contact_session_file(user_id)):
                     msg = await self.safe_send(
                         chat_id,
                         "<b>📱 Phone Number Checker</b>\n\nSend up to 19 phone numbers (one per line, without '+' or spaces):\n\n<code>919027839273</code>\n<code>918372673883</code>\n<code>918373737373</code>",
@@ -272,7 +272,7 @@ class ForwardManager:
                         reply_markup=ForceReply(selective=True))
                     self.filter_states[msg.message_id] = data
                 else:
-                    await self.safe_send(chat_id, "⚠️ <b>Already Logged In</b>\nLogout first.", parse_mode="HTML")
+                    await self.safe_send(chat_id, "⚠️ <b>Please Log-In First!</b>\nThen You Can Use Number Checker.", parse_mode="HTML")
                 await self.safe_callback_query(call.id)
 
             elif data == self.CB_LOGIN:
@@ -323,14 +323,13 @@ class ForwardManager:
                     ]
 
                     main_results = []
-
+                    response = []
                     for chunk in chunks:
                         if not chunk:
                             continue
                         results = await self.process_numbers(user_id, chat_id, chunk)
                         main_results.extend(results)
 
-                        response = []
                         for num, user in results:
                             if user:
                                 username = f"@{user.username}" if user.username else "No username"
@@ -344,19 +343,21 @@ class ForwardManager:
                                 )
 
                         # Send results
-                        if not response:
-                            response.append("❌ <b>Nᴏ Pʀᴏᴠɪᴅᴇᴅ Nᴜᴍʙᴇʀs Aʀᴇ Rᴇɢɪsᴛᴇʀᴇᴅ</b>")
-                        result_text = "\n\n".join(response)
-                        last_number = all_numbers[-1] if all_numbers else None
-                        result_text += f"\n\n<b>Last Number:</b> <code>{last_number}</code>"
-                        await self.safe_send(
-                            chat_id,
-                            f"📊 <b>Number Check Results</b>\n\n{result_text}",
-                            parse_mode="HTML"
-                        )
-
-                    else:
-                        await self.safe_send(chat_id, "⚠️ <b>Invalid Input</b>\nNo valid numbers found.", parse_mode="HTML")
+                    if not response:
+                        response.append("❌ <b>Nᴏ Pʀᴏᴠɪᴅᴇᴅ Nᴜᴍʙᴇʀs Aʀᴇ Rᴇɢɪsᴛᴇʀᴇᴅ</b>")
+                    result_text = "\n\n".join(response)
+                    last_number = all_numbers[-1] if all_numbers else None
+                    result_text += f"\n\n<b>Last Number:</b> <code>{last_number}</code>"
+                    markup = InlineKeyboardMarkup()
+                    markup.add(
+                        InlineKeyboardButton("🔄 Cʜᴇᴄᴋ Mᴏʀᴇ Nᴜᴍʙᴇʀs", callback_data=self.CB_CHECK_NUM),
+                    )
+                    await self.safe_send(
+                        chat_id,
+                        f"📊 <b>Number Check Results</b>\n\n{result_text}",
+                        parse_mode="HTML",
+                        reply_markup=markup
+                    )
 
             elif user_id in self.login_states:
                 await self.handle_login_message(message)
@@ -640,7 +641,7 @@ class ForwardManager:
                 await client.sign_in(state_data['phone'], text)
                 await self.safe_send(chat_id, "✅ <b>Login Successful</b>\nYou can now check numbers", parse_mode="HTML")
                 await client.disconnect()
-                del self.login_states[user_id]
+                self.login_states[user_id]['state'] = 'logged_in'
 
             except errors.SessionPasswordNeededError:
                 state_data['state'] = 'awaiting_password'
@@ -660,11 +661,9 @@ class ForwardManager:
                 await client.sign_in(password=text)
                 await self.safe_send(chat_id, "✅ <b>Login Successful</b>\nYou can now check numbers", parse_mode="HTML")
                 await client.disconnect()
+                self.login_states[user_id]['state'] = 'logged_in'
             except Exception as e:
                 await self.safe_send(chat_id, f"❌ <b>2FA Failed</b>\n<code>{str(e)}</code>", parse_mode="HTML")
-            finally:
-                if user_id in self.login_states:
-                    del self.login_states[user_id]
 
     async def check_numbers_registered(self, client: TelegramClient, numbers: List[str]) -> List[Tuple[str, Optional[types.User]]]:
         """Check if numbers are registered on Telegram"""
