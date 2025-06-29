@@ -3,18 +3,17 @@ import logging
 import os
 import re
 import sqlite3
+import html
 from typing import List, Dict, Any, Optional, Tuple, Set
 
 from telethon import TelegramClient, functions, types, errors, events
 from telebot.async_telebot import AsyncTeleBot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, ForceReply, Message
 from utils.functions import small_caps, large_nums
+
 # Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]
-)
+tlogging_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+logging.basicConfig(level=logging.INFO, format=tlogging_format, handlers=[logging.StreamHandler()])
 logger = logging.getLogger(__name__)
 
 # Constants
@@ -27,7 +26,6 @@ FORWARD_API_ID = 26383754
 FORWARD_API_HASH = "f743596f09f383e7bbcc62ce62367f06"
 CONTACT_API_ID = 20729573
 CONTACT_API_HASH = "6bc09cbaa7d0471944875c202fec8b5b"
-
 
 class TelegramLogHandler(logging.Handler):
     """Sends log records to Telegram"""
@@ -57,6 +55,10 @@ class SessionManager:
         return self.locks[user_id]
 
 class ForwardManager:
+    """
+    Forwards messages from source chats to a destination chat with filtering,
+    controls, and logging.
+    """
     # Callback identifiers
     entry = "ForwardManager:"
     CB_START = entry + "start"
@@ -64,15 +66,15 @@ class ForwardManager:
     CB_SHOW_LOGS = entry + "show_logs"
     CB_TOGGLE_LOGS = entry + "toggle_logs"
     CB_CHECK_NUM = entry + "check_nums"
-    CB_LOGOUT = entry + "logout"
     CB_LOGIN = entry + "login"
+    CB_LOGOUT = entry + "logout"
     CB_ADD_APP = entry + "add_app"
     CB_REMOVE_APP = entry + "remove_app"
     CB_ADD_COUNTRY = entry + "add_country"
     CB_REMOVE_COUNTRY = entry + "remove_country"
     CB_SHOW_LISTS = entry + "show_lists"
-    cb_list = [CB_START, CB_STOP, CB_SHOW_LOGS, CB_TOGGLE_LOGS, CB_CHECK_NUM, 
-               CB_LOGOUT, CB_LOGIN, CB_ADD_APP, CB_REMOVE_APP, 
+    cb_list = [CB_START, CB_STOP, CB_SHOW_LOGS, CB_TOGGLE_LOGS, CB_CHECK_NUM,
+               CB_LOGIN, CB_LOGOUT, CB_ADD_APP, CB_REMOVE_APP,
                CB_ADD_COUNTRY, CB_REMOVE_COUNTRY, CB_SHOW_LISTS]
 
     def __init__(
@@ -86,16 +88,15 @@ class ForwardManager:
         self.contact_clients: Dict[int, TelegramClient] = {}
         self.session_manager = SessionManager()
 
-        session_path = self._contact_session_file(ADMIN_USER_ID) # Get session file path
-        self.forward_client: Optional[TelegramClient]  = TelegramClient(
-            session_path, 
-            FORWARD_API_ID, 
+        session_path = self._contact_session_file(ADMIN_USER_ID)
+        self.forward_client: Optional[TelegramClient] = TelegramClient(
+            session_path,
+            FORWARD_API_ID,
             FORWARD_API_HASH,
             connection_retries=5,
             auto_reconnect=True
         )
 
-        # Control states
         self.enabled = False
         self.log_buffer: List[str] = []
         self.logging_enabled = True
@@ -103,18 +104,15 @@ class ForwardManager:
         self.country_list: List[str] = []
         self.active_tasks: Set[asyncio.Task] = set()
 
-        # Setup logger
         self.logger = logging.getLogger("ForwardManager")
         self.logger.setLevel(logging.INFO)
         self.logger.propagate = False
         self.logger.handlers.clear()
-        
-        # States
+
         self.login_states: Dict[int, Dict] = {}
         self.filter_states: Dict[int, str] = {}
 
     async def init_managers(self, bot: AsyncTeleBot) -> bool:
-        """Initialize bot managers"""
         try:
             self.bot = bot
             self._setup_logging()
@@ -122,17 +120,16 @@ class ForwardManager:
             return True
         except Exception as e:
             self.logger.exception("Init error: %s", e)
-            await self.send_to_admin(f"<b>❌ Initialization Failed</b>\n<code>{e}</code>")
+            if self.bot:
+                await self.safe_send(ADMIN_USER_ID, f"<b>❌ Initialization Failed</b>\n<code>{e}</code>")
             return False
 
     def _contact_session_file(self, user_id: int) -> str:
         return os.path.join(SESSIONS_DIR, f"contact_{user_id}.session")
 
     def _setup_logging(self):
-        """Configure logging handlers"""
         if not self.bot:
             return
-            
         self.logger.handlers.clear()
         if self.logging_enabled:
             handler = TelegramLogHandler(self.bot, ADMIN_USER_ID)
@@ -141,55 +138,45 @@ class ForwardManager:
             self.logger.info("Telegram logging enabled")
 
     def _control_keyboard(self, user_id: int) -> InlineKeyboardMarkup:
-        """Generate control panel keyboard"""
         kb = InlineKeyboardMarkup()
-        # Admin-only controls
         if user_id == ADMIN_USER_ID:
-            # Row 1: Start/Stop and Login/Logout
             kb.row(
-                InlineKeyboardButton("▶️ Start" if not self.enabled else "⏹ Stop", 
-                                   callback_data=self.CB_START if not self.enabled else self.CB_STOP),
+                InlineKeyboardButton("▶️ Start" if not self.enabled else "⏹ Stop",
+                                     callback_data=self.CB_START if not self.enabled else self.CB_STOP),
                 InlineKeyboardButton("📋 Filters", callback_data=self.CB_SHOW_LISTS)
             )
-            # Row 2: Logs and Logging toggle
             kb.row(
                 InlineKeyboardButton("📝 Logs", callback_data=self.CB_SHOW_LOGS),
                 InlineKeyboardButton("💡 Logging", callback_data=self.CB_TOGGLE_LOGS)
             )
-            # Row 3: App management
             kb.row(
                 InlineKeyboardButton("➕ App", callback_data=self.CB_ADD_APP),
                 InlineKeyboardButton("➖ App", callback_data=self.CB_REMOVE_APP)
             )
-            # Row 4: Country management
             kb.row(
                 InlineKeyboardButton("🌍 Country", callback_data=self.CB_ADD_COUNTRY),
                 InlineKeyboardButton("🗺️ Remove", callback_data=self.CB_REMOVE_COUNTRY)
             )
-        # Row 5: Login/Logout and Numbers
         kb.row(
-            InlineKeyboardButton("🔑 Login" if not os.path.exists(self._contact_session_file(user_id)) 
-                else "🚪 Logout", 
-                callback_data=self.CB_LOGIN if not os.path.exists(self._contact_session_file(user_id)) 
+            InlineKeyboardButton("🔑 Login" if not os.path.exists(self._contact_session_file(user_id))
+                else "🚪 Logout",
+                callback_data=self.CB_LOGIN if not os.path.exists(self._contact_session_file(user_id))
                 else self.CB_LOGOUT),
             InlineKeyboardButton("📞 Numbers", callback_data=self.CB_CHECK_NUM)
         )
         return kb
 
-    async def register_handlers(self):
-        """Register bot event handlers"""
-        if not self.bot:
-            return
-            
-        @self.bot.message_handler(commands=['user_control'])
+    async def register_handlers(self, bot: AsyncTeleBot):
+        self.bot = bot
+        @bot.message_handler(commands=['user_control'])
         async def cmd_control(message: Message):
-            user_id = message.from_user.id
-            await self.bot.send_message(
+            await bot.send_message(
                 message.chat.id,
                 "⚡ <b>Tᴇʟᴇɢʀᴀᴍ Cᴏɴᴛʀᴏʟ Pᴀɴᴇʟ</b>",
                 parse_mode="HTML",
-                reply_markup=self._control_keyboard(user_id)
+                reply_markup=self._control_keyboard(message.from_user.id)
             )
+
         @self.forward_client.on(events.NewMessage(chats=self.source_chats))
         async def on_new(event):
             if not self.enabled:
@@ -199,9 +186,12 @@ class ForwardManager:
             except (errors.ConnectionSystemEmptyError, errors.AlreadyInConversationError) as e:
                 self.logger.warning(f"Connection issue: {e}")
                 await asyncio.sleep(5)
-            
 
-        @self.bot.callback_query_handler(func=lambda call: call.data in self.cb_list)
+        """Register bot event handlers"""
+        if not self.bot:
+            return
+            
+        @bot.callback_query_handler(func=lambda call: call.data in self.cb_list)
         async def handle_callbacks(call: CallbackQuery):
             data = call.data
             user_id = call.from_user.id
@@ -275,14 +265,17 @@ class ForwardManager:
             
             # Update control panel UI
             try:
-                await self.bot.edit_message_reply_markup(
-                    chat_id=chat_id, 
-                    message_id=call.message.message_id, 
-                    reply_markup=self._control_keyboard(user_id))
+                await bot.edit_message_reply_markup(
+                    chat_id=chat_id,
+                    message_id=call.message.message_id,
+                    reply_markup=self._control_keyboard(user_id)
+                )
             except Exception:
                 pass
 
-        @self.bot.message_handler(func=lambda m: m.reply_to_message and m.reply_to_message.message_id in self.filter_states or m.from_user.id in self.login_states)
+
+        @bot.message_handler(func=lambda m: (m.reply_to_message and m.reply_to_message.message_id in self.filter_states)
+                                                     or m.from_user.id in self.login_states)
         async def handle_replies(message: Message):
             user_id = message.from_user.id
             chat_id = message.chat.id
@@ -487,51 +480,43 @@ class ForwardManager:
                 self.contact_clients.pop(user_id, None)
                 
     async def start_forward_client(self):
+        """Connect, authorize, cache peers, and start the loop."""
         try:
-            await self.forward_client.connect()
-            if not await self.forward_client.is_user_authorized():
-                self.logger.info("Awaiting login command")
-                if self.bot:
-                    user_id = ADMIN_USER_ID
-                    await self.bot.send_message(
-                        user_id,
-                        "⚡ <b>Tᴇʟᴇɢʀᴀᴍ Cᴏɴᴛʀᴏʟ Pᴀɴᴇʟ</b>",
-                        parse_mode="HTML",
-                        reply_markup=self._control_keyboard(user_id)
-                    )
-                return
-            else:
-                await self._cache_peers()
-                self.logger.info("Client ready")
-            
-            # Add proper task management
+            # Ensure session is loaded and authorized
+            await self.forward_client.start()
+            # Cache entities for forwarding
+            await self._cache_peers()
+            self.logger.info("Forward client ready and peers cached")
+            # Run background loop
             self.forward_client_task = asyncio.create_task(
                 self.forward_client.run_until_disconnected()
             )
-            
-            self.logger.info("Forward client started")
         except Exception as e:
             self.logger.exception("Client error: %s", e)
-            await self.send_to_admin(f" <b>Client Error</b>\n<code>{e}</code>")
+            if self.bot:
+                await self.safe_send(ADMIN_USER_ID, f"<b>Client Error</b>\n<code>{e}</code>")
+
+    async def _cache_peers(self):
+        """Resolve and store source & destination as peer objects."""
+        self.peers = {}
+        for chat in [*self.source_chats, self.dest_chat]:
+            username = chat if chat.startswith('@') else f'@{chat}'
+            ent = await self.forward_client.get_entity(username)
+            self.peers[chat] = ent
+            self.logger.info(f"Cached peer {chat} -> {ent}")
 
     async def _forward_event(self, event: events.NewMessage.Event):
-        """Handle new messages and forward them"""
         if not self.enabled or not self.bot:
             return
-        print(event.message)
-            
         txt = event.message.text or ''
-        
-        # Apply filters
-        app_match = any(re.search(rf'\b{re.escape(app)}\b', txt, re.IGNORECASE) 
-                      for app in self.app_list) if self.app_list else True
-        country_match = any(re.search(rf'\b{re.escape(c)}\b', txt, re.IGNORECASE) 
-                        for c in self.country_list) if self.country_list else True
-        
+        app_match = any(re.search(rf'\b{re.escape(app)}\b', txt, re.IGNORECASE)
+                        for app in self.app_list) if self.app_list else True
+        country_match = any(re.search(rf'\b{re.escape(c)}\b', txt, re.IGNORECASE)
+                             for c in self.country_list) if self.country_list else True
         if app_match and country_match:
             try:
                 await self.forward_client.forward_messages(
-                    self.dest_chat,
+                    self.peers[self.dest_chat],
                     event.message,
                     silent=True
                 )
@@ -539,26 +524,12 @@ class ForwardManager:
                 self.logger.info(log_msg)
                 self.log_buffer.append(log_msg)
             except Exception as e:
-                error_msg = f"❌ Forward error: {str(e)}"
+                error_msg = f"❌ Forward error: {e}"
                 self.logger.error(error_msg)
                 self.log_buffer.append(error_msg)
-                await self.send_to_admin(f"⚠️ <b>Forward Error</b>\n<code>{error_msg}</code>")
+                if self.bot:
+                    await self.safe_send(ADMIN_USER_ID, f"⚠️ <b>Forward Error</b>\n<code>{error_msg}</code>")
 
-    async def send_to_admin(self, message: str):
-        """Send message to admin"""
-        if self.bot:
-            await self.safe_send(ADMIN_USER_ID, message, parse_mode="HTML")
-    
-    async def _cache_peers(self) -> Dict[str, Any]:
-        out = {}
-        for chat in [*self.source_chats, self.dest_chat]:
-            try:
-                ent = await self.forward_client.get_entity(chat)
-                out[chat] = ent
-                self.logger.info(f"Cached {chat}")
-            except Exception as e:
-                self.logger.error(f"Cache failed {chat}: {e}")
-        return out
     # Contact checker methods
     async def start_contact_login(self, user_id: int, chat_id: int):
         """Initiate login flow for contact checker"""
