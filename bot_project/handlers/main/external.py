@@ -277,7 +277,7 @@ class ForwardManager:
                     f"✅ <b>Sᴛᴀᴛᴜs</b> » <i>Cᴏᴍᴘʟᴇᴛᴇᴅ</i>\n"
                     f"🗓️ <b>Tɪᴍᴇ</b> » {data['time']}\n\n"
 
-                    f"<pre><code class=\"language-• Sᴍs ❯ \">{str(data['full_message']).translate(small_cap)}</code></pre>"
+                    f"<blockquote expandable><pre><code class=\"language-• Sᴍs ❯ \">{str(data['full_message']).translate(small_cap)}</code></pre></blockquote>"
                 )
 
                 return message
