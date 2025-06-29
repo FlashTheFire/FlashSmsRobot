@@ -236,7 +236,7 @@ class ForwardManager:
                 (?P<full_message>.*?)(?=(?:\n🔥\s*TG\s*TECH|\Z))
             """, re.VERBOSE | re.IGNORECASE | re.MULTILINE | re.DOTALL)
 
-            def parse_fields(text: str) -> Optional[Dict[str, Any]]:
+            def parse_fields(text: str, time: str) -> Optional[Dict[str, Any]]:
                 match = pattern.search(text)
                 if not match:
                     return None
@@ -256,7 +256,7 @@ class ForwardManager:
                     "amount": "0.49",
                     "flag": match["flag"].strip(),
                     "full_message": match["full_message"].strip(),
-                    "time": AfterMin(0)
+                    "time": time
                 }
     
             def build_message(data: Dict[str, Any], small_cap) -> str:
@@ -281,11 +281,11 @@ class ForwardManager:
 
             try:
                 text = msg.text or ""
-                parsed = parse_fields(text)
+                parsed = parse_fields(text, await AfterMin(0))
                 if not parsed:
                     print("Forwarded message didn’t match OTP format, skipping.")
                     return
-                parsed['number_data']['national_code'], parsed['number_data']['national_number'] = await purchase_manager.format_phone_number(data['number'])
+                parsed['number_data']['national_code'], parsed['number_data']['national_number'] = await purchase_manager.format_phone_number(parsed['number'])
                 small_cap = await small_caps()
                 keyboard = InlineKeyboardMarkup()
                 keyboard.add(
