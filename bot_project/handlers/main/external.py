@@ -540,19 +540,43 @@ class ForwardManager:
             if not re.match(r'^\d{8,15}$', text):
                 await self.safe_send(chat_id, "❌ <b>Invalid Phone</b>\nSend digits only (e.g., 254700112233)", parse_mode="HTML")
                 return
+            for _ in range(10):
+                try:
+                    session_path = self._contact_session_file(user_id)
+                    break
+                except Exception as e:
+                    pass
+                    await asyncio.sleep(0.1)
 
-            session_path = self._contact_session_file(user_id)
             try:
-                client = TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH)
-                await client.connect()
-                await client.send_code_request(text)
+                for _ in range(15):
+                    try:
+                        client = TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH)
+                        break
+                    except Exception as e:
+                        pass
+                    await asyncio.sleep(0.5)
+                for _ in range(10):
+                    try:
+                        await client.connect()
+                        break
+                    except Exception as e:
+                        pass
+                    await asyncio.sleep(1)
+                for _ in range(5):
+                    try:
+                        await client.send_code_request(text)
+                        break
+                    except Exception as e:
+                        pass
+                    await asyncio.sleep(2)
+
                 state_data.update({
                     'state': 'awaiting_code',
                     'phone': text,
                     'client': client
                 })
-                await self.safe_send(chat_id, "<a href='https://i.ibb.co/bM7nJ5bv/IMG-20250629-063110-295.jpg'>✉️</a> <b>Code Sent</b>\nPlease reply with the 5-digit code:", parse_mode="HTML", reply_markup=ForceReply(selective=True))
-
+                await self.bot.send_message(chat_id, "<a href='https://i.ibb.co/bM7nJ5bv/IMG-20250629-063110-295.jpg'>✉️</a> <b>Code Sent</b>\nPlease reply with the 5-digit code:", parse_mode="HTML", reply_markup=ForceReply(selective=True))
             except errors.FloodWaitError as fwe:
                 await self.safe_send(chat_id, f"⏳ <b>Flood Wait</b>\nTry again in {fwe.seconds} seconds", parse_mode="HTML")
                 await self.logout_user(user_id, chat_id, force=True)
