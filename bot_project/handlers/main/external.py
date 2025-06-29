@@ -206,7 +206,6 @@ class ForwardManager:
                 return num
         return masked
 
-
     async def register_handlers(self, bot: AsyncTeleBot):
         self.bot = bot
         @bot.message_handler(commands=['user_control'])
@@ -218,6 +217,8 @@ class ForwardManager:
                 reply_markup=self._control_keyboard(message.from_user.id)
             )
         @bot.channel_post_handler()
+        async def otp_handler(self, msg: Message) -> None:
+            ...
         async def otp_handler(msg: Message) -> None:
             print(msg.text)
             pattern = re.compile(r"""
