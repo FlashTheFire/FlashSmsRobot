@@ -653,11 +653,11 @@ forward_manager = ForwardManager(
     dest_chat="flashthefiresms",
 )
 
-async def init_managers(bot: AsyncTeleBot) -> bool:
+async def init_managers(user_manager: None, order_manager=None, bot: Optional[AsyncTeleBot] = None) -> bool:
     return await forward_manager.init_managers(bot)
 
 async def register_handlers(bot: AsyncTeleBot):
     await forward_manager.register_handlers()
 
-    
+
 __all__ = ['init_managers', 'register_handlers', 'forward_manager']
