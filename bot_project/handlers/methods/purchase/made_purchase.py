@@ -6,6 +6,8 @@ import re
 import json
 import time
 import phonenumbers
+from decimal import Decimal, ROUND_DOWN
+
 import asyncio
 from telebot.async_telebot import AsyncTeleBot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, CallbackQuery, InputMediaPhoto, InputMediaVideo
@@ -391,24 +393,58 @@ class UserPurchaseManagement:
         await self._finalize_purchase(call, phone_result, app_data, price, country_id, country_code, country_name, phone_result['service'], progress_msg)
         return True
 
-    async def _handle_user_balance(self, user_id, price, chat_id, progress_msg=None) -> bool:
-        """Handle balance check and deduction"""
+    async def _handle_user_balance(
+        self,
+        user_id: str,
+        price: float,
+        chat_id: str,
+        progress_msg: Optional[str] = None,
+        allowed_shortfall: float = 0.09,
+    ) -> bool:
+        """
+        Check if the user's balance (to 2 decimal places) covers the price,
+        allowing up to `allowed_shortfall` shortfall. If balance is insufficient,
+        optionally notify via `progress_msg`.
+
+        :param user_id:    ID of the user whose balance to check
+        :param price:      Price to compare against (float)
+        :param chat_id:    Chat where to send insufficiency message
+        :param progress_msg: Optional message ID to update on insufficiency
+        :param allowed_shortfall: Max shortfall permitted (float, e.g. 0.09)
+        :return: True if balance is sufficient (including shortfall), False otherwise
+        """
         try:
+            # Fetch and validate user data
             user_data = await self.aggregator.get_user(user_id)
-            if not user_data or not user_data.get('response'):
-                #logger.error("Failed to retrieve user data.")
+            if not user_data or not user_data.get("response"):
+                print("Failed to retrieve valid user data for %s", user_id)
                 return False
 
-            current_balance = user_data["metrics"]["current_balance"]
-            
-            if current_balance <= price:
-                if progress_msg is not None:
-                    await self._handle_insufficient_balance(chat_id, progress_msg, price, current_balance)
+            # Convert to Decimal with exactly two decimal places
+            bal = Decimal(str(user_data["metrics"]["current_balance"]))
+            price_dec = Decimal(str(price))
+            shortfall = Decimal(str(allowed_shortfall))
+
+            bal = bal.quantize(Decimal("0.00"), rounding=ROUND_DOWN)
+            price_dec = price_dec.quantize(Decimal("0.00"), rounding=ROUND_DOWN)
+
+            # Check balance + shortfall
+            if bal + shortfall < price_dec:
+                # Insufficient: optionally notify user
+                if progress_msg:
+                    await self._handle_insufficient_balance(
+                        chat_id, progress_msg, price_dec, bal
+                    )
                 return False
-            
+
+            # Sufficient balance
             return True
+
         except Exception as e:
-            #logger.error(f"Error handling user balance: {str(e)}")
+            print(
+                "Unexpected error checking balance for %s (price=%s): %s",
+                user_id, price, e
+            )
             return False
 
     async def _validate_purchase_request(self, user_id: str, price: float) -> Dict:
