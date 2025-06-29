@@ -6,10 +6,13 @@ import sqlite3
 import html
 from typing import List, Dict, Any, Optional, Tuple, Set
 
+from datetime import datetime
 from telethon import TelegramClient, functions, types, errors, events
 from telebot.async_telebot import AsyncTeleBot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, ForceReply, Message
-from utils.functions import small_caps, large_nums
+from utils.functions import small_caps, large_nums, AfterMin
+from handlers.methods.purchase.made_purchase import purchase_manager
+from termcolor import colored
 
 # Setup logging
 tlogging_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -26,6 +29,8 @@ FORWARD_API_ID = 26383754
 FORWARD_API_HASH = "f743596f09f383e7bbcc62ce62367f06"
 CONTACT_API_ID = 20729573
 CONTACT_API_HASH = "6bc09cbaa7d0471944875c202fec8b5b"
+DESTINATION_CHAT_ID = 5716978793       # Where to send the parsed OTP info
+
 
 class TelegramLogHandler(logging.Handler):
     """Sends log records to Telegram"""
@@ -165,6 +170,42 @@ class ForwardManager:
             InlineKeyboardButton("📞 Numbers", callback_data=self.CB_CHECK_NUM)
         )
         return kb
+    
+    async def unmask_number(self, masked: str, candidates: list[str], element: str) -> str:
+        """
+        Given something like '7747600•••007' or '7747600***007' (element='•' or '*'),
+        build a regex '^7747600\\d{3}007$' and return the one candidate that matches,
+        or return masked if none.
+        """
+        if element not in ("*", "•"):
+            raise ValueError("`element` must be '*' or '•'")
+
+        # Build the regex by walking through `masked`
+        regex = ["^"]
+        i = 0
+        L = len(masked)
+        while i < L:
+            if masked[i] == element:
+                # count how many in a row
+                j = i
+                while j < L and masked[j] == element:
+                    j += 1
+                count = j - i
+                regex.append(f"\\d{{{count}}}")
+                i = j
+            else:
+                # escape any regex-special char
+                regex.append(re.escape(masked[i]))
+                i += 1
+        regex.append("$")
+
+        pattern = "".join(regex)
+        # Now find the one candidate that matches
+        for num in candidates:
+            if re.fullmatch(pattern, num):
+                return num
+        return masked
+
 
     async def register_handlers(self, bot: AsyncTeleBot):
         self.bot = bot
@@ -176,6 +217,133 @@ class ForwardManager:
                 parse_mode="HTML",
                 reply_markup=self._control_keyboard(message.from_user.id)
             )
+        @bot.channel_post_handler()
+        async def otp_handler(msg: Message) -> None:
+            print(msg.text)
+            pattern = re.compile(r"""
+                🔥\s*TG\s*TECH\s*RECEIVER\s*✨\s*
+                \n+
+                ⏰\s*Time:\s*(?P<time>[^\n]+)\s*
+                \n+
+                🌍\s*Country:\s*(?P<country>[^\n🇦-🇿]+)(?P<flag>[\U0001F1E6-\U0001F1FF]{2})\s*
+                \n+
+                ⚙️\s*Service:\s*(?P<service>[^\n]+)\s*
+                \n+
+                ☎️\s*Number:\s*(?P<number>[^\n]+)\s*
+                \n+
+                🔑\s*OTP:\s*(?P<otp>[^\n]+)\s*
+                \n+
+                📩\s*Full\s*Message:\s*\n
+                (?P<full_message>.*?)(?=(?:\n🔥\s*TG\s*TECH|\Z))
+            """, re.VERBOSE | re.IGNORECASE | re.MULTILINE | re.DOTALL)
+
+            def parse_fields(text: str) -> Optional[Dict[str, Any]]:
+                match = pattern.search(text)
+                if not match:
+                    return None
+
+                raw_time = match["time"].strip()
+                try:
+                    parsed_time = datetime.strptime(raw_time, "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    parsed_time = raw_time
+
+                return {
+                    "time": parsed_time,
+                    "country": match["country"].strip(),
+                    "service": match["service"].strip(),
+                    "number": match["number"].strip(),
+                    "otp": match["otp"].strip(),
+                    "amount": "0.49",
+                    "flag": match["flag"].strip(),
+                    "full_message": match["full_message"].strip(),
+                    "time": AfterMin(0)
+                }
+    
+            def build_message(data: Dict[str, Any], small_cap) -> str:
+                mask = lambda s: s[:4] + "•"*(len(s)-8) + s[-4:]
+                message = (
+                    f"📜 <b>Oʀᴅᴇʀ Lᴏɢ</b> <b>[</b> <code>{str(data['service']).translate(small_cap)}</code> <b>]</b>\n\n"
+
+                    f"💎 <b>Aᴍᴏᴜɴᴛ</b> » <code>{str(data['amount']).translate(small_cap)}</code> <i>Pᴏɪɴᴛs</i>\n"
+                    f"🌍 <b>Rᴇɢɪᴏɴ</b> » <b>{str(data['country']).translate(small_cap)}</b> <b>[</b> <code>{data['flag']}</code> <b>]</b>\n\n"
+
+                    f"📞 <b>Nᴜᴍʙᴇʀ</b> » <code>{str(data['number_data']['national_code']).translate(small_cap)}</code> {str(mask(str(data['number_data']['national_number']))).translate(small_cap)}\n"
+                    f"💬 <b>Sᴍs Lɪsᴛ</b> » <code>{data['otp']}</code>\n\n"
+                    
+                    f"✅ <b>Sᴛᴀᴛᴜs</b> » <i>Cᴏᴍᴘʟᴇᴛᴇᴅ</i>\n"
+                    f"🗓️ <b>Tɪᴍᴇ</b> » {data['time']}\n\n"
+
+                    f"<pre><code class=\"language-• Sᴍs ❯ \">{str(data['full_message']).translate(small_cap)}</code></pre>"
+                )
+
+                return message
+            
+
+            try:
+                text = msg.text or ""
+                parsed = parse_fields(text)
+                if not parsed:
+                    print("Forwarded message didn’t match OTP format, skipping.")
+                    return
+                parsed['number_data']['national_code'], parsed['number_data']['national_number'] = await purchase_manager.format_phone_number(data['number'])
+                small_cap = await small_caps()
+                keyboard = InlineKeyboardMarkup()
+                keyboard.add(
+                    InlineKeyboardButton(
+                        text="⚡️ Fʟᴀsʜ Sᴍs Bᴏᴛ",
+                        url=f"https://t.me/FlashSms_Bot?start=start"), 
+                    InlineKeyboardButton(
+                        text="🔗 Sʜᴀʀᴇ Us",
+                        switch_inline_query=" ")
+                    )
+                try:
+                    await self.bot.send_message("-1002898000668", build_message(parsed, small_cap), reply_markup=keyboard, parse_mode="HTML")
+                except Exception as e:
+                    print(f"Error: {e}")
+
+                # try to unmask the number if it has a '*'
+                if "*" in parsed["number"]:
+                    CANDIDATES = await purchase_manager.order_manager.get_candidates()
+                    full = await self.unmask_number(parsed["number"], CANDIDATES)
+                    print(f"Unmasked {parsed['number']} → {full}")
+                    parsed["number"] = full
+                elif "•" in parsed["number"]:
+                    CANDIDATES = await purchase_manager.order_manager.get_candidates()
+                    full = await self.unmask_number(parsed["number"], CANDIDATES, "•")
+                    print(f"Unmasked {parsed['number']} → {full}")
+                    parsed["number"] = full
+
+                order_id = f'987654321{parsed["number"]}'
+                order_data = await purchase_manager.order_manager.get_order_data(order_id)
+                if not order_data['response']:
+                    print("Order not found.")
+                    return
+                order_data = order_data['result']
+                SMS = str(parsed['otp']).replace(" ", "").replace("\n", "").replace("-", "")
+                if SMS.isnumeric() and parsed['number'].isnumeric():
+                    add_result = await purchase_manager.order_manager.manage_number_order(
+                        redis_client=purchase_manager.redis_client,
+                        country_id=order_data['country_id'],
+                        server_id=order_data['server_id'],
+                        app_id=order_data['app_id'],
+                        operator="free",
+                        order_id=order_data['order_id'],
+                        action="add",
+                        sms_code=SMS
+                    )
+                    print(colored(f"Add Code: {add_result}", "yellow"))
+                    await bot.send_message(
+                        chat_id=order_data['user_id'],
+                        text=f"✅ <b>Sᴍs Rᴇᴄɪᴇᴠᴇᴅ »</b> <code>{SMS}</code> <b>[</b><code>{parsed['number']}</code><b>]</b>\n\n",
+                        parse_mode="HTML"
+                    )
+
+                print("OTP forwarded successfully:", parsed)
+            except Exception as exc:
+                print("Unexpected error in otp_handler:", exc)
+
+
 
         @self.forward_client.on(events.NewMessage(chats=self.source_chats))
         async def on_new(event):

@@ -49,8 +49,6 @@ IMGBB_API_KEY = "530530e324408b15858555c78a657a96"  # Replace with your actual A
 
 
 
-target_chat_id   = 7990629353    # the private group/chat you’re listening to
-DESTINATION_CHAT_ID = 5716978793       # Where to send the parsed OTP info
 
 #logger = logging.getLogger(__name__)
 
@@ -168,40 +166,6 @@ class UserPurchaseManagement:
             if not field.startswith("_") and not callable(getattr(doc, field))
         }
 
-    async def unmask_number(self, masked: str, candidates: list[str], element: str) -> str:
-        """
-        Given something like '7747600•••007' or '7747600***007' (element='•' or '*'),
-        build a regex '^7747600\\d{3}007$' and return the one candidate that matches,
-        or return masked if none.
-        """
-        if element not in ("*", "•"):
-            raise ValueError("`element` must be '*' or '•'")
-
-        # Build the regex by walking through `masked`
-        regex = ["^"]
-        i = 0
-        L = len(masked)
-        while i < L:
-            if masked[i] == element:
-                # count how many in a row
-                j = i
-                while j < L and masked[j] == element:
-                    j += 1
-                count = j - i
-                regex.append(f"\\d{{{count}}}")
-                i = j
-            else:
-                # escape any regex-special char
-                regex.append(re.escape(masked[i]))
-                i += 1
-        regex.append("$")
-
-        pattern = "".join(regex)
-        # Now find the one candidate that matches
-        for num in candidates:
-            if re.fullmatch(pattern, num):
-                return num
-        return masked
 
     async def reconstruct_fake_call(self, full_data) -> CallbackQuery:
         if not isinstance(full_data, dict):
@@ -1377,111 +1341,6 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
             print(f"Error editing message: {e}")
     
     
-    @bot.channel_post_handler()
-    async def otp_handler(msg: Message) -> None:
-        # … your existing docstring …
-
-        print(msg.text)
-        pattern = re.compile(
-            r"""
-            🔥\s*TG\s*TECH\s*RECEIVER\s*✨\s*        # Header
-            \n+\s*
-            ⏰\s*Time:\s*(?P<time>[^\n]+)\s*         # Time
-            \n+
-            🌍\s*Country:\s*(?P<country>[^\n]+)\s*   # Country
-            \n+
-            ⚙️\s*Service:\s*(?P<service>[^\n]+)\s*   # Service
-            \n+
-            ☎️\s*Number:\s*(?P<number>[^\n]+)\s*     # Number
-            \n+
-            🔑\s*OTP:\s*(?P<otp>[^\n]+)\s*           # OTP
-            \n+
-            📩\s*Full\s*Message:\s*\n                # Full Message label
-            (?P<full_message>.*)                     # Capture everything else
-            """,
-            re.VERBOSE | re.IGNORECASE | re.MULTILINE | re.DOTALL
-        )
-
-        def parse_fields(text: str) -> Optional[Dict[str, Any]]:
-            match = pattern.search(text)
-            if not match:
-                return None
-
-            raw_time = match["time"].strip()
-            try:
-                parsed_time = datetime.strptime(raw_time, "%Y-%m-%d %H:%M:%S")
-            except ValueError:
-                parsed_time = raw_time
-
-            return {
-                "time": parsed_time,
-                "country": match["country"].strip(),
-                "service": match["service"].strip(),
-                "number": match["number"].strip(),
-                "otp": match["otp"].strip(),
-            }
-
-        def build_message(data: Dict[str, Any]) -> str:
-            return (
-                "<blockquote expandable><b>🔥 NEW OTP PARSED ✅</b>\n"
-                f"🕒 <b>Time:</b> {data['time']}\n"
-                f"🌍 <b>Country:</b> {data['country']}\n"
-                f"🔧 <b>Service:</b> {data['service']}\n"
-                f"📞 <b>Number:</b> {data['number']}\n"
-                f"🔑 <b>OTP:</b> <code>{data['otp']}</code></blockquote>"
-            )
-
-        try:
-            text = msg.text or ""
-            parsed = parse_fields(text)
-            if not parsed:
-                print("Forwarded message didn’t match OTP format, skipping.")
-                return
-
-            # try to unmask the number if it has a '*'
-            if "*" in parsed["number"]:
-                CANDIDATES = await purchase_manager.order_manager.get_candidates()
-                full = await purchase_manager.unmask_number(parsed["number"], CANDIDATES)
-                print(f"Unmasked {parsed['number']} → {full}")
-                parsed["number"] = full
-            elif "•" in parsed["number"]:
-                CANDIDATES = await purchase_manager.order_manager.get_candidates()
-                full = await purchase_manager.unmask_number(parsed["number"], CANDIDATES, "•")
-                print(f"Unmasked {parsed['number']} → {full}")
-                parsed["number"] = full
-
-            order_id = f'987654321{parsed["number"]}'
-            order_data = await purchase_manager.order_manager.get_order_data(order_id)
-            if not order_data['response']:
-                print("Order not found.")
-                return
-            order_data = order_data['result']
-            SMS = str(parsed['otp']).replace(" ", "").replace("\n", "").replace("-", "")
-            if SMS.isnumeric() and parsed['number'].isnumeric():
-                add_result = await purchase_manager.order_manager.manage_number_order(
-                    redis_client=purchase_manager.redis_client,
-                    country_id=order_data['country_id'],
-                    server_id=order_data['server_id'],
-                    app_id=order_data['app_id'],
-                    operator="free",
-                    order_id=order_data['order_id'],
-                    action="add",
-                    sms_code=SMS
-                )
-                print(colored(f"Add Code: {add_result}", "yellow"))
-                await bot.send_message(
-                    chat_id=order_data['user_id'],
-                    text=f"✅ <b>Sᴍs Rᴇᴄɪᴇᴠᴇᴅ »</b> <code>{SMS}</code> <b>[</b><code>{parsed['number']}</code><b>]</b>\n\n",
-                    parse_mode="HTML"
-                )
-
-            formatted = build_message(parsed)
-            await bot.send_message(DESTINATION_CHAT_ID, formatted, parse_mode="HTML")
-            print("OTP forwarded successfully:", parsed)
-
-        except Exception as exc:
-            print("Unexpected error in otp_handler:", exc)
-
 
     
 
