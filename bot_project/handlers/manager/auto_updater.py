@@ -381,14 +381,14 @@ class AutoUpdater:
             print(colored(f"\n--- Batch {idx}/{len(batches)}: country {country_id} ---", "blue"))
 
             # non‐blocking delete of old keys
-            old_keys = []
+            """old_keys = []
             async for key in self.redis_client.scan_iter(match=f"{SERVICE_PREFIX}:{country_id}:*", count=1_000):
                 old_keys.append(key)
             if old_keys:
                 print(colored(f"Unlinking {len(old_keys)} old keys …", "yellow"))
                 # UNLINK frees in background
                 await self.redis_client.unlink(*old_keys)
-                print(colored("Old keys unlinked.", "green"))
+                print(colored("Old keys unlinked.", "green"))"""
 
             # create one pipeline for this batch
             pipe = self.redis_client.pipeline()
