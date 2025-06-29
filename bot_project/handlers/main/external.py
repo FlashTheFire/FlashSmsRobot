@@ -311,8 +311,8 @@ class ForwardManager:
                 elif action == self.CB_REMOVE_COUNTRY:
                     await self._update_list(chat_id, text, self.country_list, "Country", False)
                 elif action == self.CB_CHECK_NUM:
-                    gtext = self.to_gtext(message.text)
-                    text = gtext
+                    #gtext = self.to_gtext(message.text)
+                    #text = gtext
                     all_numbers = [
                         num.strip() 
                         for num in text.splitlines() 
