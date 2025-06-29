@@ -133,6 +133,8 @@ class UserOrderTrackerManagement:
                 user_manager.send_order_report(self.bot, "edit_message_text", order_id, order_info['user_id'], '-1002203139746', details),
                 user_manager.user_metrics_report(self.bot, 'edit_message_text', order_info['user_id'], '-1002203139746')
             ]
+            order_data = await self.order_manager.get_order_data(order_id)
+            order_info = order_data['result']
             tasks.append(self._update_order_ui(order_info, is_timeout=None))
             await asyncio.gather(*tasks)
         except Exception as e:
@@ -661,7 +663,7 @@ class UserOrderTrackerManagement:
 
         if is_timeout is True:
             text = f"{base_template}<b>⏱️ Oʀᴅᴇʀ Hᴀs Exᴘɪʀᴇᴅ [</b><code>Rᴇғᴜɴᴅᴇᴅ</code><b>]</b>"
-        elif is_timeout is None or order_info.get('order_status') == 'COMPLETED':
+        elif order_info.get('order_status') == 'COMPLETED':
             text = f"{base_template}<b>✅ Oʀᴅᴇʀ Hᴀs Bᴇᴇɴ Cᴏᴍᴘʟᴇᴛᴇᴅ.</b>"
         else:
             text = f"{base_template}⏱ <b>Vᴀʟɪᴅ Uɴᴛɪʟ »</b> {order_info.get('valid_until', 'N/A')} <b>[</b>{current_time}<b>]</b>"
