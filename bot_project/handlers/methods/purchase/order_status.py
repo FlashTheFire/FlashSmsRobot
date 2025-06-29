@@ -105,7 +105,7 @@ class UserPurchaseStatusManagement:
 
     async def _check_sms(self, order_id):
         from handlers.methods.purchase.order_tracker import order_tracker, UserOrderTrackerManagement
-        orders = await order_tracker._fetch_orders_batch(0, 1, f"@order_id:({order_id})")
+        orders = await order_tracker._fetch_orders_batch(1, 0, f"@order_id:({order_id})")
         valid, expired = await order_tracker._categorize_orders(orders)
         processing_tasks = [
             *[order_tracker._process_single_order(o, True) for o in expired],

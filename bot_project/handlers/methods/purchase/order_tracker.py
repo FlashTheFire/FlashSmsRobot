@@ -153,7 +153,7 @@ class UserOrderTrackerManagement:
         try:
             offset = 0
             while True:
-                orders = await self._fetch_orders_batch(offset, batch_size)
+                orders = await self._fetch_orders_batch(batch_size, offset)
                 if not orders:
                     break
 
@@ -177,7 +177,7 @@ class UserOrderTrackerManagement:
             self._circuit_errors += 1
             if self._circuit_errors >= 3:
                 await self._trip_circuit()
-    async def _fetch_orders_batch(self, offset: int = 0, batch_size: int = _adaptive_batch_size, query_str: str = None) -> List[Dict]:
+    async def _fetch_orders_batch(self, batch_size: int, offset: int = 0, query_str: str = None) -> List[Dict]:
         """Optimized Redis batch fetch with validation"""
         response = await self.order_manager.search_current_orders(
             query_str=query_str or "*", 
@@ -724,7 +724,7 @@ class UserOrderTrackerManagement:
         try:
             offset = 0
             while True:
-                orders = await self._fetch_orders_batch(offset, batch_size)
+                orders = await self._fetch_orders_batch(batch_size, offset)
                 if not orders:
                     break
 
