@@ -311,7 +311,8 @@ class ForwardManager:
                 elif action == self.CB_REMOVE_COUNTRY:
                     await self._update_list(chat_id, text, self.country_list, "Country", False)
                 elif action == self.CB_CHECK_NUM:
-                    text = self.to_gtext(text)
+                    gtext = self.to_gtext(text)
+                    text = gtext
                     all_numbers = [
                         num.strip() 
                         for num in text.splitlines() 
@@ -323,6 +324,7 @@ class ForwardManager:
                         for i in range(0, len(all_numbers), 19)
                     ]
 
+                    last_number = all_numbers[-1] if all_numbers else None
                     response = []
                     try:
                         main_results = await self.process_numbers(user_id, chat_id, chunks)
@@ -344,7 +346,6 @@ class ForwardManager:
                     if not response:
                         response.append("❌ <b>Nᴏ Pʀᴏᴠɪᴅᴇᴅ Nᴜᴍʙᴇʀs Aʀᴇ Rᴇɢɪsᴛᴇʀᴇᴅ</b>")
                     result_text = "\n\n".join(response)
-                    last_number = all_numbers[-1] if all_numbers else None
                     result_text += f"\n\n<b>Last Number:</b> <code>{last_number}</code>"
                     markup = InlineKeyboardMarkup()
                     markup.add(
@@ -435,23 +436,31 @@ class ForwardManager:
             return None
 
     def to_gtext(self, input_text: str) -> str:
+        # 1) Extract all digit runs
         raw_digits = re.findall(r'\d+', input_text)
         if not raw_digits:
             return ""
+
+        # 2) Normalize: keep only 10-digit or 12-digit (starting with 91) numbers
         normalized = []
         for d in raw_digits:
             if len(d) == 12 and d.startswith("91"):
                 normalized.append(int(d))
             elif len(d) == 10:
                 normalized.append(int("91" + d))
-            else:
-                continue
-    
+            # Skip invalid lengths like 11, 13, etc.
+
         if not normalized:
             return ""
+
+        # 3) Use the first valid number as the starting point
         start = normalized[0]
         count = len(normalized)
-        sequence = [str(start + i) for i in range(count)]
+
+        # 4) Generate sequence
+        sequence = [str(start + i).strip() for i in range(count)]
+
+        # 5) Join with newlines only
         return "\n".join(sequence)
 
     async def safe_callback_query(self, callback_query_id, text=None, **kwargs):
@@ -597,7 +606,7 @@ class ForwardManager:
 
         if state_data['state'] == 'awaiting_phone':
             gtext = self.to_gtext(text)
-            text = gtext.splitlines()[0] if gtext else None
+            text = gtext.splitlines()[0].replace(" ", "") if gtext else None
 
             if not re.match(r'^\d{8,15}$', text):
                 await self.safe_send(chat_id, "❌ <b>Invalid Phone</b>\nSend digits only (e.g., <code>918372673883</code>)", parse_mode="HTML")
