@@ -205,6 +205,36 @@ class ForwardManager:
             if re.fullmatch(pattern, num):
                 return num
         return masked
+    def wrap(self, s: str, n: int = 24) -> str:
+        """
+        Word‑aware wrap per original line: no line exceeds n letters/spaces, and words aren't split.
+        Preserves empty lines and wraps each input line independently.
+        """
+        lines_out = []
+        for line in s.splitlines():
+            if not line.strip():
+                # Preserve blank lines
+                lines_out.append("")
+                continue
+            words = line.split()
+            current = ""
+            count = 0
+            for w in words:
+                # count only letters and spaces in the word
+                w_len = sum(1 for ch in w if ch.isalpha() or ch == ' ')
+                sep = ' ' if current else ''
+                # if adding this word exceeds limit, wrap
+                if count + w_len + (1 if current else 0) > n:
+                    lines_out.append(current)
+                    current = w
+                    count = w_len
+                else:
+                    current = current + sep + w
+                    count += w_len + (1 if sep else 0)
+            # append the last line for this input line
+            if current:
+                lines_out.append(current)
+        return "\n".join(lines_out)
 
     async def register_handlers(self, bot: AsyncTeleBot):
         self.bot = bot
@@ -255,14 +285,14 @@ class ForwardManager:
                     "otp": match["otp"].strip(),
                     "amount": "0.49",
                     "flag": match["flag"].strip(),
-                    "full_message": match["full_message"].strip(),
+                    "full_message": self.wrap(match["full_message"].strip()),
                     "time": time,
                     "number_data": {
                         "national_code": match["number"].strip()[:2],
                         "national_number": match["number"].strip()[2:]
                     }
                 }
-    
+
             def build_message(data: Dict[str, Any], small_cap) -> str:
                 mask = lambda s: s[:4] + "•"*(len(s)-8) + s[-4:]
                 message = (
@@ -274,7 +304,7 @@ class ForwardManager:
                     f"📞 <b>Nᴜᴍʙᴇʀ</b> » <code>{str(data['number_data']['national_code']).translate(small_cap)}</code> {str(mask(str(data['number_data']['national_number']))).translate(small_cap)}\n"
                     f"💬 <b>Sᴍs Lɪsᴛ</b> » <code>{data['otp']}</code>\n\n"
                     
-                    f"✅ <b>Sᴛᴀᴛᴜs</b> » <i>Cᴏᴍᴘʟᴇᴛᴇᴅ</i>\n"
+                    f"✅ <b>Sᴛᴀᴛᴜs</b> » <code>Cᴏᴍᴘʟᴇᴛᴇᴅ</code>\n"
                     f"🗓️ <b>Tɪᴍᴇ</b> » {data['time']}\n\n"
 
                     f"<blockquote expandable><pre><code class=\"language-• Sᴍs ❯ \">{str(data['full_message']).translate(small_cap)}</code></pre></blockquote>"
