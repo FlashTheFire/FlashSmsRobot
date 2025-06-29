@@ -450,7 +450,8 @@ class UserOrderTrackerManagement:
             # Proceed with cancellation
             api_result = await purchase_status.cancel_number_api(
                 order_info['server_id'],
-                order_info['order_id']
+                order_info['order_id'],
+                is_api=True
             )
         
             if not api_result.get('response', False):

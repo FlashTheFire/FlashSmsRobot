@@ -56,7 +56,7 @@ class UserPurchaseStatusManagement:
             # Log error if needed.
             return False
 
-    async def cancel_number_api(self, server_id: int, order_id: str, sms_list: Optional[str] = None) -> Dict[str, Any]:
+    async def cancel_number_api(self, server_id: int, order_id: str, sms_list: Optional[str] = None, is_api: bool = False) -> Dict[str, Any]:
         """Call external API to cancel the phone number/order."""
         try:
             if str(order_id).startswith("987654321"):
@@ -96,7 +96,9 @@ class UserPurchaseStatusManagement:
                         elif text in ["ACCESS_CANCEL", "ACCESS_CANCEL_ALREADY", "STATUS_CANCEL", "ALREADY_CANCELED"]:
                             return {"response": True, "text": "<blockquote><b>✅ Nᴜᴍʙᴇʀ Cᴀɴᴄᴇʟʟᴇᴅ Sᴜᴄᴄᴇssғᴜʟʟʏ</b></blockquote>"}
                         elif text in {"BAD_ACTION"}:
-                            return await self._check_sms(order_id=order_id, server_name=server_name, api_key=api_key)
+                            if is_api:
+                                return {"response": True, "text": "<blockquote><b>✅ Nᴜᴍʙᴇʀ Cᴀɴᴄᴇʟʟᴇᴅ Sᴜᴄᴄᴇssғᴜʟʟʏ</b></blockquote>"}
+                            return await self._check_sms(order_id=order_id)
                     return {"response": False, "text": f"<blockquote><b>❌ Fᴀɪʟᴇᴅ Tᴏ Cᴀɴᴇʟ Nᴜᴍʙᴇʀ: {text}</b></blockquote>"}
         except aiohttp.ClientError as e:
             return {"response": False, "text": "<blockquote><b>⚠️ Nᴇᴛᴡᴏʀᴋ Eʀʀᴏʀ Wʜɪʟᴇ Cᴀɴᴇʟʟɪɴɢ Tʜᴇ Nᴜᴍʙᴇʀ...</b></blockquote>"}
@@ -113,7 +115,10 @@ class UserPurchaseStatusManagement:
         ]
         if processing_tasks:
             await asyncio.gather(*processing_tasks, return_exceptions=True)
-
+        if valid:
+            return {"response": False, "text": "<blockquote><b>✅ Nᴜᴍʙᴇʀ Hᴀs Sᴍs!</b></blockquote>"}
+        if expired:
+            return {"response": True, "text": "<blockquote><b>✅ Nᴜᴍʙᴇʀ Cᴀɴᴄᴇʟʟᴇᴅ Sᴜᴄᴄᴇssғᴜʟʟʏ</b></blockquote>"}
         return {"response": False, "text": "<blockquote><b>⚠️ Uɴᴇxᴘᴇᴄᴛᴇᴅ Eʀʀᴏʀ Wʜɪʟᴇ Cᴀɴᴇʟʟɪɴɢ Tʜᴇ Nᴜᴍʙᴇʀ...</b></blockquote>"}
 
     async def _acquire_transaction_lock(self, guard, transaction_key, input_data) -> bool:
