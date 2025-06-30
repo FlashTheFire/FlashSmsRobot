@@ -345,8 +345,8 @@ class ForwardManager:
         active_account = self.session_manager.get_active_account(user_id)
         if active_account:
             kb.row(
-                InlineKeyboardButton("➕ Aᴅᴅ Account", callback_data=self.CB_ADD_APP),
-                InlineKeyboardButton("🔐 Lᴏɢᴏᴜᴛ Account", callback_data=self.CB_LOGOUT)
+                InlineKeyboardButton("➕ Aᴅᴅ Aᴄᴄᴏᴜɴᴛ", callback_data=self.CB_ADD_APP),
+                InlineKeyboardButton("🔐 Lᴏɢᴏᴜᴛ Iᴛ", callback_data=self.CB_LOGOUT)
             )
         else:
             kb.add(
@@ -824,7 +824,7 @@ class ForwardManager:
                 self.logger.warning(f"Connection issue: {e}")
                 await asyncio.sleep(5)
 
-        @bot.callback_query_handler(func=lambda call: call.data in self.cb_list or call.data.startswith(self.CB_SWITCH_ACCOUNT) or call.data.startswith(self.CB_CHECK_NUM + ":") or call.data.startswith(self.CB_LOGIN + ":"))
+        @bot.callback_query_handler(func=lambda call: call.data in self.cb_list or call.data.startswith(self.CB_SWITCH_ACCOUNT) or call.data.startswith(self.CB_CHECK_NUM + ":") or call.data.startswith(self.CB_LOGOUT + ":"))
         async def handle_callbacks(call: CallbackQuery):
             data = call.data
             print(data)
