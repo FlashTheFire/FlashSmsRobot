@@ -325,7 +325,7 @@ class ForwardManager:
         
         @bot.message_handler(func=lambda m: m.reply_to_message and 
                             m.reply_to_message.text and 
-                            "ᴀᴅᴍɪɴ Lᴏɢɪɴ" in m.reply_to_message.text and
+                            "Admin Login" in m.reply_to_message.text and
                             m.from_user.id == ADMIN_USER_ID)
         async def handle_admin_phone(message: Message):
             await self.handle_admin_login(message)
@@ -569,7 +569,6 @@ class ForwardManager:
             return await self.bot.send_message(
                 chat_id, 
                 text, 
-                parse_mode="HTML",
                 disable_web_page_preview=True,
                 **kwargs
             )
