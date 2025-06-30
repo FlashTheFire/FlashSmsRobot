@@ -340,7 +340,10 @@ class ForwardManager:
                 InlineKeyboardButton("👨🏻‍💻 Sᴇʀᴠɪᴄᴇ", callback_data=self.entry),
                 InlineKeyboardButton("-", callback_data=self.CB_REMOVE_APP)
             )
-            kb.add(InlineKeyboardButton("➕ Aᴅᴅ New Account", callback_data=self.CB_LOGIN))
+            
+        
+        kb.add(InlineKeyboardButton("➕ Aᴅᴅ New Account", callback_data=self.CB_LOGIN))
+        if user_id == ADMIN_USER_ID:
             kb.row(
                 InlineKeyboardButton("+", callback_data=self.CB_ADD_COUNTRY),
                 InlineKeyboardButton("🏞️ Rᴇɢɪᴏɴ", callback_data=self.entry),
@@ -555,7 +558,7 @@ class ForwardManager:
         # 2) ensure logged-in accounts
         accounts = self.session_manager.get_accounts(user_id)
         if not accounts:
-            await self.safe_send(chat_id, "❌ No active accounts. Please log in first.")
+            await self.safe_send(chat_id, "⚠️ Pʟᴇᴀsᴇ Lᴏɢ‑ɪɴ Fɪʀsᴛ! Tʜᴇɴ Yᴏᴜ Cᴀɴ Usᴇ Nᴜᴍʙᴇʀ Cʜᴇᴄᴋᴇʀ!")
             return []
 
         # 3) split into 100-number chunks
@@ -817,7 +820,7 @@ class ForwardManager:
                 apps = '\n'.join([f"• {app}" for app in self.app_list]) or '• Nᴏ Sᴇʀᴠɪᴄᴇ'
                 countries = '\n'.join([f"• {country}" for country in self.country_list]) or '• Nᴏ Rᴇɢɪᴏɴ'
                 details = (
-                    f"<b>📂 Fɪʟᴛᴇʀ – Sᴇʀᴠɪᴄᴇ & Rᴇɢɪᴏɴ!</b>\n\n"
+                    f"<b>📂 Aᴄᴛɪᴠᴇ Fɪʟᴛᴇʀs Bʏ Sᴇʀᴠɪᴄᴇ & Rᴇɢɪᴏɴ!</b>\n\n"
                     f"<b>📱 Sᴇʀᴠɪᴄᴇ »</b>\n{apps}\n\n"
                     f"<b>🌍 Rᴇɢɪᴏɴ  »</b>\n{countries}"
                 )
@@ -860,7 +863,7 @@ class ForwardManager:
                     messages = await self.check_account_messages(user_id, account.account_id)
                     await self.safe_send(call.message.chat.id, messages, parse_mode="HTML")
                 else:
-                    await self.safe_send(call.message.chat.id, "❌ No active account selected")
+                    await self.safe_callback_query(call.id, "⚠️ Pʟᴇᴀsᴇ Lᴏɢ‑ɪɴ Fɪʀsᴛ! Tʜᴇɴ Yᴏᴜ Cᴀɴ Usᴇ Nᴜᴍʙᴇʀ Cʜᴇᴄᴋᴇʀ!")
                 await self.safe_callback_query(call.id)
             elif data.startswith(self.CB_SWITCH_ACCOUNT + ":"):
                 account_id = data.split(":", 1)[1].removeprefix(self.CB_SWITCH_ACCOUNT + ":")
@@ -891,7 +894,7 @@ class ForwardManager:
                         reply_markup=ForceReply(selective=True))
                     self.filter_states[msg.message_id] = data
                 else:
-                    await self.safe_send(chat_id, "⚠️ <b>Please Log-In First!</b>\nThen You Can Use Number Checker.", parse_mode="HTML")
+                    await self.safe_callback_query(call.id, "⚠️ Pʟᴇᴀsᴇ Lᴏɢ‑ɪɴ Fɪʀsᴛ! Tʜᴇɴ Yᴏᴜ Cᴀɴ Usᴇ Nᴜᴍʙᴇʀ Cʜᴇᴄᴋᴇʀ!")
                 await self.safe_callback_query(call.id)
                 return
             # Update control panel UI
@@ -910,7 +913,7 @@ class ForwardManager:
                 accounts = self.session_manager.get_accounts(user_id)
                 
                 if not accounts:
-                    await self.safe_callback_query(call.id, "No accounts available")
+                    await self.safe_callback_query(call.id, "⚠️ Pʟᴇᴀsᴇ Lᴏɢ‑ɪɴ Fɪʀsᴛ! Tʜᴇɴ Yᴏᴜ Cᴀɴ Usᴇ Nᴜᴍʙᴇʀ Cʜᴇᴄᴋᴇʀ!")
                     return
                 
                 kb = InlineKeyboardMarkup()
@@ -919,7 +922,7 @@ class ForwardManager:
                         f"{account.account_id} ({account.phone})",
                         callback_data=f"{self.CB_SWITCH_ACCOUNT}:{account.account_id}"
                     ))
-                kb.add(InlineKeyboardButton("• Nᴇᴡ", callback_data=self.CB_LOGIN), InlineKeyboardButton("🔙 Bᴀᴄᴋ", callback_data=self.CB_BACK))
+                kb.add(InlineKeyboardButton("• Aᴅᴅ", callback_data=self.CB_LOGIN), InlineKeyboardButton("🔙 Bᴀᴄᴋ", callback_data=self.CB_BACK))
                 
                 await self.safe_edit_message(
                     call.message.chat.id,
@@ -939,7 +942,7 @@ class ForwardManager:
                     keyboard.add(InlineKeyboardButton("🔙 Bᴀᴄᴋ Tᴏ Usᴇʀ Pᴀɴᴇʟ", callback_data=self.CB_BACK))
                     await self.safe_edit_message(call.message.chat.id, call.message.message_id, text=details, parse_mode="HTML", reply_markup=keyboard)
                 else:
-                    await self.safe_callback_query(call.id, "❌ Nᴏ Aᴄᴛɪᴠᴇ Aᴄᴄᴏᴜɴᴛ Sᴇʟᴇᴄᴛᴇᴅ")
+                    await self.safe_callback_query(call.id, "⚠️ Pʟᴇᴀsᴇ Lᴏɢ‑ɪɴ Fɪʀsᴛ! Tʜᴇɴ Yᴏᴜ Cᴀɴ Usᴇ Nᴜᴍʙᴇʀ Cʜᴇᴄᴋᴇʀ!")
                 await self.safe_callback_query(call.id)
 
 
