@@ -10,18 +10,18 @@
       "telegram_id": null,
       "last_checked": null
     },
-    "Admin": {
+    "admin": {
       "user_id": 1889471360,
-      "account_id": "Admin",
-      "phone": "919798961352",
-      "session_file": "sessions/contact_1889471360_Admin.session",
-      "full_name": "Uday",
-      "username": "UdayScripts_Ai",
-      "telegram_id": 6005735230,
-      "last_checked": "2025-06-30T11:29:34.704003"
+      "account_id": "admin",
+      "phone": "919905102946",
+      "session_file": "sessions/contact_1889471360_admin.session",
+      "full_name": null,
+      "username": null,
+      "telegram_id": null,
+      "last_checked": null
     }
   },
   "_active_accounts": {
-    "1889471360": "Admin"
+    "1889471360": "admin"
   }
 }
