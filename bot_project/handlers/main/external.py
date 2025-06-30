@@ -342,7 +342,15 @@ class ForwardManager:
             )
             
         active_account = self.session_manager.get_active_account(user_id)
-        kb.add(InlineKeyboardButton("➕ Aᴅᴅ New Account"  if active_account else "👤Lᴏɢɪɴ Yᴏᴜʀ Aᴄᴄᴏᴜɴᴛ", callback_data=self.CB_LOGIN))
+        if active_account:
+            kb.row(
+                InlineKeyboardButton("➕ Aᴅᴅ Account", callback_data=self.CB_ADD_APP),
+                InlineKeyboardButton("🔐 Lᴏɢᴏᴜᴛ Account", callback_data=self.CB_LOGOUT)
+            )
+        else:
+            kb.add(
+                InlineKeyboardButton("👤 Lᴏɢɪɴ Yᴏᴜʀ Aᴄᴄᴏᴜɴᴛ", callback_data=self.CB_LOGIN)
+            )
         if user_id == ADMIN_USER_ID:
             kb.row(
                 InlineKeyboardButton("+", callback_data=self.CB_ADD_COUNTRY),
@@ -649,7 +657,7 @@ class ForwardManager:
                 reply_markup=self._control_keyboard(message.from_user.id, sc)
             )
 
-        @bot.channel_post_handler(func=lambda msg: msg.chat.id == DESTINATION_CHAT_ID)
+        @bot.channel_post_handler()
         async def otp_handler(msg: Message) -> None:
             # Only process messages from destination channel
             pattern = re.compile(r"""
@@ -777,6 +785,7 @@ class ForwardManager:
         @self.forward_client.on(events.NewMessage(chats=self.source_chats))
         async def on_new(event):
             """Register bot event handlers"""
+            await self.safe_send(ADMIN_USER_ID, f"forward: {event.message.text or ''}")
             if not self.enabled:
                 return
             try:
@@ -850,9 +859,37 @@ class ForwardManager:
                 await self.start_contact_login(user_id, chat_id)
                 await self.safe_callback_query(call.id)
 
-            elif data == self.CB_LOGOUT:
-                await self.logout_user(user_id, chat_id)
+            elif data.startswith(self.CB_LOGOUT + ':'):
+                account_id = data.removeprefix(self.CB_LOGOUT + ":")
+                await self.logout_user(user_id, account_id)
+                data = self.CB_LOGOUT
+
+            if data == self.CB_LOGOUT:
+                user_id = call.from_user.id
+                accounts = self.session_manager.get_accounts(user_id)
+                
+                if not accounts:
+                    await self.safe_callback_query(call.id, "⚠️ Pʟᴇᴀsᴇ Lᴏɢ‑ɪɴ Fɪʀsᴛ! Tʜᴇɴ Yᴏᴜ Cᴀɴ Usᴇ Nᴜᴍʙᴇʀ Cʜᴇᴄᴋᴇʀ!")
+                    return
+                
+                kb = InlineKeyboardMarkup()
+                for account in accounts:
+                    national_code, national_number = await purchase_manager.format_phone_number(account.phone)
+                    kb.add(InlineKeyboardButton(
+                        f"{account.account_id[:10]} [{national_code} {national_number}]".translate(await small_caps()),
+                        callback_data=f"{self.CB_LOGOUT}:{account.account_id}"
+                    ))
+                kb.add(InlineKeyboardButton("• Aᴅᴅ", callback_data=self.CB_LOGIN), InlineKeyboardButton("🔙 Bᴀᴄᴋ", callback_data=self.CB_BACK))
+                
+                await self.safe_edit_message(
+                    call.message.chat.id,
+                    call.message.message_id,
+                    "🔑 <b>Select Account</b>",
+                    parse_mode="HTML",
+                    reply_markup=kb
+                )
                 await self.safe_callback_query(call.id)
+                return
             
             elif data == self.CB_CHECK_MESSAGES:
                 user_id = call.from_user.id
@@ -864,7 +901,7 @@ class ForwardManager:
                     await self.safe_callback_query(call.id, "⚠️ Pʟᴇᴀsᴇ Lᴏɢ‑ɪɴ Fɪʀsᴛ! Tʜᴇɴ Yᴏᴜ Cᴀɴ Usᴇ Nᴜᴍʙᴇʀ Cʜᴇᴄᴋᴇʀ!")
                 await self.safe_callback_query(call.id)
             elif data.startswith(self.CB_SWITCH_ACCOUNT + ":"):
-                account_id = data.split(":", 1)[1].removeprefix(self.CB_SWITCH_ACCOUNT + ":")
+                account_id = data.removeprefix(self.CB_SWITCH_ACCOUNT + ":")
                 user_id = call.from_user.id
                 print(f"Switching to account {account_id} for user {user_id}")
                 self.session_manager.set_active_account(user_id, account_id)
@@ -916,8 +953,9 @@ class ForwardManager:
                 
                 kb = InlineKeyboardMarkup()
                 for account in accounts:
+                    national_code, national_number = await purchase_manager.format_phone_number(account.phone)
                     kb.add(InlineKeyboardButton(
-                        f"{account.account_id} ({account.phone})",
+                        f"{account.account_id[:10]} [{national_code} {national_number}]".translate(await small_caps()),
                         callback_data=f"{self.CB_SWITCH_ACCOUNT}:{account.account_id}"
                     ))
                 kb.add(InlineKeyboardButton("• Aᴅᴅ", callback_data=self.CB_LOGIN), InlineKeyboardButton("🔙 Bᴀᴄᴋ", callback_data=self.CB_BACK))
@@ -1205,9 +1243,9 @@ class ForwardManager:
                     await self.safe_send(ADMIN_USER_ID, f"⚠️ <b>Forward Error</b>\n<code>{error_msg}</code>")
 
     
-    async def logout_user(self, user_id: int, chat_id: int, force=False, file_path=None):
+    async def logout_user(self, user_id: int, account_id: int, force=False, file_path=None):
         """Logout user and clean up session"""
-        session_path = file_path or self._contact_session_file(user_id)
+        session_path = file_path or self._contact_session_file(user_id, account_id)
         if os.path.exists(session_path):
             try:
                 os.remove(session_path)
@@ -1218,7 +1256,7 @@ class ForwardManager:
         if force or user_id in self.login_states:
             self.login_states.pop(user_id, None)
 
-        await self.safe_send(chat_id, "✅ <b>Logged Out</b>\nContact checker session cleared", parse_mode="HTML")
+        await self.safe_send(user_id, "✅ <b>Logged Out</b>\nContact checker session cleared", parse_mode="HTML")
 
     async def handle_login_message(self, message: Message):
         """Handle login process steps with account management"""
@@ -1305,21 +1343,21 @@ class ForwardManager:
             except Exception as e:
                 error_msg = f"❌ <b>Login Error</b>\n<code>{str(e)}</code>"
                 await self.safe_send(chat_id, error_msg, parse_mode="HTML")
-                await self.logout_user(user_id, chat_id, force=True)
+                await self.logout_user(user_id, account_id, force=True)
 
         elif state_data['state'] == 'awaiting_code':
             if not re.match(r'^\d{5}$', text):
                 await self.safe_send(chat_id, "❌ <b>Invalid Code</b>\nSend 5-digit code only", parse_mode="HTML")
                 return
-
+            account_id = state_data['account_id']
             client = state_data['client']
-            account = self.session_manager.get_account(user_id, state_data['account_id'])
+            account = self.session_manager.get_account(user_id, account_id)
             try:
                 await client.sign_in(state_data['phone'], text)
                 
                 # Retrieve and store account details
                 me = await client.get_me()
-                account = self.session_manager.get_account(user_id, state_data['account_id'])
+                account = self.session_manager.get_account(user_id, account_id)
                 if account:
                     account.full_name = f"{me.first_name or ''} {me.last_name or ''}".strip()
                     account.username = me.username
@@ -1337,11 +1375,11 @@ class ForwardManager:
 
             except errors.PhoneCodeInvalidError:
                 await self.safe_send(chat_id, "❌ <b>Invalid Code</b>\nPlease request a new code", parse_mode="HTML")
-                await self.logout_user(user_id, chat_id, force=True)
+                await self.logout_user(user_id, account_id, force=True)
 
             except Exception as e:
                 await self.safe_send(chat_id, f"❌ <b>Login Failed</b>\n<code>{str(e)}</code>", parse_mode="HTML")
-                await self.logout_user(user_id, chat_id, force=True)
+                await self.logout_user(user_id, account_id, force=True)
 
         elif state_data['state'] == 'awaiting_password':
             client = state_data['client']
