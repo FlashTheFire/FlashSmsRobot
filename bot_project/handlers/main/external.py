@@ -824,7 +824,7 @@ class ForwardManager:
                 self.logger.warning(f"Connection issue: {e}")
                 await asyncio.sleep(5)
 
-        @bot.callback_query_handler(func=lambda call: call.data in self.cb_list or call.data.startswith(self.CB_SWITCH_ACCOUNT) or call.data.startswith(self.CB_CHECK_NUM + ":"))
+        @bot.callback_query_handler(func=lambda call: call.data in self.cb_list or call.data.startswith(self.CB_SWITCH_ACCOUNT) or call.data.startswith(self.CB_CHECK_NUM + ":") or call.data.startswith(self.CB_LOGIN + ":"))
         async def handle_callbacks(call: CallbackQuery):
             data = call.data
             print(data)
