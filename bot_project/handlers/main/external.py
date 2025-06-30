@@ -326,12 +326,12 @@ class ForwardManager:
         kb = InlineKeyboardMarkup()
         if user_id == ADMIN_USER_ID:
             kb.row(
-                InlineKeyboardButton("🟢 Oɴ" if not self.enabled else "🔴 Oғғ",
+                InlineKeyboardButton("🟢 Oɴ" if self.enabled else "🔴 Oғғ",
                                      callback_data=self.CB_START if not self.enabled else self.CB_STOP),
                 InlineKeyboardButton("☰ Fɪʟᴛᴇʀs", callback_data=self.CB_SHOW_LISTS)
             )
             kb.row(
-                InlineKeyboardButton("🟢 Oɴ" if not self.logging_enabled else "🔴 Oғғ",
+                InlineKeyboardButton("🟢 Oɴ" if self.logging_enabled else "🔴 Oғғ",
                                      callback_data=self.CB_TOGGLE_LOGS),
                 InlineKeyboardButton("📁 Lᴏɢɢɪɴɢ", callback_data=self.CB_SHOW_LOGS)
             )
@@ -817,7 +817,7 @@ class ForwardManager:
                 apps = '\n'.join([f"• {app}" for app in self.app_list]) or '• Nᴏ Sᴇʀᴠɪᴄᴇ'
                 countries = '\n'.join([f"• {country}" for country in self.country_list]) or '• Nᴏ Rᴇɢɪᴏɴ'
                 details = (
-                    f"<b>📂 Aᴄᴛɪᴠᴇ Fɪʟᴛᴇʀs</b>\n\n"
+                    f"<b>📂 Aᴄᴛɪᴠᴇ Fɪʟᴛᴇʀs Sᴇʀᴠɪᴄᴇ & Rᴇɢɪᴏɴ!</b>\n\n"
                     f"<b>📱 Sᴇʀᴠɪᴄᴇ »</b>\n{apps}\n\n"
                     f"<b>🌍 Rᴇɢɪᴏɴ  »</b>\n{countries}"
                 )
@@ -829,6 +829,7 @@ class ForwardManager:
                     parse_mode="HTML"
                 )
                 await self.safe_callback_query(call.id)
+                return
 
             elif data in (self.CB_ADD_APP, self.CB_REMOVE_APP, self.CB_ADD_COUNTRY, self.CB_REMOVE_COUNTRY):
                 action_map = {
