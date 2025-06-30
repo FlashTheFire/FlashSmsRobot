@@ -750,7 +750,7 @@ class ForwardManager:
                 text = msg.text or ""
                 parsed = parse_fields(text, await AfterMin(0))
                 if not parsed:
-                    print("Forwarded message didn’t match OTP format, skipping.")
+                    #print("Forwarded message didn’t match OTP format, skipping.")
                     return
                 parsed['number_data']['national_code'], parsed['number_data']['national_number'] = await purchase_manager.format_phone_number(parsed['number'])
                 small_cap = await small_caps()
@@ -773,13 +773,13 @@ class ForwardManager:
                     CANDIDATES = await purchase_manager.order_manager.get_candidates()
                     element = "*" if "*" in parsed["number"] else "•"
                     full = await self.unmask_number(parsed["number"], CANDIDATES, element)
-                    print(f"Unmasked {parsed['number']} → {full}")
+                    #print(f"Unmasked {parsed['number']} → {full}")
                     parsed["number"] = full
 
                 order_id = f'987654321{parsed["number"]}'
                 order_data = await purchase_manager.order_manager.get_order_data(order_id)
                 if not order_data['response']:
-                    print("Order not found.")
+                    #print("Order not found.")
                     return
                 order_data = order_data['result']
                 SMS = str(parsed['otp']).replace(" ", "").replace("\n", "").replace("-", "")
@@ -794,14 +794,14 @@ class ForwardManager:
                         action="add",
                         sms_code=SMS
                     )
-                    print(colored(f"Add Code: {add_result}", "yellow"))
+                    #print(colored(f"Add Code: {add_result}", "yellow"))
                     await bot.send_message(
                         chat_id=order_data['user_id'],
                         text=f"✅ <b>Sᴍs Rᴇᴄɪᴇᴠᴇᴅ »</b> <code>{SMS}</code> <b>[</b><code>{parsed['number']}</code><b>]</b>\n\n",
                         parse_mode="HTML"
                     )
 
-                print("OTP forwarded successfully:", parsed)
+                #print("OTP forwarded successfully:", parsed)
             except Exception as exc:
                 print("Unexpected error in otp_handler:", exc)
         
@@ -820,7 +820,7 @@ class ForwardManager:
         @bot.callback_query_handler(func=lambda call: call.data in self.cb_list or call.data.startswith(self.CB_SWITCH_ACCOUNT) or call.data.startswith(self.CB_CHECK_NUM + ":") or call.data.startswith(self.CB_LOGOUT + ":"))
         async def handle_callbacks(call: CallbackQuery):
             data = call.data
-            print(data)
+            #print(data)
             user_id = call.from_user.id
             chat_id = call.message.chat.id
 
@@ -929,7 +929,7 @@ class ForwardManager:
             elif data.startswith(self.CB_SWITCH_ACCOUNT + ":"):
                 account_id = data.removeprefix(self.CB_SWITCH_ACCOUNT + ":")
                 user_id = call.from_user.id
-                print(f"Switching to account {account_id} for user {user_id}")
+                #print(f"Switching to account {account_id} for user {user_id}")
                 self.session_manager.set_active_account(user_id, account_id)
                 await self.safe_callback_query(call.id, f"✅ Active: {account_id}")
             elif data == self.CB_BACK:
