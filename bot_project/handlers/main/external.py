@@ -894,6 +894,7 @@ class ForwardManager:
                 await self.safe_send(chat_id, account_id)
                 await self.safe_callback_query(call.id, "✅ Logged Out Contact checker session cleared")
                 await self.logout_user(user_id, account_id, force=True)
+                self.session_manager.remove_account(user_id, account_id)
                 data = self.CB_LOGOUT
 
             if data == self.CB_LOGOUT:
