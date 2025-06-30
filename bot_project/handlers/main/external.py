@@ -15,6 +15,14 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQu
 from utils.functions import small_caps, large_nums, AfterMin
 from handlers.methods.purchase.made_purchase import purchase_manager
 from termcolor import colored
+from math import ceil
+import asyncio
+import sqlite3
+from typing import Any, Dict, List, Optional, Tuple
+
+from telethon import TelegramClient, errors, functions, types
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
+
 
 # Setup logging
 tlogging_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -66,6 +74,10 @@ class ForwardManager:
     Forwards messages from source chats to a destination chat with filtering,
     controls, and logging.
     """
+    MAX_NUMBERS_PER_SESSION = 100
+    MAX_SESSIONS = 5
+    BATCH_SIZE = 19
+
     # Callback identifiers
     entry = "ForwardManager:"
     CB_START = entry + "start"
@@ -497,75 +509,104 @@ class ForwardManager:
                 pass
 
 
-        @bot.message_handler(func=lambda m: (m.reply_to_message and m.reply_to_message.message_id in self.filter_states)
-                                                     or m.from_user.id in self.login_states)
+        @bot.message_handler(
+            func=lambda m: (
+                m.reply_to_message and 
+                m.reply_to_message.message_id in self.filter_states
+            ) or m.from_user.id in self.login_states)
         async def handle_replies(message: Message):
             user_id = message.from_user.id
             chat_id = message.chat.id
-            text = message.text.strip()
-            reply_msg_id = message.reply_to_message.message_id
 
-            if reply_msg_id in self.filter_states:
-                action = self.filter_states.pop(reply_msg_id)
-
-                if action == self.CB_ADD_APP:
-                    await self._update_list(chat_id, text, self.app_list, "App", True)
-                elif action == self.CB_REMOVE_APP:
-                    await self._update_list(chat_id, text, self.app_list, "App", False)
-                elif action == self.CB_ADD_COUNTRY:
-                    await self._update_list(chat_id, text, self.country_list, "Country", True)
-                elif action == self.CB_REMOVE_COUNTRY:
-                    await self._update_list(chat_id, text, self.country_list, "Country", False)
-                elif action == self.CB_CHECK_NUM:
-                    #gtext = self.to_gtext(message.text)
-                    #text = gtext
+            # only CB_CHECK_NUM cares about batch processing:
+            reply_msg = message.reply_to_message
+            if reply_msg and reply_msg.message_id in self.filter_states:
+                action = self.filter_states.pop(reply_msg.message_id)
+                if action == self.CB_CHECK_NUM:
+                    # extract up to 500 digit‑only lines
                     all_numbers = [
-                        num.strip() 
-                        for num in text.splitlines() 
-                        if num.strip().isdigit()
-                    ][:100]
+                        n.strip() 
+                        for n in message.text.splitlines() 
+                        if n.strip().isdigit()
+                    ][: self.MAX_NUMBERS_PER_SESSION * self.MAX_SESSIONS]
 
-                    chunks = [
-                        all_numbers[i : i + 19] 
-                        for i in range(0, len(all_numbers), 19)
-                    ]
+                    # how many sessions we'll actually use
+                    total_sessions = min(
+                        self.MAX_SESSIONS,
+                        ceil(len(all_numbers) / self.MAX_NUMBERS_PER_SESSION)
+                    )
 
-                    last_number = all_numbers[-1] if all_numbers else None
-                    response = []
-                    try:
-                        main_results = await self.process_numbers(user_id, chat_id, chunks)
-                        for num, user in main_results:
-                            if user:
-                                username = f"@{user.username}" if user.username else "No username"
-                                response.append(
-                                    "✅ <code>{}</code>" 
-                                    "<b>[<b><a href='tg://openmessage?user_id={}'>{}</a><b>]</b>\n"
-                                    "{}".format(
-                                        num, user.id, 'Oᴘᴇɴ', 
-                                        f"       • <a href='https://t.me/+{num}'>{username}</a>"
-                                    )
-                                )
-                    except Exception as e:
-                        await self.safe_send(chat_id, f"<code>{e}</code>")
+                    aggregated_results: List[Tuple[str, Optional[types.User]]] = []
 
-                        # Send results
-                    if not response:
-                        response.append("❌ <b>Nᴏ Pʀᴏᴠɪᴅᴇᴅ Nᴜᴍʙᴇʀs Aʀᴇ Rᴇɢɪsᴛᴇʀᴇᴅ</b>")
-                    result_text = "\n\n".join(response)
-                    result_text += f"\n\n<b>Last Number:</b> <code>{last_number}</code>"
+                    for session_index in range(total_sessions):
+                        start = session_index * self.MAX_NUMBERS_PER_SESSION
+                        end = start + self.MAX_NUMBERS_PER_SESSION
+                        session_numbers = all_numbers[start:end]
+
+                        # split into 19‑number API batches
+                        batches = [
+                            session_numbers[i : i + self.BATCH_SIZE]
+                            for i in range(0, len(session_numbers), self.BATCH_SIZE)
+                        ]
+
+                        # process all batches in this session
+                        try:
+                            session_results = await self._process_session_batches(
+                                user_id,
+                                chat_id,
+                                session_index,
+                                batches
+                            )
+                            aggregated_results.extend(session_results)
+                        except Exception as e:
+                            # if one session fails hard, include the error and continue
+                            aggregated_results.append((f"Session{session_index}", None))
+                            await self.safe_send(
+                                chat_id,
+                                f"<code>Session {session_index} error:</code> {e}",
+                                parse_mode="HTML"
+                            )
+
+                    # format and send one consolidated message
+                    response_lines = []
+                    for number, user in aggregated_results:
+                        if user:
+                            uname = f"@{user.username}" if user.username else "No username"
+                            response_lines.append(
+                                f"✅ <code>{number}</code> "
+                                f"[<a href='tg://openmessage?user_id={user.id}'>Open</a>]  "
+                                f"• <a href='https://t.me/+{number}'>{uname}</a>"
+                            )
+                        else:
+                            response_lines.append(f"❌ <code>{number}</code> not registered")
+
+                    if not response_lines:
+                        response_lines = ["❌ <b>No provided numbers are registered</b>"]
+
+                    last_number = all_numbers[-1] if all_numbers else "—"
+                    text = "\n".join(response_lines)
+                    text += f"\n\n<b>Last Number Checked:</b> <code>{last_number}</code>"
+
                     markup = InlineKeyboardMarkup()
                     markup.add(
-                        InlineKeyboardButton("🔄 Cʜᴇᴄᴋ Mᴏʀᴇ Nᴜᴍʙᴇʀs", callback_data=self.CB_CHECK_NUM),
+                        InlineKeyboardButton(
+                            "🔄 Check More Numbers",
+                            callback_data=self.CB_CHECK_NUM
+                        )
                     )
+
                     await self.safe_send(
                         chat_id,
-                        f"📊 <b>Number Check Results</b>\n\n{result_text}",
+                        f"📊 <b>Number Check Results</b>\n\n{text}",
                         parse_mode="HTML",
                         reply_markup=markup
                     )
+                    return
 
-            elif user_id in self.login_states:
+            # login‑flow or other filters
+            if user_id in self.login_states:
                 await self.handle_login_message(message)
+
 
     async def _update_list(self, chat_id, text, lst, label, add=True):
         """Update filter lists"""
@@ -896,78 +937,90 @@ class ForwardManager:
             except Exception as e:
                 await self.safe_send(chat_id, f"❌ <b>2FA Failed</b>\n<code>{str(e)}</code>", parse_mode="HTML")
 
-    async def check_numbers_registered(self, client: TelegramClient, numbers: List[str]) -> List[Tuple[str, Optional[types.User]]]:
-        """Check if numbers are registered on Telegram"""
+    async def _check_numbers_registered(
+        self,
+        client: TelegramClient,
+        numbers: List[str]
+    ) -> List[Tuple[str, Optional[types.User]]]:
+        """Import a small batch of contacts and map back which are real users."""
         contacts = [
             types.InputPhoneContact(
-                client_id=idx,
-                phone=num,
-                first_name=f"Check_{idx}",
-                last_name=""
-            ) for idx, num in enumerate(numbers)
+                client_id=i, phone=num, first_name=f"Chk{i}", last_name=""
+            )
+            for i, num in enumerate(numbers)
         ]
-        
-        try:
-            import_result = await client(functions.contacts.ImportContactsRequest(contacts))
-            user_map = {user.phone: user for user in import_result.users 
-                        if isinstance(user, types.User) and user.phone}
-            
-            # Clean up imported contacts
-            if import_result.imported:
-                await client(functions.contacts.DeleteContactsRequest(
-                    id=[types.InputUser(user_id=u.id, access_hash=u.access_hash) 
-                        for u in import_result.users]
-                ))
-                
-            return [(num, user_map.get(num)) for num in numbers]
-        except Exception as e:
-            self.logger.error(f"Contact check error: {e}")
-            raise
 
-    async def process_numbers(self, user_id: int, chat_id: int, numbers: List[str]):
-        """Process and display number check results"""
-        max_retries = 2
-        retry_delay = 1  # seconds
-        session_path = self._contact_session_file(user_id)
+        import_res = await client(
+            functions.contacts.ImportContactsRequest(contacts)
+        )
+        user_map = {
+            user.phone: user
+            for user in import_res.users
+            if isinstance(user, types.User) and user.phone
+        }
+
+        if import_res.imported:
+            # clean up
+            await client(
+                functions.contacts.DeleteContactsRequest(
+                    id=[
+                        types.InputUser(u.id, u.access_hash)
+                        for u in import_res.users
+                        if isinstance(u, types.User)
+                    ]
+                )
+            )
+
+        return [(num, user_map.get(num)) for num in numbers]
+
+    async def _process_session_batches(
+        self,
+        user_id: int,
+        chat_id: int,
+        session_idx: int,
+        batches: List[List[str]]
+    ) -> List[Tuple[str, Optional[types.User]]]:
+        """Open a TelegramClient for this session index and run each 19‑number batch."""
+        session_path = f"{self._contact_session_file(user_id)}_{session_idx}"
         lock = self.session_manager.get_lock(user_id)
-        
-        for attempt in range(max_retries):
-            try:
-                async with lock:
-                    async with TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH) as client:
-                        if not await client.is_user_authorized():
-                            await self.safe_send(
-                                chat_id,
-                                "❌ <b>Session Expired</b>\nPlease log in again",
-                                parse_mode="HTML"
-                            )
-                            return
-                        main = []
-                        for number in numbers:
-                            if not number:
-                                continue
-                            results = await self.check_numbers_registered(client, number)
-                            if results:
-                                main.extend(results)
-                        return main
-            except (sqlite3.OperationalError, errors.FloodWaitError) as e:
-                if "database is locked" in str(e).lower() and attempt < max_retries - 1:
-                    self.logger.warning(f"Database locked, retrying in {retry_delay}s")
-                    await asyncio.sleep(retry_delay)
-                elif isinstance(e, errors.FloodWaitError):
+
+        async with lock:
+            async with TelegramClient(
+                session_path, CONTACT_API_ID, CONTACT_API_HASH
+            ) as client:
+                if not await client.is_user_authorized():
                     await self.safe_send(
                         chat_id,
-                        f"⏳ <b>Flood Wait</b>\nPlease try again in {e.seconds} seconds",
+                        "❌ <b>Session Expired</b>\nPlease log in again",
                         parse_mode="HTML"
                     )
-                    return
-                else:
-                    await self.safe_send(
-                        chat_id,
-                        f"❌ <b>Check Error</b>\n<code>{str(e)}</code>",
-                        parse_mode="HTML"
-                    )
-                    return
+                    return []
+
+                results: List[Tuple[str, Optional[types.User]]] = []
+                for batch in batches:
+                    try:
+                        batch_res = await self._check_numbers_registered(client, batch)
+                        results.extend(batch_res)
+                        # slight pause to avoid flood-wait
+                        await asyncio.sleep(1)
+                    except errors.FloodWaitError as fw:
+                        await self.safe_send(
+                            chat_id,
+                            f"⏳ <b>Flood wait</b>, retrying in {fw.seconds}s…",
+                            parse_mode="HTML"
+                        )
+                        await asyncio.sleep(fw.seconds + 1)
+                        # retry same batch
+                        batch_res = await self._check_numbers_registered(client, batch)
+                        results.extend(batch_res)
+                    except sqlite3.OperationalError as db_err:
+                        # retry DB lock up to once
+                        await asyncio.sleep(1)
+                        batch_res = await self._check_numbers_registered(client, batch)
+                        results.extend(batch_res)
+
+                return results
+
 
 # Instantiate ForwardManager
 forward_manager = ForwardManager(
