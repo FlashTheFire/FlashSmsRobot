@@ -826,7 +826,7 @@ class ForwardManager:
                     chat_id,
                     call.message.message_id,
                     details,
-                    parse_mode="HTML"
+                    #parse_mode="HTML"
                 )
                 await self.safe_callback_query(call.id)
 
