@@ -1,1 +1,17 @@
-{}
+{
+  "1889471360": {
+    "Main": {
+      "user_id": 1889471360,
+      "account_id": "Main",
+      "phone": "254798325694",
+      "session_file": "sessions/contact_1889471360_Main.session",
+      "full_name": null,
+      "username": null,
+      "telegram_id": null,
+      "last_checked": null
+    }
+  },
+  "_active_accounts": {
+    "1889471360": "Main"
+  }
+}
