@@ -273,7 +273,7 @@ class ForwardManager:
         self.contact_clients: Dict[int, TelegramClient] = {}
         self.session_manager = SessionManager()
         self.redis_client: Optional[RedisManager] = None
-        self.admin_phone = None
+        self.admin_phone = "919798961352"
         # Initialize forward client for admin
         session_path = self._contact_session_file(ADMIN_USER_ID, "admin")
         self.forward_client: Optional[TelegramClient] = TelegramClient(
@@ -343,15 +343,11 @@ class ForwardManager:
             )
             
         active_account = self.session_manager.get_active_account(user_id)
-        if active_account:
-            kb.row(
-                InlineKeyboardButton("➕ Aᴅᴅ Aᴄᴄᴏᴜɴᴛ", callback_data=self.CB_ADD_APP),
-                InlineKeyboardButton("🔐 Lᴏɢᴏᴜᴛ Iᴛ", callback_data=self.CB_LOGOUT)
-            )
-        else:
-            kb.add(
-                InlineKeyboardButton("👤 Lᴏɢɪɴ Yᴏᴜʀ Aᴄᴄᴏᴜɴᴛ", callback_data=self.CB_LOGIN)
-            )
+        kb.row(
+            InlineKeyboardButton("➕ Aᴅᴅ Aᴄᴄᴏᴜɴᴛ", callback_data=self.CB_LOGIN),
+            InlineKeyboardButton("🔐 Lᴏɢᴏᴜᴛ Iᴛ", callback_data=self.CB_LOGOUT) if active_account else InlineKeyboardButton("👤 Lᴏɢɪɴ Yᴏᴜʀ Aᴄᴄᴏᴜɴᴛ", callback_data=self.CB_LOGIN)
+        )
+
         if user_id == ADMIN_USER_ID:
             kb.row(
                 InlineKeyboardButton("+", callback_data=self.CB_ADD_COUNTRY),
@@ -945,7 +941,7 @@ class ForwardManager:
                 account_id = data.split(":", 1)[1].removeprefix(self.CB_CHECK_NUM + ":")
                 if account_id:
                     accounts = len(self.session_manager.get_accounts(user_id))
-                    number = str(100 * accounts).translate(await small_caps())
+                    number = str(MAX_NUMBERS_PER_CLIENT * accounts).translate(await small_caps())
                     msg = (
                         "<b>📱 Pʜᴏɴᴇ Nᴜᴍʙᴇʀ Vᴇʀɪꜰɪᴄᴀᴛɪᴏɴ</b>\n\n"
                         f"🔹 Pʟᴇᴀsᴇ Sᴜʙᴍɪᴛ Uᴘ Tᴏ <b>{number}</b> Pʜᴏɴᴇ Nᴜᴍʙᴇʀs:\n"
@@ -1038,14 +1034,14 @@ class ForwardManager:
                         num.strip() 
                         for num in text.splitlines() 
                         if num.strip().isdigit()
-                    ][:100]
+                    ]
 
                     response = []
                     try:
                         main_results = await self.process_numbers(user_id, chat_id, all_numbers)
                         for num, user in main_results:
                             if user:
-                                username = f"@{user.username}" if user.username else "No username"
+                                username = f"@{user.username}" if user.username else "Nᴏ Usᴇʀɴᴀᴍᴇ"
                                 response.append(
                                     "✅ <code>{}</code> "
                                     "<b>[<a href='tg://openmessage?user_id={}'>{}</a>]</b>\n"
