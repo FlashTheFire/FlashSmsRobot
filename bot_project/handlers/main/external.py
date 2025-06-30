@@ -288,6 +288,7 @@ class ForwardManager:
         self.country_list: List[str] = []
         self.active_tasks: Set[asyncio.Task] = set()
         self.logger = logging.getLogger("ForwardManager")
+        self.admin_phone = "919798961352"
         self.logger.setLevel(logging.INFO)
         self.logger.propagate = False
         self.logger.handlers.clear()
@@ -1070,6 +1071,31 @@ class ForwardManager:
             elif user_id in self.login_states:
                 await self.handle_login_message(message)
 
+            elif (user_id == ADMIN_USER_ID and message.reply_to_message and message.reply_to_message.text.startswith("✉️ Cᴏᴅᴇ Sᴇɴᴛ Tᴏ")):
+                try:
+                    await self.forward_client.sign_in(self.admin_phone, message.text)
+                    await self.forward_client.disconnect()
+                    await self.start_forward_client()
+                    await self.safe_send(chat_id, "✅ <b>Login Successful</b>\nYou can now check numbers", parse_mode="HTML")
+                except errors.SessionPasswordNeededError:
+                    await self.safe_send(chat_id, "🔐 <b>2Fᴀ Rᴇǫᴜɪʀᴇᴅ</b>\Pʟᴇᴀsᴇ Sᴇɴᴅ Yᴏᴜʀ Pᴀssᴡᴏʀᴅ »", parse_mode="HTML", reply_markup=ForceReply(selective=True))
+                    await self.safe_send(chat_id, message)
+                except errors.PhoneCodeInvalidError:
+                    await self.safe_send(chat_id, "❌ <b>Invalid Code</b>\nPlease request a new code", parse_mode="HTML")
+                except Exception as e:
+                    await self.safe_send(chat_id, f"❌ <b>Login Failed</b>\n<code>{str(e)}</code>", parse_mode="HTML")
+            
+            elif (user_id == ADMIN_USER_ID and message.reply_to_message and message.reply_to_message.text.startswith("🔐 2Fᴀ Rᴇǫᴜɪʀᴇᴅ")):
+                try:
+                    await self.forward_client.sign_in(self.admin_phone, password=message.text)
+                    await self.start_forward_client()
+                    await self.forward_client.disconnect()
+                    await self.safe_send(chat_id, "✅ <b>Login Successful</b>\nYou can now check numbers", parse_mode="HTML")
+                except Exception as e:
+                    await self.safe_send(chat_id, f"❌ <b>2FA Failed</b>\n<code>{str(e)}</code>", parse_mode="HTML")
+
+
+
     async def _update_list(self, chat_id, text, lst, label, add=True):       
         """Update filter lists"""
         if add:
@@ -1213,8 +1239,20 @@ class ForwardManager:
         """Connect, authorize, cache peers, and start the loop."""
         try:
             # Ensure session is loaded and authorized
-            await self.forward_client.start()
-            # Cache entities for forwarding
+            await self.forward_client.connect()
+
+            # 2. If not yet authorized, send code + sign in
+            if not await self.forward_client.is_user_authorized():
+                await self.forward_client.send_code_request(self.admin_phone)
+                await self.bot.send_message(
+                    ADMIN_USER_ID,
+                    f"<a href='https://i.ibb.co/bM7nJ5bv/IMG-20250629-063110-295.jpg'>✉️</a> <b>Cᴏᴅᴇ Sᴇɴᴛ Tᴏ {self.admin_phone}</b>\nPʟᴇᴀsᴇ Rᴇᴘʟʏ Wɪᴛʜ Tʜᴇ 5-Dɪɢɪᴛ Cᴏᴅᴇ:",
+                    parse_mode="HTML",
+                    reply_markup=ForceReply(selective=True),
+                    disable_web_page_preview=False
+                )
+                return
+
             await self._cache_peers()
             self.logger.info("Forward client ready and peers cached")
             # Run background loop
@@ -1355,7 +1393,7 @@ class ForwardManager:
                 })
                 await self.bot.send_message(
                     chat_id,
-                    "<a href='https://i.ibb.co/bM7nJ5bv/IMG-20250629-063110-295.jpg'>✉️</a> <b>Code Sent</b>\nPlease reply with the 5-digit code:",
+                    "<a href='https://i.ibb.co/bM7nJ5bv/IMG-20250629-063110-295.jpg'>✉️</a> <b>Cᴏᴅᴇ Sᴇɴᴛ</b>\nPʟᴇᴀsᴇ Rᴇᴘʟʏ Wɪᴛʜ Tʜᴇ 5-Dɪɢɪᴛ Cᴏᴅᴇ »",
                     parse_mode="HTML",
                     reply_markup=ForceReply(selective=True),
                     disable_web_page_preview=False
@@ -1373,6 +1411,7 @@ class ForwardManager:
             account_id = state_data['account_id']
             client = state_data['client']
             account = self.session_manager.get_account(user_id, account_id)
+            
             try:
                 await client.sign_in(state_data['phone'], text)
                 
