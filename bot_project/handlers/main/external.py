@@ -817,15 +817,17 @@ class ForwardManager:
                 apps = '\n'.join([f"• {app}" for app in self.app_list]) or '• Nᴏ Sᴇʀᴠɪᴄᴇ'
                 countries = '\n'.join([f"• {country}" for country in self.country_list]) or '• Nᴏ Rᴇɢɪᴏɴ'
                 details = (
-                    f"<b>📂 Aᴄᴛɪᴠᴇ Fɪʟᴛᴇʀs Sᴇʀᴠɪᴄᴇ & Rᴇɢɪᴏɴ!</b>\n\n"
+                    f"<b>📂 Fɪʟᴛᴇʀ – Sᴇʀᴠɪᴄᴇ & Rᴇɢɪᴏɴ!</b>\n\n"
                     f"<b>📱 Sᴇʀᴠɪᴄᴇ »</b>\n{apps}\n\n"
                     f"<b>🌍 Rᴇɢɪᴏɴ  »</b>\n{countries}"
                 )
 
+                sc = await small_caps()
                 await self.safe_edit_message(
                     chat_id,
                     call.message.message_id,
                     details,
+                    reply_markup=self._control_keyboard(user_id, sc),
                     parse_mode="HTML"
                 )
                 await self.safe_callback_query(call.id)
