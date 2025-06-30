@@ -10,11 +10,11 @@
       "telegram_id": null,
       "last_checked": null
     },
-    "Admin": {
+    "919798961352": {
       "user_id": 1889471360,
-      "account_id": "Admin",
+      "account_id": "919798961352",
       "phone": "919798961352",
-      "session_file": "sessions/contact_1889471360_Admin.session",
+      "session_file": "sessions/contact_1889471360_919798961352.session",
       "full_name": null,
       "username": null,
       "telegram_id": null,
@@ -22,6 +22,6 @@
     }
   },
   "_active_accounts": {
-    "1889471360": "Admin"
+    "1889471360": "919798961352"
   }
 }
