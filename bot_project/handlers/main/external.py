@@ -826,7 +826,7 @@ class ForwardManager:
                     chat_id,
                     call.message.message_id,
                     details,
-                    #parse_mode="HTML"
+                    parse_mode="HTML"
                 )
                 await self.safe_callback_query(call.id)
 
@@ -1099,7 +1099,7 @@ class ForwardManager:
         """Safely edit an existing message"""
         try:
             if text:
-                text = self._format_text(text)
+                text = await self._format_text(text)
             return await self.bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=message_id,
