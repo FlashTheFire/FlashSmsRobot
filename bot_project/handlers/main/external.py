@@ -891,7 +891,9 @@ class ForwardManager:
 
             elif data.startswith(self.CB_LOGOUT + ':'):
                 account_id = data.removeprefix(self.CB_LOGOUT + ":")
-                await self.logout_user(user_id, account_id)
+                await self.safe_send(chat_id, account_id)
+                await self.safe_callback_query(call.id, "✅ Logged Out Contact checker session cleared")
+                await self.logout_user(user_id, account_id, force=True)
                 data = self.CB_LOGOUT
 
             if data == self.CB_LOGOUT:
@@ -1271,9 +1273,9 @@ class ForwardManager:
                     await self.safe_send(ADMIN_USER_ID, f"⚠️ <b>Forward Error</b>\n<code>{error_msg}</code>")
 
     
-    async def logout_user(self, user_id: int, account_id: int, force=False, file_path=None):
+    async def logout_user(self, user_id: int, account_id: int, force=False):
         """Logout user and clean up session"""
-        session_path = file_path or self._contact_session_file(user_id, account_id)
+        session_path = self._contact_session_file(user_id, account_id)
         if os.path.exists(session_path):
             try:
                 os.remove(session_path)
