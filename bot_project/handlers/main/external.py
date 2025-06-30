@@ -341,8 +341,8 @@ class ForwardManager:
                 InlineKeyboardButton("-", callback_data=self.CB_REMOVE_APP)
             )
             
-        
-        kb.add(InlineKeyboardButton("➕ Aᴅᴅ New Account", callback_data=self.CB_LOGIN))
+        active_account = self.session_manager.get_active_account(user_id)
+        kb.add(InlineKeyboardButton("➕ Aᴅᴅ New Account"  if active_account else "👤Lᴏɢɪɴ Yᴏᴜʀ Aᴄᴄᴏᴜɴᴛ", callback_data=self.CB_LOGIN))
         if user_id == ADMIN_USER_ID:
             kb.row(
                 InlineKeyboardButton("+", callback_data=self.CB_ADD_COUNTRY),
@@ -350,9 +350,7 @@ class ForwardManager:
                 InlineKeyboardButton("-", callback_data=self.CB_REMOVE_COUNTRY)
             )
 
-        
-        active_account = self.session_manager.get_active_account(user_id)
-            # Fallback text and id if no account
+        # Fallback text and id if no account
         account_text = active_account.account_id if active_account else "No Account"
         account_id_safe = active_account.account_id if active_account else ""
         kb.row(
@@ -1182,7 +1180,7 @@ class ForwardManager:
             self.logger.info(f"Cached peer {chat} -> {ent}")
 
     async def _forward_event(self, event: events.NewMessage.Event):
-        if not self.enabled or not self.bot:
+        if not self.enabled:
             return
         txt = event.message.text or ''
         app_match = any(re.search(rf'\b{re.escape(app)}\b', txt, re.IGNORECASE)
