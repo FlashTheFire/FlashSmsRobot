@@ -102,21 +102,27 @@ class ForwardManager:
     cb_list = [CB_START, CB_STOP, CB_SHOW_LOGS, CB_TOGGLE_LOGS, CB_CHECK_NUM,
                CB_LOGIN, CB_LOGOUT, CB_ADD_APP, CB_REMOVE_APP, CB_SWITCH_ACCOUNT,
                CB_ADD_COUNTRY, CB_REMOVE_COUNTRY, CB_SHOW_LISTS, CB_ACCOUNT_DETAILS, CB_CHECK_MESSAGES]
-
     def __init__(self, source_chats: List[str], dest_chat: str):
         self.source_chats = source_chats
         self.dest_chat = dest_chat
-        self.bot: Optional[AsyncTeleBot] = None
-        self.contact_clients: Dict[int, TelegramClient] = {}
+        self.bot = None
+        self.contact_clients = {}
         self.session_manager = SessionManager()
-        self.redis_client = None
-
-        # Initialize forward client for admin
+        
+        # Initialize forward client with phone number from environment
         session_path = self._contact_session_file(ADMIN_USER_ID, "admin")
-        self.forward_client: Optional[TelegramClient] = TelegramClient(
-            session_path, FORWARD_API_ID, FORWARD_API_HASH,
-            connection_retries=5, auto_reconnect=True
+        self.forward_client = TelegramClient(
+            session_path, 
+            FORWARD_API_ID, 
+            FORWARD_API_HASH,
+            connection_retries=5,
+            auto_reconnect=True
         )
+        
+        # Set phone number from environment variable
+        self.admin_phone = os.getenv('ADMIN_PHONE', "254798325694")
+        if not self.admin_phone:
+            self.logger.error("ADMIN_PHONE environment variable not set!")
 
         self.enabled = False
         self.log_buffer: List[str] = []
@@ -294,6 +300,35 @@ class ForwardManager:
         self.bot = bot 
         if not self.bot:
             return
+        @bot.message_handler(commands=['reconnect'])
+        async def cmd_reconnect(message: Message):
+            if message.from_user.id == ADMIN_USER_ID:
+                try:
+                    await forward_manager.shutdown()
+                    await asyncio.sleep(2)
+                    await forward_manager.start_forward_client()
+                    await bot.reply_to(message, "✅ Forward client reconnected")
+                except Exception as e:
+                    await bot.reply_to(message, f"❌ Error reconnecting: {str(e)}")
+
+        @bot.message_handler(commands=['admin_control'])
+        async def cmd_admin_login(message: Message):
+            if message.from_user.id == ADMIN_USER_ID:
+                await self.safe_send(
+                    message.chat.id,
+                    "📱 <b>Admin Login</b>\n\n"
+                    "Please send your phone number (with country code, no +):\n"
+                    "<i>Example:</i> <code>918372673883</code>",
+                    parse_mode="HTML",
+                    reply_markup=ForceReply(selective=True)
+                )
+        
+        @bot.message_handler(func=lambda m: m.reply_to_message and 
+                            m.reply_to_message.text and 
+                            "ᴀᴅᴍɪɴ Lᴏɢɪɴ" in m.reply_to_message.text and
+                            m.from_user.id == ADMIN_USER_ID)
+        async def handle_admin_phone(message: Message):
+            await self.handle_admin_login(message)
 
         @bot.message_handler(commands=['user_control'])
         async def cmd_control(message: Message):
@@ -567,23 +602,50 @@ class ForwardManager:
                 pass
             finally:
                 self.contact_clients.pop(user_id, None)
-                
+    
+    async def handle_admin_login(self, message: Message):
+        """Handle admin login process"""
+        if message.from_user.id != ADMIN_USER_ID:
+            return
+            
+        self.admin_phone = message.text.strip()
+        try:
+            await self.start_forward_client()
+            await self.safe_send(
+                ADMIN_USER_ID,
+                "✅ <b>Admin session initialized</b>\n"
+                "Forwarding service should now work properly",
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            await self.safe_send(
+                ADMIN_USER_ID,
+                f"❌ <b>Login failed</b>\n<code>{html.escape(str(e))}</code>",
+                parse_mode="HTML"
+            )
+
+    
     async def start_forward_client(self):
         """Connect, authorize, cache peers, and start the loop."""
         try:
-            # Ensure session is loaded and authorized
-            await self.forward_client.start()
-            # Cache entities for forwarding
+            if not self.admin_phone:
+                raise ValueError("Admin phone number not configured")
+                
+            # Modified to use pre-configured phone number
+            await self.forward_client.start(phone=lambda: self.admin_phone)
             await self._cache_peers()
             self.logger.info("Forward client ready and peers cached")
-            # Run background loop
-            asyncio.create_task(
-                self.forward_client.run_until_disconnected()
-            )
+            asyncio.create_task(self.forward_client.run_until_disconnected())
         except Exception as e:
             self.logger.exception("Client error: %s", e)
             if self.bot:
-                await self.safe_send(ADMIN_USER_ID, f"<b>Client Error</b>\n<code>{e}</code>")
+                await self.safe_send(
+                    ADMIN_USER_ID,
+                    f"<b>⚠️ Client Error</b>\n"
+                    f"<code>{html.escape(str(e))}</code>\n\n"
+                    f"Please re-login using /admin_login",
+                    parse_mode="HTML"
+                )
 
     async def _cache_peers(self):
         """Resolve and store source & destination as peer objects."""
