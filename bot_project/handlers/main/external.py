@@ -1007,15 +1007,7 @@ class ForwardManager:
                     await self.safe_callback_query(call.id, "⚠️ Pʟᴇᴀsᴇ Lᴏɢ‑ɪɴ Fɪʀsᴛ! Tʜᴇɴ Yᴏᴜ Cᴀɴ Usᴇ Nᴜᴍʙᴇʀ Cʜᴇᴄᴋᴇʀ!")
                 await self.safe_callback_query(call.id)
 
-
-        @bot.message_handler(
-            func=lambda m: (
-                (m.reply_to_message and m.reply_to_message.message_id in self.filter_states) or
-                (m.from_user.id in self.login_states) or
-                (m.reply_to_message and m.reply_to_message.text and m.reply_to_message.text.startswith("✉️ Cᴏᴅᴇ Sᴇɴᴛ Tᴏ")) or
-                (m.reply_to_message and m.reply_to_message.text and m.reply_to_message.text.startswith("🔐 2Fᴀ Rᴇǫᴜɪʀᴇᴅ"))
-            )
-        )
+        @bot.message_handler(func=self.should_handle_reply)
         async def handle_replies(message: Message):
             user_id = message.from_user.id
             chat_id = message.chat.id
@@ -1219,6 +1211,14 @@ class ForwardManager:
         except Exception as e:
             self.logger.exception(f"Failed to answer callback query: {e}")
 
+    def should_handle_reply(self, m):
+        reply = m.reply_to_message
+        return (
+            (reply and reply.message_id in self.filter_states)
+            or (m.from_user.id in self.login_states)
+            or (reply and reply.text and reply.text.startswith("✉️ Cᴏᴅᴇ Sᴇɴᴛ Tᴏ"))
+            or (reply and reply.text and reply.text.startswith("🔐 2Fᴀ Rᴇǫᴜɪʀᴇᴅ"))
+        )
 
     async def shutdown(self):
         """Clean up clients and tasks on shutdown"""
