@@ -348,16 +348,34 @@ class ForwardManager:
             )
 
         
-        # Account management buttons
         active_account = self.session_manager.get_active_account(user_id)
+            # Fallback text and id if no account
         account_text = active_account.account_id if active_account else "No Account"
+        account_id_safe = active_account.account_id if active_account else ""
         kb.row(
-            InlineKeyboardButton(f"🗃️ {account_text[:6].translate(sc)} [↻]", callback_data=self.CB_SWITCH_ACCOUNT),
-            InlineKeyboardButton("🔍 Pʀᴏғɪʟᴇ", callback_data=self.CB_ACCOUNT_DETAILS)
+            InlineKeyboardButton(
+                f"🗃️ {account_text[:6].translate(sc)} [↻]",
+                callback_data=self.CB_SWITCH_ACCOUNT
+            ),
+            InlineKeyboardButton(
+                "🔍 Pʀᴏғɪʟᴇ",
+                callback_data=self.CB_ACCOUNT_DETAILS
+                )
         )
         kb.row(
-            InlineKeyboardButton("📨 Mᴇssᴀɢᴇ", callback_data=self.CB_CHECK_MESSAGES),
-            InlineKeyboardButton("✨ Lᴏᴏᴋ-Uᴘ", callback_data=self.CB_CHECK_NUM + ':' + active_account.account_id or '')
+            InlineKeyboardButton(
+                "📨 Mᴇssᴀɢᴇ",
+                callback_data=self.CB_CHECK_MESSAGES
+            ),
+            InlineKeyboardButton(
+                "✨ Lᴏᴏᴋ-Uᴘ",
+                # only append ':'+id if we actually have one
+                callback_data=(
+                    f"{self.CB_CHECK_NUM}:{account_id_safe}"
+                    if account_id_safe
+                    else self.CB_CHECK_NUM
+                )
+            )
         )
         return kb
 
