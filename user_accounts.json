@@ -21,7 +21,33 @@
       "last_checked": null
     }
   },
+  "7431900276": {
+    "Work": {
+      "user_id": 7431900276,
+      "account_id": "Work",
+      "phone": "254768103101",
+      "session_file": "sessions/contact_7431900276_Work.session",
+      "full_name": "Winnie Ondego",
+      "username": null,
+      "telegram_id": 6331603632,
+      "last_checked": null
+    }
+  },
+  "5716978793": {
+    "254714343250": {
+      "user_id": 5716978793,
+      "account_id": "254714343250",
+      "phone": "254714343250",
+      "session_file": "sessions/contact_5716978793_254714343250.session",
+      "full_name": null,
+      "username": null,
+      "telegram_id": null,
+      "last_checked": null
+    }
+  },
   "_active_accounts": {
-    "1889471360": "919798961352"
+    "1889471360": "919798961352",
+    "7431900276": "Work",
+    "5716978793": "254714343250"
   }
 }
