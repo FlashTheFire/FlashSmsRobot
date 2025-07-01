@@ -80,8 +80,8 @@ MAX_PARALLEL_CLIENTS = 5
 BATCH_SIZE = 19
 MAX_NUMBERS_PER_CLIENT = 100
 DESTINATION_CHAT_ID = -1002898000668  # Fixed destination channel ID
-MAX_ATTEMPTS     = 10
-RETRY_DELAY      = 1      # seconds
+MAX_ATTEMPTS     = 5
+RETRY_DELAY      = 2   # seconds
 
 
 
@@ -1393,23 +1393,20 @@ class ForwardManager:
         # --- 1) sanitize & validate phone ---
         phone = ''.join(filter(str.isdigit, text))
         if len(phone) < 8 or len(phone) > 15:
-            '''await self.safe_send(
-                chat_id,
-                "❌ <b>Invalid Phone</b>\nSend digits only (8–15 digits)",
-                parse_mode="HTML"
-            )'''
-            return
+            return  # ignore invalid phone
 
-        # --- 2) setup session & account bookkeeping ---
+        # --- 2) session bookkeeping ---
         account_id   = state_data['account_id']
         session_path = self._contact_session_file(user_id, account_id)
         account      = UserAccount(user_id, account_id, phone, session_path)
         self.session_manager.add_account(account)
         self.session_manager.set_active_account(user_id, account_id)
 
-        # --- 3) retry loop for connect + code request ---
+        # --- 3) try to connect + request code ---
         last_exc = None
-        for attempt in range(1, MAX_ATTEMPTS + 1):
+        client = None
+
+        for attempt in range(1, self.MAX_ATTEMPTS + 1):
             try:
                 client = TelegramClient(
                     session_path,
@@ -1421,7 +1418,7 @@ class ForwardManager:
                 await client.connect()
                 await client.send_code_request(phone)
 
-                # success: break out of retry loop
+                # ✅ Success
                 state_data.update({
                     'state':  'awaiting_code',
                     'phone':  phone,
@@ -1436,29 +1433,24 @@ class ForwardManager:
                 )
                 return
 
-            except (errors.RPCError, OSError) as e:
+            except (errors.RPCError, OSError, Exception) as e:
                 last_exc = e
-                # if not the last attempt, wait and retry
-                if attempt < MAX_ATTEMPTS:
-                    await asyncio.sleep(RETRY_DELAY)
-                    continue
+                if client:
+                    try:
+                        await client.disconnect()
+                    except Exception:
+                        pass
+                if attempt < self.MAX_ATTEMPTS:
+                    await asyncio.sleep(self.RETRY_DELAY)
 
-            except Exception as e:
-                last_exc = e
-                if attempt < MAX_ATTEMPTS:
-                    await asyncio.sleep(RETRY_DELAY)
-                    continue
-
-        # --- 4) if we reach here, all attempts failed ---
+        # --- 4) all attempts failed ---
         await self.safe_send(
             chat_id,
-            f"❌ <b>Login failed after {MAX_ATTEMPTS} attempts</b>\n"
+            f"❌ <b>Login failed after {self.MAX_ATTEMPTS} attempts</b>\n"
             f"<code>{last_exc}</code>",
             parse_mode="HTML"
         )
         await self.logout_user(user_id, account_id, force=True)
-
-
     async def handle_login_message(self, message: Message):
         """Handle login process steps with account management"""
         user_id = message.from_user.id
