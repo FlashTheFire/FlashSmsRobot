@@ -563,6 +563,7 @@ class UserPurchaseManagement:
 
                             # if we alerted less than 60s ago, skip
                             if last_time and (now - last_time).total_seconds() < 60:
+                                result = {"status": False, "message": "💸 Iɴsᴜғғɪᴄɪᴇɴᴛ Bᴀʟᴀɴᴄᴇ..."}
                                 continue
 
                             # send the alert
