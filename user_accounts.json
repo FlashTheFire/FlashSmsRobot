@@ -1,0 +1,54 @@
+{
+  "1889471360": {
+    "Main": {
+      "user_id": 1889471360,
+      "account_id": "Main",
+      "phone": "254798325694",
+      "session_file": "sessions/contact_1889471360_Main.session",
+      "full_name": null,
+      "username": null,
+      "telegram_id": null,
+      "last_checked": null
+    },
+    "919798961352": {
+      "user_id": 1889471360,
+      "account_id": "919798961352",
+      "phone": "919798961352",
+      "session_file": "sessions/contact_1889471360_919798961352.session",
+      "full_name": null,
+      "username": null,
+      "telegram_id": null,
+      "last_checked": null
+    }
+  },
+  "7431900276": {
+    "Work": {
+      "user_id": 7431900276,
+      "account_id": "Work",
+      "phone": "254768103101",
+      "session_file": "sessions/contact_7431900276_Work.session",
+      "full_name": "Winnie Ondego",
+      "username": null,
+      "telegram_id": 6331603632,
+      "last_checked": null
+    }
+  },
+  "5716978793": {},
+  "5890564324": {
+    "Akvinit": {
+      "user_id": 5890564324,
+      "account_id": "Akvinit",
+      "phone": "919918756718",
+      "session_file": "sessions/contact_5890564324_Akvinit.session",
+      "full_name": "Vinit",
+      "username": null,
+      "telegram_id": 7765818164,
+      "last_checked": null
+    }
+  },
+  "_active_accounts": {
+    "1889471360": "919798961352",
+    "7431900276": "Work",
+    "5890564324": "Akvinit"
+  }
+}
