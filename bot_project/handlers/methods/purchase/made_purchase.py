@@ -67,6 +67,8 @@ class UserPurchaseManagement:
         self.transaction_guard: Optional[TransactionGuard] = None
         self.bot: Optional[AsyncTeleBot] = None
         self.ADMIN_ID = ADMIN_ID
+        self._last_balance_alert: Dict[str, datetime] = {}
+
 
     async def init_managers(self, order_mgr: OrderManagement, user_mgr: UserManagement, 
                             bot: AsyncTeleBot) -> bool:
@@ -554,9 +556,27 @@ class UserPurchaseManagement:
                         elif response_text in ["WRONG_SERVICE", "BAD_SERVICE", "NO_NUMBERS"]:
                             result = await self._process_api_response(service_parts, response_text)
                         elif response_text == "NO_BALANCE":
-                            await self.bot.send_message(chat_id='5716978793', text=f"<b>💸 Iɴsᴜғғɪᴄɪᴇɴᴛ Bᴀʟᴀɴᴄᴇ...</b>\n\n- Sᴇʀᴠᴇʀ Nᴀᴍᴇ : <code>{server_name}</code>")
-                            result = {"status": False, "message": " Iɴsᴜғғɪᴄɪᴇɴᴛ Bᴀʟᴀɴᴄᴇ..."}
-                        else:
+                            now = datetime.now()
+                            last_time = self._last_balance_alert.get(server_name)
+
+                            # if we alerted less than 60s ago, skip
+                            if last_time and (now - last_time).total_seconds() < 60:
+                                continue
+
+                            # send the alert
+                            await self.bot.send_message(
+                                chat_id='-1002751030633',
+                                text=(
+                                    "<blockquote>💸 Iɴsᴜғғɪᴄɪᴇɴᴛ Bᴀʟᴀɴᴄᴇ...</blockquote>\n\n"
+                                    f"- Sᴇʀᴠᴇʀ Nᴀᴍᴇ : <code>{server_name}</code>"
+                                ),
+                                parse_mode="HTML"
+                            )
+
+                            # record the alert time
+                            self._last_balance_alert[server_name] = now
+
+                            result = {"status": False, "message": "💸 Iɴsᴜғғɪᴄɪᴇɴᴛ Bᴀʟᴀɴᴄᴇ..."}
                             result = {"status": False, "message": f"Unknown response from API: {response_text}"}
                             
             except asyncio.TimeoutError:
