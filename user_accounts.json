@@ -34,11 +34,11 @@
     }
   },
   "5716978793": {
-    "Mine": {
+    "Main": {
       "user_id": 5716978793,
-      "account_id": "Mine",
-      "phone": "254714343250",
-      "session_file": "sessions/contact_5716978793_Mine.session",
+      "account_id": "Main",
+      "phone": "254743397525",
+      "session_file": "sessions/contact_5716978793_Main.session",
       "full_name": null,
       "username": null,
       "telegram_id": null,
@@ -61,6 +61,6 @@
     "1889471360": "919798961352",
     "7431900276": "Work",
     "5890564324": "Akvinit",
-    "5716978793": "Mine"
+    "5716978793": "Main"
   }
 }
