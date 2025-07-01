@@ -577,6 +577,7 @@ class UserPurchaseManagement:
                             self._last_balance_alert[server_name] = now
 
                             result = {"status": False, "message": "💸 Iɴsᴜғғɪᴄɪᴇɴᴛ Bᴀʟᴀɴᴄᴇ..."}
+                        else:
                             result = {"status": False, "message": f"Unknown response from API: {response_text}"}
                             
             except asyncio.TimeoutError:
