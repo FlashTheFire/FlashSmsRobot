@@ -508,6 +508,8 @@ class UserPurchaseManagement:
         service_parts = service.split(',')
         attempt = 3 if server == 1 and len(service_parts) > 1 else 2 if len(service_parts) > 1 else 1
         attempts = attempt
+        result = {"status": False, "message": "No response from API"}
+
         if str(operator) == "free":
             reserve_result = await self.order_manager.manage_number_order(
                 redis_client=self.redis_client,
@@ -555,7 +557,7 @@ class UserPurchaseManagement:
                             break
                         elif response_text in ["WRONG_SERVICE", "BAD_SERVICE", "NO_NUMBERS"]:
                             result = await self._process_api_response(service_parts, response_text)
-                        elif response_text == "NO_BALANCE":
+                        elif response_text in ["NO_BALANCE"]:
                             now = datetime.now()
                             last_time = self._last_balance_alert.get(server_name)
 
