@@ -34,20 +34,33 @@
     }
   },
   "5716978793": {
-    "254714343250": {
+    "Mine": {
       "user_id": 5716978793,
-      "account_id": "254714343250",
+      "account_id": "Mine",
       "phone": "254714343250",
-      "session_file": "sessions/contact_5716978793_254714343250.session",
+      "session_file": "sessions/contact_5716978793_Mine.session",
       "full_name": null,
       "username": null,
       "telegram_id": null,
       "last_checked": null
     }
   },
+  "5890564324": {
+    "Akvinit": {
+      "user_id": 5890564324,
+      "account_id": "Akvinit",
+      "phone": "919918756718",
+      "session_file": "sessions/contact_5890564324_Akvinit.session",
+      "full_name": "Vinit",
+      "username": null,
+      "telegram_id": 7765818164,
+      "last_checked": null
+    }
+  },
   "_active_accounts": {
     "1889471360": "919798961352",
     "7431900276": "Work",
-    "5716978793": "254714343250"
+    "5890564324": "Akvinit",
+    "5716978793": "Mine"
   }
 }
