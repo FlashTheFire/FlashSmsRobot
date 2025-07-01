@@ -33,18 +33,7 @@
       "last_checked": null
     }
   },
-  "5716978793": {
-    "Main": {
-      "user_id": 5716978793,
-      "account_id": "Main",
-      "phone": "254743397525",
-      "session_file": "sessions/contact_5716978793_Main.session",
-      "full_name": null,
-      "username": null,
-      "telegram_id": null,
-      "last_checked": null
-    }
-  },
+  "5716978793": {},
   "5890564324": {
     "Akvinit": {
       "user_id": 5890564324,
@@ -60,7 +49,6 @@
   "_active_accounts": {
     "1889471360": "919798961352",
     "7431900276": "Work",
-    "5890564324": "Akvinit",
-    "5716978793": "Main"
+    "5890564324": "Akvinit"
   }
 }
