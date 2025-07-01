@@ -1393,11 +1393,11 @@ class ForwardManager:
         # --- 1) sanitize & validate phone ---
         phone = ''.join(filter(str.isdigit, text))
         if len(phone) < 8 or len(phone) > 15:
-            await self.safe_send(
+            '''await self.safe_send(
                 chat_id,
                 "❌ <b>Invalid Phone</b>\nSend digits only (8–15 digits)",
                 parse_mode="HTML"
-            )
+            )'''
             return
 
         # --- 2) setup session & account bookkeeping ---
