@@ -897,7 +897,31 @@ class ForwardManager:
                 await self.safe_send(chat_id, account_id)
                 await self.safe_callback_query(call.id, "✅ Logged Out Contact checker session cleared")
                 await self.logout_user(user_id, account_id, force=True)
-                data = self.CB_LOGOUT
+                accounts = self.session_manager.get_accounts(user_id)
+                
+                if not accounts:
+                    await self.safe_callback_query(call.id, "⚠️ Pʟᴇᴀsᴇ Lᴏɢ‑ɪɴ Fɪʀsᴛ! Tʜᴇɴ Yᴏᴜ Cᴀɴ Usᴇ Nᴜᴍʙᴇʀ Cʜᴇᴄᴋᴇʀ!")
+                    return
+                
+                kb = InlineKeyboardMarkup()
+                for account in accounts:
+                    national_code, national_number = await purchase_manager.format_phone_number(account.phone)
+                    kb.add(InlineKeyboardButton(
+                        f"{account.account_id[:10]} [{national_code} {national_number}]".translate(await small_caps()),
+                        callback_data=f"{self.CB_LOGOUT}:{account.account_id}"
+                    ))
+                kb.add(InlineKeyboardButton("• Aᴅᴅ", callback_data=self.CB_LOGIN), InlineKeyboardButton("🔙 Bᴀᴄᴋ", callback_data=self.CB_BACK))
+                
+                await self.safe_edit_message(
+                    call.message.chat.id,
+                    call.message.message_id,
+                    "🔑 <b>Select Account</b>",
+                    parse_mode="HTML",
+                    reply_markup=kb
+                )
+                await self.safe_callback_query(call.id)
+                return
+
 
             if data == self.CB_LOGOUT:
                 user_id = call.from_user.id
@@ -1406,7 +1430,7 @@ class ForwardManager:
         last_exc = None
         client = None
 
-        for attempt in range(1, self.MAX_ATTEMPTS + 1):
+        for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
                 client = TelegramClient(
                     session_path,
@@ -1440,13 +1464,13 @@ class ForwardManager:
                         await client.disconnect()
                     except Exception:
                         pass
-                if attempt < self.MAX_ATTEMPTS:
-                    await asyncio.sleep(self.RETRY_DELAY)
+                if attempt < MAX_ATTEMPTS:
+                    await asyncio.sleep(RETRY_DELAY)
 
         # --- 4) all attempts failed ---
         await self.safe_send(
             chat_id,
-            f"❌ <b>Login failed after {self.MAX_ATTEMPTS} attempts</b>\n"
+            f"❌ <b>Login failed after {MAX_ATTEMPTS} attempts</b>\n"
             f"<code>{last_exc}</code>",
             parse_mode="HTML"
         )
