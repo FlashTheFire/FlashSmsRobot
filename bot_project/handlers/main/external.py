@@ -640,7 +640,18 @@ class ForwardManager:
                     await client.disconnect()
                     return []
                 
-                await client.send_code_request(account.phone)
+                # Send code request and capture phone_code_hash
+                result = await client.send_code_request(account.phone)
+                phone_code_hash = result.phone_code_hash
+                
+                # Store login state with phone_code_hash
+                self.login_states[user_id] = {
+                    "account_id": account_id,
+                    "phone": account.phone,
+                    "phone_code_hash": phone_code_hash,
+                    "type": "number_checker"  # Add type identifier
+                }
+
                 await self.bot.send_message(
                     user_id,
                     f"✉️ <b>Cᴏᴅᴇ Sᴇɴᴛ Tᴏ {account.phone}</b>\n"
@@ -665,11 +676,10 @@ class ForwardManager:
 
         except Exception as e:
             print(f"Chunk error for {account_id}: {e}", exc_info=True)
-            # ensure we clean up the connection
             if client.is_connected():
                 await client.disconnect()
             return []
-
+            
     async def start_contact_login(self, user_id: int, chat_id: int):
         """Initiate login flow for contact checker"""
         self.login_states[user_id] = {
@@ -1083,7 +1093,7 @@ class ForwardManager:
             if reply_id in self.filter_states:
                 action = self.filter_states.pop(reply_id)
 
-                # your CB_ADD_APP, CB_REMOVE_APP, etc. here…
+                # Check if it's a number check callback
                 if action.startswith(self.CB_CHECK_NUM + ":"):
                     all_numbers = [ln for ln in text.splitlines() if ln.strip().isdigit()]
 
@@ -1124,7 +1134,104 @@ class ForwardManager:
             if user_id in self.login_states:
                 return await self.handle_login_message(message)
 
-            # ——— 2) “✉️ Code Sent To …” — send_code_request() + save hash ———
+
+            # ——— 3) OTP reply (5‑digit code) — sign_in with code + hash ———
+            if user_id in self.login_states and len(text) == 5 and text.isdigit():
+                state = self.login_states[user_id]
+                phone, code_hash = state["phone"], state["phone_code_hash"]
+                account_id       = state["account_id"]
+                login_type       = state.get("type", "")  # New: identify login type
+
+                session_path = f"./sessions/{user_id}_{account_id}.session"
+                client = TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH)
+                await client.connect()
+                
+                try:
+                    # pass both code and phone_code_hash
+                    await client.sign_in(
+                        phone,
+                        code=text,
+                        phone_code_hash=code_hash
+                    )
+
+                    # Handle different login types
+                    if login_type == "number_checker":
+                        # For number checker login
+                        await self.safe_send(
+                            chat_id,
+                            "✅ <b>Login Successful</b>\n"
+                            "♻️ <b>Retrying number check...</b>",
+                            parse_mode="HTML"
+                        )
+                        
+                        # Retrieve stored numbers from state
+                        pending_numbers = state.get("pending_numbers", [])
+                        if pending_numbers:
+                            # Process the numbers again
+                            results = await self._process_number_chunk(
+                                user_id, account_id, pending_numbers
+                            )
+                            
+                            # Format and send results
+                            response = []
+                            for num, user in results:
+                                if user:
+                                    uname = f"@{user.username}" if user.username else "Nᴏ Usᴇʀɴᴀᴍᴇ"
+                                    response.append(
+                                        "✅ <code>{num}</code> <b>[<a href='tg://openmessage?user_id={uid}'>Oᴘᴇɴ</a>]</b>\n"
+                                        "       • <a href='https://t.me/+{num}'>{uname}</a>".format(
+                                            num=num, uid=user.id, uname=uname
+                                        )
+                                    )
+                            
+                            if not response:
+                                response = ["❌ <b>No provided numbers are registered</b>"]
+                            
+                            result_text = "\n\n".join(response)
+                            await self.safe_send(
+                                chat_id,
+                                f"📊 <b>Number Check Results</b>\n\n{result_text}",
+                                parse_mode="HTML"
+                            )
+                        else:
+                            await self.safe_send(
+                                chat_id,
+                                "✅ <b>Login Successful</b>\n"
+                                "⚠️ <b>No pending numbers found to retry</b>",
+                                parse_mode="HTML"
+                            )
+                    else:
+                        # For normal login
+                        await self.safe_send(
+                            chat_id,
+                            "✅ <b>Login Successful</b>\nYou can now check numbers",
+                            parse_mode="HTML"
+                        )
+
+                    # clear login state
+                    del self.login_states[user_id]
+                except errors.SessionPasswordNeededError:
+                    # move to 2FA branch
+                    await self.safe_send(
+                        chat_id,
+                        f"🔐 <b>2FA Required for {phone}</b>\n"
+                        "Please send your account password:",
+                        parse_mode="HTML",
+                        reply_markup=ForceReply(selective=True)
+                    )
+                except Exception as e:
+                    await self.safe_send(
+                        chat_id,
+                        f"❌ <b>Login Failed</b>\n<code>{e}</code>",
+                        parse_mode="HTML"
+                    )
+                    del self.login_states[user_id]
+                finally:
+                    await client.disconnect()
+
+                return
+            
+            # ——— 4) “✉️ Code Sent To …” — send_code_request() + save hash ———
             if reply and reply.text.startswith("✉️ Cᴏᴅᴇ Sᴇɴᴛ Tᴏ"):
                 # extract the phone
                 m = re.search(r'\b(\d{8,15})\b', reply.text)
@@ -1158,57 +1265,11 @@ class ForwardManager:
                     # prompt user to send back the 5‑digit OTP
                     await self.bot.send_message(
                         user_id,
-                        f"✉️ <b>Code Sent To {phone}</b>\n"
+                        f"✉️ <b>Cᴏᴅᴇ Sᴇɴᴛ Tᴏ {phone}</b>\n"
                         "Please reply with the 5‑digit code you received:",
                         parse_mode="HTML",
                         reply_markup=ForceReply(selective=True)
                     )
-                finally:
-                    await client.disconnect()
-
-                return
-
-            # ——— 3) OTP reply (5‑digit code) — sign_in with code + hash ———
-            if user_id in self.login_states and len(text) == 5 and text.isdigit():
-                state = self.login_states[user_id]
-                phone, code_hash = state["phone"], state["phone_code_hash"]
-                account_id       = state["account_id"]
-
-                session_path = f"./sessions/{user_id}_{account_id}.session"
-                client = TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH)
-                await client.connect()
-                try:
-                    # pass both code and phone_code_hash
-                    await client.sign_in(
-                        phone,
-                        code=text,
-                        phone_code_hash=code_hash
-                    )
-
-                    await self.safe_send(
-                        chat_id,
-                        "✅ <b>Login Successful</b>\nYou can now check numbers",
-                        parse_mode="HTML"
-                    )
-
-                    # clear login state (or move to a “logged_in” sub‑state if you need 2FA)
-                    del self.login_states[user_id]
-                except errors.SessionPasswordNeededError:
-                    # move to 2FA branch
-                    await self.safe_send(
-                        chat_id,
-                        f"🔐 <b>2FA Required for {phone}</b>\n"
-                        "Please send your account password:",
-                        parse_mode="HTML",
-                        reply_markup=ForceReply(selective=True)
-                    )
-                except Exception as e:
-                    await self.safe_send(
-                        chat_id,
-                        f"❌ <b>Login Failed</b>\n<code>{e}</code>",
-                        parse_mode="HTML"
-                    )
-                    del self.login_states[user_id]
                 finally:
                     await client.disconnect()
 
@@ -1333,21 +1394,18 @@ class ForwardManager:
         except Exception as e:
             self.logger.exception(f"Failed to answer callback query: {e}")
 
-    def should_handle_reply(self, m):
+
+    def should_handle_reply(self, m: Message) -> bool:
         reply = m.reply_to_message
-        reply_id = reply.message_id if reply else None
+        rid   = reply.message_id if reply else None
 
         return (
-            # Was it a reply to a message we’re tracking?
-            (reply_id in self.filter_states)
-
-            # Or is the user mid‑login?
-            or (m.from_user.id in self.login_states)
-
-            # Or does the replied‑to text start with one of our prompts?
+            rid in self.filter_states                               # form replies
+            or m.from_user.id in self.login_states                   # OTP in‑flight
             or (reply and reply.text and reply.text.startswith("✉️ Cᴏᴅᴇ Sᴇɴᴛ Tᴏ"))
             or (reply and reply.text and reply.text.startswith("🔐 2Fᴀ Rᴇǫᴜɪʀᴇᴅ Fᴏʀ"))
         )
+
 
     async def shutdown(self):
         """Clean up clients and tasks on shutdown"""
