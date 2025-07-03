@@ -1124,15 +1124,16 @@ class ForwardManager:
             if user_id in self.login_states:
                 return await self.handle_login_message(message)
 
-            # ——— 3) “✉️ Code Sent To …” REPLY ———
+            # ——— 2) “✉️ Code Sent To …” — send_code_request() + save hash ———
             if reply and reply.text.startswith("✉️ Cᴏᴅᴇ Sᴇɴᴛ Tᴏ"):
-                prompt = reply.text
-                m = re.search(r'\b(\d{8,15})\b', prompt)
+                # extract the phone
+                m = re.search(r'\b(\d{8,15})\b', reply.text)
                 if not m:
                     return await self.safe_send(chat_id, "❌ <b>Invalid prompt</b>", parse_mode="HTML")
+                phone = m.group(1)
 
-                number = m.group(1)
-                account = self.session_manager.get_account_by_phone(user_id, number)
+                # lookup the account
+                account = self.session_manager.get_account_by_phone(user_id, phone)
                 if not account:
                     return await self.safe_send(
                         chat_id,
@@ -1140,39 +1141,79 @@ class ForwardManager:
                         parse_mode="HTML"
                     )
 
+                # create & connect client WITHOUT triggering interactive start()
                 session_path = f"./sessions/{user_id}_{account.account_id}.session"
                 client = TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH)
                 await client.connect()
+
                 try:
-                    await client.sign_in(number, text)
-                    await self.safe_send(
-                        chat_id,
-                        "✅ <b>Login Successful</b>\nYou can now check numbers",
-                        parse_mode="HTML"
+                    # send the code and capture the phone_code_hash
+                    result = await client.send_code_request(phone)
+                    self.login_states[user_id] = {
+                        "account_id":       account.account_id,
+                        "phone":            phone,
+                        "phone_code_hash":  result.phone_code_hash
+                    }
+
+                    # prompt user to send back the 5‑digit OTP
+                    await self.bot.send_message(
+                        user_id,
+                        f"✉️ <b>Code Sent To {phone}</b>\n"
+                        "Please reply with the 5‑digit code you received:",
+                        parse_mode="HTML",
+                        reply_markup=ForceReply(selective=True)
                     )
                 finally:
                     await client.disconnect()
+
                 return
 
-            # ——— 4) “🔐 2FA Required …” REPLY ———
-            if reply and reply.text.startswith("🔐 2Fᴀ Rᴇǫᴜɪʀᴇᴅ Fᴏʀ"):
-                prompt = reply.text
-                m = re.search(r'\b(\d{8,15})\b', prompt)
-                number = m.group(1) if m else None
+            # ——— 3) OTP reply (5‑digit code) — sign_in with code + hash ———
+            if user_id in self.login_states and len(text) == 5 and text.isdigit():
+                state = self.login_states[user_id]
+                phone, code_hash = state["phone"], state["phone_code_hash"]
+                account_id       = state["account_id"]
 
-                session_path = f"./sessions/{user_id}_{self.login_states[user_id]['account_id']}.session"
+                session_path = f"./sessions/{user_id}_{account_id}.session"
                 client = TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH)
                 await client.connect()
                 try:
-                    await client.sign_in(number, password=text)
+                    # pass both code and phone_code_hash
+                    await client.sign_in(
+                        phone,
+                        code=text,
+                        phone_code_hash=code_hash
+                    )
+
                     await self.safe_send(
                         chat_id,
                         "✅ <b>Login Successful</b>\nYou can now check numbers",
                         parse_mode="HTML"
                     )
+
+                    # clear login state (or move to a “logged_in” sub‑state if you need 2FA)
+                    del self.login_states[user_id]
+                except errors.SessionPasswordNeededError:
+                    # move to 2FA branch
+                    await self.safe_send(
+                        chat_id,
+                        f"🔐 <b>2FA Required for {phone}</b>\n"
+                        "Please send your account password:",
+                        parse_mode="HTML",
+                        reply_markup=ForceReply(selective=True)
+                    )
+                except Exception as e:
+                    await self.safe_send(
+                        chat_id,
+                        f"❌ <b>Login Failed</b>\n<code>{e}</code>",
+                        parse_mode="HTML"
+                    )
+                    del self.login_states[user_id]
                 finally:
                     await client.disconnect()
+
                 return
+
 
     async def _update_list(self, chat_id, text, lst, label, add=True):       
         """Update filter lists"""
