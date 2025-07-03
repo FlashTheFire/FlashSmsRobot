@@ -14,6 +14,11 @@ from telebot.types import (
     InputTextMessageContent,
     InlineQueryResultArticle
 )
+import asyncio
+from telebot.async_telebot import AsyncTeleBot
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from datetime import datetime, timedelta, date
+import calendar
 
 # Local imports
 from utils.redis_manager import redis_manager
@@ -80,6 +85,10 @@ class HistoryManager:
         self.aggregator: Optional[FinancialManagement] = None
         self.user_mgr: Optional[UserManagement] = None
         self.redis_client = None
+        self.SELECTIONS: dict[int, dict[str, str | None]] = {}
+        self.PREVIEW_URL = 'https://i.ibb.co/Xkb6XgFD/20250703-111741.jpg'
+        self.HEADER_TEXT_HTML = f'<a href="{self.PREVIEW_URL}">﻿</a><b>Cʜᴏᴏsᴇ Tʜᴇ Dᴀᴛᴇ Fʀᴏᴍ Iᴛ!</b>'
+        self.MIN_DATE = datetime.strptime('2024-02-20', '%Y-%m-%d').date()
 
     async def init_managers(self, order_mgr: OrderManagement, user_mgr: UserManagement, deposit_mgr: DepositManagement, bot: AsyncTeleBot) -> bool:
         """Initialize required components for history handling asynchronously."""
@@ -231,6 +240,112 @@ class HistoryManager:
             return InlineKeyboardMarkup(row_width=1).add(
                 InlineKeyboardButton("❌ Error - Contact Support", url="t.me/your_support")
             )
+    
+    async def create_calendar(
+        self,
+        year: int,
+        month: int,
+        start_date: str | None = None,
+        end_date: str | None = None
+    ) -> InlineKeyboardMarkup:
+        # Reset identical start/end
+        if start_date and end_date and start_date == end_date:
+            start_date = end_date = None
+
+        today = date.today()
+        first_of_month = date(year, month, 1)
+        last_of_month = date(year, month, calendar.monthrange(year, month)[1])
+        prev_month = first_of_month - timedelta(days=1)
+        next_month = last_of_month + timedelta(days=1)
+
+        allow_prev = (prev_month.year, prev_month.month) >= (self.MIN_DATE.year, self.MIN_DATE.month)
+        allow_next = (next_month.year, next_month.month) <= (today.year, today.month)
+
+        # Inline query search prefix
+        search_prefix = '#Hɪsᴛᴏʀʏ-Aʟʟ'
+        if start_date and end_date:
+            search_query = f'{search_prefix} {start_date}|{end_date}'
+        elif start_date or end_date:
+            single = start_date or end_date
+            search_query = f'{search_prefix} {single}'
+        else:
+            search_query = f'{search_prefix}'
+        search_query = search_query.translate(await small_caps())
+
+        markup = InlineKeyboardMarkup(row_width=7)
+        # Header row
+        title = f'📅 Calendar – {calendar.month_name[month]} {year}'.translate(await small_caps())
+        markup.add(InlineKeyboardButton(text=title, callback_data='date_picker:ignore'))
+        weekdays = ['Mᴏɴ','Tᴜᴇ','Wᴇᴅ','Tʜᴜ','Fʀɪ','Sᴀᴛ','Sᴜᴍ']
+        markup.add(*[InlineKeyboardButton(text=d, callback_data='date_picker:ignore') for d in weekdays])
+
+        # Days grid
+        weeks = calendar.monthcalendar(year, month)
+        if len(weeks) == 5:
+            weeks.append([0]*7)
+        for week in weeks:
+            row_buttons = []
+            for day in week:
+                if day == 0:
+                    row_buttons.append(InlineKeyboardButton(' ', callback_data='date_picker:ignore'))
+                    continue
+                ds = f'{year:04d}-{month:02d}-{day:02d}'
+                current = date(year, month, day)
+                if current < self.MIN_DATE or current > today:
+                    text = ' '
+                    cb = 'date_picker:ignore'
+                else:
+                    # selection styling
+                    if start_date and not end_date and ds == start_date:
+                        disp = f'⃝{day}'
+                    elif start_date and end_date:
+                        if ds == start_date:
+                            disp = f'»{day}'
+                        elif ds == end_date:
+                            disp = f'{day}«'
+                        elif start_date < ds < end_date:
+                            disp = '○'
+                        else:
+                            disp = str(day)
+                    else:
+                        disp = str(day)
+                    text = disp.translate(await small_caps())
+                    cb = f'date_picker:DAY:{ds}'
+                row_buttons.append(InlineKeyboardButton(text=text, callback_data=cb))
+            markup.add(*row_buttons)
+
+        # Action row
+        buttons: list[InlineKeyboardButton] = []
+        if start_date and end_date:
+            buttons.append(InlineKeyboardButton('🗙 Rᴇsᴇᴛ Dᴀᴛᴇs', callback_data='date_picker:CLEAR'))
+            buttons.append(InlineKeyboardButton(
+                '🔍 Sᴇᴀʀᴄʜ Hɪsᴛᴏʀʏ', switch_inline_query_current_chat=search_query
+            ))
+        elif start_date or end_date:
+            if allow_prev:
+                pt = '❮ Pʀᴇᴠɪᴏᴜs Dᴀᴛᴇ' if not allow_next else '❮❮❮'
+                buttons.append(InlineKeyboardButton(pt, callback_data=f'date_picker:PREV:{prev_month.year}-{prev_month.month}'))
+            sl = '🔍 Sᴇᴀʀᴄʜ Hɪsᴛᴏʀʏ' if (not allow_prev or not allow_next) else '🔍 Sᴇᴀʀᴄʜ'
+            buttons.append(InlineKeyboardButton(sl, switch_inline_query_current_chat=search_query))
+            if allow_next:
+                nt = 'Aғᴛᴇʀ ❯❯❯' if not allow_prev else '❯❯❯'
+                buttons.append(InlineKeyboardButton(nt, callback_data=f'date_picker:NEXT:{next_month.year}-{next_month.month}'))
+        else:
+            if not allow_prev and allow_next:
+                buttons.append(InlineKeyboardButton('🔍 Sᴇᴀʀᴄʜ Hɪsᴛᴏʀʏ', switch_inline_query_current_chat=search_query))
+                buttons.append(InlineKeyboardButton('Aғᴛᴇʀ ❯❯❯', callback_data=f'date_picker:NEXT:{next_month.year}-{next_month.month}'))
+            elif allow_prev and not allow_next:
+                buttons.append(InlineKeyboardButton('❮ Pʀᴇᴠɪᴏᴜs Dᴀᴛᴇ', callback_data=f'date_picker:PREV:{prev_month.year}-{prev_month.month}'))
+                buttons.append(InlineKeyboardButton('🔍 Sᴇᴀʀᴄʜ Hɪsᴛᴏʀʏ', switch_inline_query_current_chat=search_query))
+            else:
+                if allow_prev:
+                    buttons.append(InlineKeyboardButton('❮❮❮', callback_data=f'date_picker:PREV:{prev_month.year}-{prev_month.month}'))
+                buttons.append(InlineKeyboardButton('🔍 Sᴇᴀʀᴄʜ', switch_inline_query_current_chat=search_query))
+                if allow_next:
+                    buttons.append(InlineKeyboardButton('❯❯❯', callback_data=f'date_picker:NEXT:{next_month.year}-{next_month.month}'))
+        markup.add(*buttons)
+        return markup
+
 
     async def _acquire_transaction_lock(self, guard, transaction_key, input_data) -> bool:
         """Acquire transaction lock with error handling."""
@@ -258,7 +373,7 @@ class HistoryManager:
         try:
             keyboard.row(
                 InlineKeyboardButton("🔙 Bᴀᴄᴋ Tᴏ Mᴀɪɴ", callback_data='start'),
-                InlineKeyboardButton("⟳ Rᴇғʀᴇsʜ Pᴀɢᴇ", callback_data=call.data)
+                InlineKeyboardButton("📅 Dᴀᴛᴇ Pɪᴄᴋᴇʀ", callback_data='date_picker')
             )
             caption = (
                 "🔥 <b>Fʟᴀsʜ Tʀᴀɴsᴀᴄᴛɪᴏɴ Hɪsᴛᴏʀʏ 》</b>\n\n"
@@ -316,7 +431,7 @@ class HistoryManager:
                     )
                     keyboard.row(
                             InlineKeyboardButton("🔙 Bᴀᴄᴋ Tᴏ Mᴀɪɴ", callback_data='start'),
-                        InlineKeyboardButton("↻ Rᴇғʀᴇsʜ Pᴀɢᴇ", callback_data=call.data)
+                        InlineKeyboardButton("📅 Dᴀᴛᴇ Pɪᴄᴋᴇʀ", callback_data='date_picker:OPEN')
                     )
 
                     caption = (
@@ -416,10 +531,11 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
         if date_input:
             try:
                 start_ts, end_ts = date_to_unix(date_input)
-                filters['recorded_at'] = (start_ts, end_ts)
+                if start_ts and end_ts:
+                    filters['recorded_at'] = (start_ts, end_ts)
             except Exception as e:
                 logger.error(f"Invalid date format in inline query: {e}")
-                return
+                
 
         result = await history_manager.search_history(
             history_type=history_type,
@@ -540,7 +656,11 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
                 ))
 
         if not inline_query.offset:
-            data = await history_manager.aggregator.get_user(user_id)
+            if filters.get("recorded_at"):
+                start_timestamp, end_timestamp = filters["recorded_at"]
+                data = await history_manager.aggregator.get_user(user_id, start_timestamp=start_timestamp, end_timestamp=end_timestamp)
+            else:
+                data = await history_manager.aggregator.get_user(user_id)
             if data and data.get("response"):
                 user_profile = data.get("user_profile")
                 current_balance = data["metrics"]["current_balance"]
@@ -573,6 +693,81 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
             cache_time=0,
             next_offset=next_offset
         )
+    
+    @bot.callback_query_handler(func=lambda call: call.data.startswith('date_picker:'))
+    async def handle_query(call: CallbackQuery):
+        data = call.data.removeprefix('date_picker:')
+        cid = call.message.chat.id
+        mid = call.message.message_id
+        state = history_manager.SELECTIONS.setdefault(cid, {'start': None, 'end': None})
+        start, end = state['start'], state['end']
+
+        if data == 'OPEN':
+            history_manager.SELECTIONS[cid] = {'start': None, 'end': None}
+            now = datetime.now()
+            mk = await history_manager.create_calendar(now.year, now.month)
+            try:
+                await bot.delete_message(cid, mid)
+            except:
+                pass
+            await bot.edit_message_text(
+                chat_id=cid,
+                message_id=mid,
+                text=f"{history_manager.PREVIEW_URL}\n{history_manager.HEADER_TEXT_HTML}",
+                parse_mode='HTML',
+                reply_markup=mk,
+                disable_web_page_preview=False
+            )
+            await bot.answer_callback_query(call.id)
+        elif data.startswith('DAY:'):
+            date_str = data.split(':',1)[1]
+            if not start or (start and end):
+                state['start'], state['end'] = date_str, None
+                await bot.answer_callback_query(call.id, text=f'Start: {date_str}')
+            else:
+                if date_str < start:
+                    state['start'], date_str = date_str, start
+                state['end'] = date_str
+                await bot.answer_callback_query(call.id, text=f'End: {date_str}')
+            y,m = map(int, date_str.split('-')[:2])
+            mk = await history_manager.create_calendar(y,m,state['start'],state['end'])
+            await bot.edit_message_text(
+                chat_id=cid,
+                message_id=mid,
+                text=f"{history_manager.PREVIEW_URL}\n{history_manager.HEADER_TEXT_HTML}",
+                parse_mode='HTML',
+                reply_markup=mk,
+                disable_web_page_preview=False
+            )
+        elif data.startswith('PREV:') or data.startswith('NEXT:'):
+            _, ym = data.split(':',1)
+            y,m = map(int, ym.split('-'))
+            mk = await history_manager.create_calendar(y,m,state.get('start'),state.get('end'))
+            await bot.edit_message_text(
+                chat_id=cid,
+                message_id=mid,
+                text=f"{history_manager.PREVIEW_URL}\n{history_manager.HEADER_TEXT_HTML}",
+                parse_mode='HTML',
+                reply_markup=mk,
+                disable_web_page_preview=False
+            )
+            await bot.answer_callback_query(call.id)
+        elif data == 'CLEAR':
+            history_manager.SELECTIONS[cid] = {'start': None, 'end': None}
+            now = datetime.now()
+            mk = await history_manager.create_calendar(now.year, now.month)
+            await bot.edit_message_text(
+                chat_id=cid,
+                message_id=mid,
+                text=f"{history_manager.PREVIEW_URL}\n{history_manager.HEADER_TEXT_HTML}",
+                parse_mode='HTML',
+                reply_markup=mk,
+                disable_web_page_preview=False
+            )
+            await bot.answer_callback_query(call.id, text='Cleared')
+        else:
+            await bot.answer_callback_query(call.id)
+
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith("#RᴇғʀᴇsʜMᴇᴛʀɪᴄs"))
     async def refresh_metrics_handler(call: CallbackQuery):
