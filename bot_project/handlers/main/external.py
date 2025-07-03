@@ -33,6 +33,7 @@ async def AfterMin(minutes: int) -> str:
 
 
 import asyncio
+from http import client
 import logging
 import os
 import re
@@ -225,6 +226,15 @@ class SessionManager:
         """Get all accounts for a user"""
         return list(self.user_accounts.get(user_id, {}).values())
     
+    def get_account_by_phone(self, user_id: int, phone: str) -> Optional[UserAccount]:
+        """
+        Find the UserAccount for a given user_id whose .phone equals the given phone string.
+        """
+        for account in self.get_accounts(user_id):
+            if getattr(account, "phone", None) == phone:
+                return account
+        return None
+
     def set_active_account(self, user_id: int, account_id: str) -> None:
         """Set the active account for a user"""
         self.active_accounts[user_id] = account_id
@@ -615,16 +625,28 @@ class ForwardManager:
         """
         Checks registration status in batches of BATCH_SIZE using a dedicated session.
         """
+        print(f"Processing numbers for user {user_id} account {account_id}: {numbers}")
         session_path = f"./sessions/{user_id}_{account_id}.session"
         try:
             async with TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH) as client:
                 if not await client.is_user_authorized():
+                    account = self.session_manager.get_account(user_id, account_id)
+                    await client.send_code_request(account.phone)
+                    await self.bot.send_message(
+                        user_id,
+                        f"<a href='https://i.ibb.co/bM7nJ5bv/IMG-20250629-063110-295.jpg'>✉️</a> <b>Cᴏᴅᴇ Sᴇɴᴛ Tᴏ {self.admin_phone}</b>\nPʟᴇᴀsᴇ Rᴇᴘʟʏ Wɪᴛʜ Tʜᴇ 5-Dɪɢɪᴛ Cᴏᴅᴇ:",
+                        parse_mode="HTML",
+                        reply_markup=ForceReply(selective=True),
+                        disable_web_page_preview=False
+                    )
                     return []
 
                 out: List[Tuple[str, Optional[types.User]]] = []
                 for i in range(0, len(numbers), BATCH_SIZE):
                     batch = numbers[i : i + BATCH_SIZE]
+                    print(f"Checking numbers: {batch}")
                     batch_res = await self.check_numbers_registered(client, batch)
+                    print(f"Batch result: {batch_res}")
                     out.extend(batch_res)
                 return out
 
@@ -683,9 +705,6 @@ class ForwardManager:
                     f"❌ <b>Login failed</b>\n<code>{html.escape(str(e))}</code>",
                     parse_mode="HTML"
                 )
-
-
-
 
         @bot.channel_post_handler()
         async def otp_handler(msg: Message) -> None:
@@ -918,7 +937,6 @@ class ForwardManager:
                 )
                 return
 
-
             if data == self.CB_LOGOUT:
                 user_id = call.from_user.id
                 accounts = self.session_manager.get_accounts(user_id)
@@ -1099,26 +1117,64 @@ class ForwardManager:
             elif user_id in self.login_states:
                 await self.handle_login_message(message)
 
-            elif (user_id == ADMIN_USER_ID and message.reply_to_message and message.reply_to_message.text.startswith("✉️ Cᴏᴅᴇ Sᴇɴᴛ Tᴏ")):
+            elif (message.reply_to_message and message.reply_to_message.text.startswith("✉️ Cᴏᴅᴇ Sᴇɴᴛ Tᴏ")):
                 try:
-                    await self.forward_client.sign_in(self.admin_phone, message.text)
-                    await self.forward_client.disconnect()
-                    await self.start_forward_client()
-                    await self.safe_send(chat_id, "✅ <b>Login Successful</b>\nYou can now check numbers", parse_mode="HTML")
+                    number = None
+                    if user_id == ADMIN_USER_ID:
+                        await self.forward_client.sign_in(self.admin_phone, message.text)
+                        await self.forward_client.disconnect()
+                        await self.start_forward_client()
+                    else:
+                        match = re.search(r'\b\d{8,15}\b', message)
+                        if match:
+                            number = match.group()
+                            account = self.session_manager.get_account_by_phone(user_id, number)
+                            if not account:
+                                return await self.safe_send(
+                                chat_id,
+                                "❌ <b>No account found for that number.</b>\n"
+                                "Make sure you’ve added/logged in with that phone first.",
+                                parse_mode="HTML"
+                                )
+                            session_path = f"./sessions/{user_id}_{account.account_id}.session"
+                            async with TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH) as client:
+                                await client.sign_in(number, message.text)
+                                await self.safe_send(chat_id, "✅ <b>Login Successful</b>\nYou can now check numbers", parse_mode="HTML")
+                        else:
+                            await self.safe_send(chat_id, "❌ <b>Invalid Number</b>\nPlease provide a valid number", parse_mode="HTML")
                 except errors.SessionPasswordNeededError:
-                    await self.safe_send(chat_id, "🔐 <b>2Fᴀ Rᴇǫᴜɪʀᴇᴅ</b>\Pʟᴇᴀsᴇ Sᴇɴᴅ Yᴏᴜʀ Pᴀssᴡᴏʀᴅ »", parse_mode="HTML", reply_markup=ForceReply(selective=True))
+                    await self.safe_send(chat_id, f"🔐 <b>2Fᴀ Rᴇǫᴜɪʀᴇᴅ Fᴏʀ {number or self.admin_phone}</b>\nPʟᴇᴀsᴇ Sᴇɴᴅ Yᴏᴜʀ Pᴀssᴡᴏʀᴅ »", parse_mode="HTML", reply_markup=ForceReply(selective=True))
                     await self.safe_send(chat_id, message)
                 except errors.PhoneCodeInvalidError:
                     await self.safe_send(chat_id, "❌ <b>Invalid Code</b>\nPlease request a new code", parse_mode="HTML")
                 except Exception as e:
                     await self.safe_send(chat_id, f"❌ <b>Login Failed</b>\n<code>{str(e)}</code>", parse_mode="HTML")
             
-            elif (user_id == ADMIN_USER_ID and message.reply_to_message and message.reply_to_message.text.startswith("🔐 2Fᴀ Rᴇǫᴜɪʀᴇᴅ")):
+            elif (message.reply_to_message and message.reply_to_message.text.startswith("🔐 2Fᴀ Rᴇǫᴜɪʀᴇᴅ Fᴏʀ")):
                 try:
-                    await self.forward_client.sign_in(self.admin_phone, password=message.text)
-                    await self.start_forward_client()
-                    await self.forward_client.disconnect()
-                    await self.safe_send(chat_id, "✅ <b>Login Successful</b>\nYou can now check numbers", parse_mode="HTML")
+                    if user_id == ADMIN_USER_ID:
+                        await self.forward_client.sign_in(self.admin_phone, password=message.text)
+                        await self.start_forward_client()
+                        await self.forward_client.disconnect()
+                        await self.safe_send(chat_id, "✅ <b>Login Successful</b>\nYou can now check numbers", parse_mode="HTML")
+                    else:
+                        match = re.search(r'\b\d{8,15}\b', message)
+                        if match:
+                            number = match.group()
+                            account = self.session_manager.get_account_by_phone(user_id, number)
+                            if not account:
+                                return await self.safe_send(
+                                chat_id,
+                                "❌ <b>No account found for that number.</b>\n"
+                                "Make sure you’ve added/logged in with that phone first.",
+                                parse_mode="HTML"
+                                )
+                            session_path = f"./sessions/{user_id}_{account.account_id}.session"
+                            async with TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH) as client:
+                                await client.sign_in(number, password=message.text)
+                                await self.safe_send(chat_id, "✅ <b>Login Successful</b>\nYou can now check numbers", parse_mode="HTML")
+                        else:
+                            await self.safe_send(chat_id, "❌ <b>Invalid Number</b>\nPlease provide a valid number", parse_mode="HTML")
                 except Exception as e:
                     await self.safe_send(chat_id, f"❌ <b>2FA Failed</b>\n<code>{str(e)}</code>", parse_mode="HTML")
 
@@ -1253,7 +1309,7 @@ class ForwardManager:
 
             # Or does the replied‑to text start with one of our prompts?
             or (reply and reply.text and reply.text.startswith("✉️ Cᴏᴅᴇ Sᴇɴᴛ Tᴏ"))
-            or (reply and reply.text and reply.text.startswith("🔐 2Fᴀ Rᴇǫᴜɪʀᴇᴅ"))
+            or (reply and reply.text and reply.text.startswith("🔐 2Fᴀ Rᴇǫᴜɪʀᴇᴅ Fᴏʀ"))
         )
 
     async def shutdown(self):
