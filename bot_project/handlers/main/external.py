@@ -1140,13 +1140,12 @@ class ForwardManager:
                 state = self.login_states[user_id]
                 phone, code_hash = state["phone"], state["phone_code_hash"]
                 account_id       = state["account_id"]
-                login_type       = state.get("type", "")  # Identify login type
-                pending_numbers  = state.get("pending_numbers", [])  # Get stored numbers
+                login_type       = state.get("type", "")
+                pending_numbers  = state.get("pending_numbers", [])
 
                 session_path = f"./sessions/{user_id}_{account_id}.session"
                 client = TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH)
                 await client.connect()
-                
                 try:
                     # pass both code and phone_code_hash
                     await client.sign_in(
@@ -1211,7 +1210,7 @@ class ForwardManager:
                     del self.login_states[user_id]
                 except errors.SessionPasswordNeededError:
                     # move to 2FA branch
-                    await self.safe_send(
+                    await self.bot.send_message(
                         chat_id,
                         f"🔐 <b>2FA Required for {phone}</b>\n"
                         "Please send your account password:",
@@ -1219,7 +1218,7 @@ class ForwardManager:
                         reply_markup=ForceReply(selective=True)
                     )
                 except Exception as e:
-                    await self.safe_send(
+                    await self.bot.send_message(
                         chat_id,
                         f"❌ <b>Login Failed</b>\n<code>{e}</code>",
                         parse_mode="HTML"
@@ -1362,10 +1361,10 @@ class ForwardManager:
         try:
             # Send the fully‑processed message
             text = await self._format_text(text)
-            return await self.bot.send_message(chat_id, text, **kwargs)
-
+            data = await self.bot.send_message(chat_id, text, **kwargs)
+            return data
         except Exception as e:
-            self.logger.exception(f"Failed to send message: {e}")
+            print(f"Failed to send message: {e}")
             return None
 
     async def safe_edit_message(self, chat_id: int, message_id: int, text: str = None, **kwargs):
