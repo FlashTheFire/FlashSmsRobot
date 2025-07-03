@@ -174,27 +174,30 @@ async def qr_code(
     img_byte_arr.seek(0)
 
     return img_byte_arr
+    
+from datetime import datetime, time
+from typing import Tuple
 
 def date_to_unix(date_input: str) -> Tuple[float, float]:
     """
     Accepts:
-    - Single date string: 'YYYY-MM-DD'
-    - Range string: 'YYYY-MM-DD|YYYY-MM-DD'
-
+      - Single date string: 'YYYY-MM-DD'
+      - Range string:  'YYYY-MM-DD|YYYY-MM-DD'
     Returns:
-    - Tuple of (start_timestamp, end_timestamp)
+      - (start_timestamp, end_timestamp) covering the full day(s)
     """
     if '|' in date_input:
         start_str, end_str = date_input.split('|')
         start_date = datetime.strptime(start_str.strip(), "%Y-%m-%d")
-        end_date = datetime.strptime(end_str.strip(), "%Y-%m-%d")
+        end_date   = datetime.strptime(end_str.strip(),   "%Y-%m-%d")
     else:
         start_date = end_date = datetime.strptime(date_input.strip(), "%Y-%m-%d")
 
     start_dt = datetime.combine(start_date, time.min)  # 00:00:00
-    end_dt = datetime.combine(end_date, time.max)      # 23:59:59.999999
+    end_dt   = datetime.combine(end_date,   time.max)  # 23:59:59.999999
 
     return start_dt.timestamp(), end_dt.timestamp()
+
 
 async def format_currency(amount: Union[float, int], currency: str = "INR") -> str:
     """Asynchronously formats currency with proper symbols."""
