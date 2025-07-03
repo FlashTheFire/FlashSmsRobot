@@ -27,7 +27,7 @@ from handlers.manager.operation import (
     UserManagement, FinancialManagement, user_mgr
 )
 from handlers.security import RateLimiter
-from utils.functions import small_caps, encode_order_id, decode_barcode_id, date_to_unix
+from utils.functions import small_caps, encode_order_id, decode_barcode_id, date_to_unix, large_caps
 from utils.config import LOADING_GIF
 from redis.commands.search.query import Query
 from functools import partial
@@ -531,7 +531,7 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
         # Add recorded_at range filter if date input is present
         if date_input:
             try:
-                start_ts, end_ts = date_to_unix(date_input)
+                start_ts, end_ts = date_to_unix(str(date_input).translate(await large_caps()))
                 if start_ts and end_ts:
                     filters['recorded_at'] = (start_ts, end_ts)
             except Exception as e:
@@ -707,17 +707,18 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
             history_manager.SELECTIONS[cid] = {'start': None, 'end': None}
             now = datetime.now()
             mk = await history_manager.create_calendar(now.year, now.month)
-            try:
-                await bot.delete_message(cid, mid)
-            except:
-                pass
             await bot.send_message(
                 chat_id=cid,
-                text=f"{history_manager.PREVIEW_URL}\n{history_manager.HEADER_TEXT_HTML}",
+                text=f"{history_manager.HEADER_TEXT_HTML}",
                 parse_mode='HTML',
                 reply_markup=mk,
                 disable_web_page_preview=False
             )
+            try:
+                await bot.delete_message(cid, mid)
+            except:
+                pass
+
             await bot.answer_callback_query(call.id)
         elif data.startswith('DAY:'):
             date_str = data.split(':',1)[1]
@@ -734,7 +735,7 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
             await bot.edit_message_text(
                 chat_id=cid,
                 message_id=mid,
-                text=f"{history_manager.PREVIEW_URL}\n{history_manager.HEADER_TEXT_HTML}",
+                text=f"{history_manager.HEADER_TEXT_HTML}",
                 parse_mode='HTML',
                 reply_markup=mk,
                 disable_web_page_preview=False
@@ -746,7 +747,7 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
             await bot.edit_message_text(
                 chat_id=cid,
                 message_id=mid,
-                text=f"{history_manager.PREVIEW_URL}\n{history_manager.HEADER_TEXT_HTML}",
+                text=f"{history_manager.HEADER_TEXT_HTML}",
                 parse_mode='HTML',
                 reply_markup=mk,
                 disable_web_page_preview=False
@@ -759,7 +760,7 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
             await bot.edit_message_text(
                 chat_id=cid,
                 message_id=mid,
-                text=f"{history_manager.PREVIEW_URL}\n{history_manager.HEADER_TEXT_HTML}",
+                text=f"{history_manager.HEADER_TEXT_HTML}",
                 parse_mode='HTML',
                 reply_markup=mk,
                 disable_web_page_preview=False
