@@ -1594,16 +1594,18 @@ class ForwardManager:
         ]
         
         try:
+            print(f"Checking numbers: {numbers}")
             import_result = await client(functions.contacts.ImportContactsRequest(contacts))
+            print(f"Import result: {import_result}")
             user_map = {user.phone: user for user in import_result.users 
                         if isinstance(user, types.User) and user.phone}
             
             # Clean up imported contacts
-            if import_result.imported:
+            '''if import_result.imported:
                 await client(functions.contacts.DeleteContactsRequest(
                     id=[types.InputUser(user_id=u.id, access_hash=u.access_hash) 
                         for u in import_result.users]
-                ))
+                ))'''
                 
             return [(num, user_map.get(num)) for num in numbers]
         except Exception as e:
