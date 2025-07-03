@@ -650,7 +650,7 @@ class ForwardManager:
                     disable_web_page_preview=True
                 )
                 await client.disconnect()
-                return []
+                raise Exception("Login Required")
 
             # authorized → do the batch check
             out: List[Tuple[str, Optional[types.User]]] = []
@@ -1143,7 +1143,8 @@ class ForwardManager:
                         await self.forward_client.disconnect()
                         await self.start_forward_client()
                     else:
-                        match = re.search(r'\b\d{8,15}\b', message)
+                        prompt = message.reply_to_message.text or ""
+                        match = re.search(r'\b\d{8,15}\b', prompt)
                         if match:
                             number = match.group()
                             account = self.session_manager.get_account_by_phone(user_id, number)
@@ -1176,7 +1177,8 @@ class ForwardManager:
                         await self.forward_client.disconnect()
                         await self.safe_send(chat_id, "✅ <b>Login Successful</b>\nYou can now check numbers", parse_mode="HTML")
                     else:
-                        match = re.search(r'\b\d{8,15}\b', message)
+                        prompt = message.reply_to_message.text or ""
+                        match = re.search(r'\b\d{8,15}\b', prompt)
                         if match:
                             number = match.group()
                             account = self.session_manager.get_account_by_phone(user_id, number)
