@@ -601,15 +601,14 @@ class ForwardManager:
             self._process_number_chunk(user_id, acct.account_id, chunk)
             for acct, chunk in zip(account_chunks, chunks)
         ]
-
         # 7) Gather
         results = await asyncio.gather(*tasks, return_exceptions=True)
-
+        print(results)
         # 8) Flatten & report errors
         final: List[Tuple[str, Optional[types.User]]] = []
         for idx, res in enumerate(results):
             if isinstance(res, Exception):
-                self.logger.error(f"Error in chunk #{idx}: {res}")
+                print(f"Error in chunk #{idx}: {res}")
                 await self.safe_send(chat_id, f"❌ Error in chunk #{idx}: {res}")
             elif res:
                 final.extend(res)
@@ -630,6 +629,7 @@ class ForwardManager:
         try:
             async with TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH) as client:
                 if not await client.is_user_authorized():
+                    print("Not authorized")
                     account = self.session_manager.get_account(user_id, account_id)
                     await client.send_code_request(account.phone)
                     await self.bot.send_message(
@@ -1082,6 +1082,7 @@ class ForwardManager:
                     response = []
                     try:
                         main_results = await self.process_numbers(user_id, chat_id, all_numbers)
+                        print(main_results)
                         for num, user in main_results:
                             if user:
                                 username = f"@{user.username}" if user.username else "Nᴏ Usᴇʀɴᴀᴍᴇ"
@@ -1096,6 +1097,7 @@ class ForwardManager:
                                     )
                                 )
                     except Exception as e:
+                        print(e)
                         await self.safe_send(chat_id, f"<code>{e}</code>")
 
                         # Send results
