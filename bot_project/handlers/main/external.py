@@ -632,23 +632,6 @@ class ForwardManager:
             self.logger.error(f"Chunk error for account {account_id}: {e}")
             return []
 
-    async def check_numbers_registered(
-        self,
-        client: TelegramClient,
-        numbers: List[str]
-    ) -> List[Tuple[str, Optional[types.User]]]:
-        """
-        Your actual per‑batch check here. Return list of (number, User|None).
-        """
-        results: List[Tuple[str, Optional[types.User]]] = []
-        for num in numbers:
-            try:
-                user = await client.get_entity(num)
-                results.append((num, user if isinstance(user, types.User) else None))
-            except Exception:
-                results.append((num, None))
-        return results
-
     async def start_contact_login(self, user_id: int, chat_id: int):
         """Initiate login flow for contact checker"""
         self.login_states[user_id] = {
@@ -1139,8 +1122,6 @@ class ForwardManager:
                 except Exception as e:
                     await self.safe_send(chat_id, f"❌ <b>2FA Failed</b>\n<code>{str(e)}</code>", parse_mode="HTML")
 
-
-
     async def _update_list(self, chat_id, text, lst, label, add=True):       
         """Update filter lists"""
         if add:
@@ -1233,6 +1214,7 @@ class ForwardManager:
         except Exception as e:
             self.logger.exception(f"Failed to send message: {e}")
             return None
+
     async def safe_edit_message(self, chat_id: int, message_id: int, text: str = None, **kwargs):
         """Safely edit an existing message"""
         try:
@@ -1247,6 +1229,7 @@ class ForwardManager:
         except Exception as e:
             self.logger.exception(f"Failed to edit message: {e}")
             return None
+
     async def safe_callback_query(self, callback_query_id, text=None, **kwargs):
         """Safely answer callback queries"""
         try:
@@ -1346,7 +1329,6 @@ class ForwardManager:
                             f"❗ <b>Forward client setup failed</b>\n<code>{last_exc}</code>"
                         )
 
-
     async def _cache_peers(self):
         """Resolve and store source & destination as peer objects."""
         self.peers = {}
@@ -1355,7 +1337,6 @@ class ForwardManager:
             ent = await self.forward_client.get_entity(username)
             self.peers[chat] = ent
             self.logger.info(f"Cached peer {chat} -> {ent}")
-
 
     async def _forward_event(self, event: events.NewMessage.Event):
         if not self.enabled:
@@ -1382,7 +1363,6 @@ class ForwardManager:
                 if self.bot:
                     await self.safe_send(ADMIN_USER_ID, f"⚠️ <b>Forward Error</b>\n<code>{error_msg}</code>")
 
-    
     async def logout_user(self, user_id: int, account_id: int, force: bool = False):
         """Logout user both locally and on Telegram, then clean up session."""
         session_path = self._contact_session_file(user_id, account_id)
@@ -1495,6 +1475,7 @@ class ForwardManager:
             parse_mode="HTML"
         )
         await self.logout_user(user_id, account_id, force=True)
+
     async def handle_login_message(self, message: Message):
         """Handle login process steps with account management"""
         user_id = message.from_user.id
@@ -1600,7 +1581,6 @@ class ForwardManager:
                     await self.start_forward_client()
             except Exception as e:
                 await self.safe_send(chat_id, f"❌ <b>2FA Failed</b>\n<code>{str(e)}</code>", parse_mode="HTML")
-
 
     async def check_numbers_registered(self, client: TelegramClient, numbers: List[str]) -> List[Tuple[str, Optional[types.User]]]:
         """Check if numbers are registered on Telegram"""
