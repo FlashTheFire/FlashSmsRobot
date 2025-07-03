@@ -622,36 +622,52 @@ class ForwardManager:
         numbers: List[str]
     ) -> List[Tuple[str, Optional[types.User]]]:
         """
-        Checks registration status in batches of BATCH_SIZE using a dedicated session.
+        Checks registration status in batches of BATCH_SIZE using a dedicated session,
+        without triggering Telethon's interactive start().
         """
-        print(f"Processing numbers for user {user_id} account {account_id}: {numbers}")
         session_path = f"./sessions/{user_id}_{account_id}.session"
+        client = TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH)
+        
         try:
-            async with TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH) as client:
-                if not await client.is_user_authorized():
-                    print("Not authorized")
-                    account = self.session_manager.get_account(user_id, account_id)
-                    await client.send_code_request(account.phone)
-                    await self.bot.send_message(
-                        user_id,
-                        f"<a href='https://i.ibb.co/bM7nJ5bv/IMG-20250629-063110-295.jpg'>✉️</a> <b>Cᴏᴅᴇ Sᴇɴᴛ Tᴏ {self.admin_phone}</b>\nPʟᴇᴀsᴇ Rᴇᴘʟʏ Wɪᴛʜ Tʜᴇ 5-Dɪɢɪᴛ Cᴏᴅᴇ:",
-                        parse_mode="HTML",
-                        reply_markup=ForceReply(selective=True),
-                        disable_web_page_preview=False
-                    )
+            # connect without starting (no interactive fallback)
+            await client.connect()
+            
+            # If not already logged in, send code request
+            if not await client.is_user_authorized():
+                account = self.session_manager.get_account(user_id, account_id)
+                if not account or not account.phone:
+                    print(f"No phone found for {user_id}/{account_id}")
+                    await client.disconnect()
                     return []
+                
+                await client.send_code_request(account.phone)
+                await self.bot.send_message(
+                    user_id,
+                    f"✉️ <b>Cᴏᴅᴇ Sᴇɴᴛ Tᴏ {account.phone}</b>\n"
+                    "Pʟᴇᴀsᴇ Rᴇᴘʟʏ Wɪᴛʜ Tʜᴇ 5-Dɪɢɪᴛ Cᴏᴅᴇ:",
+                    parse_mode="HTML",
+                    reply_markup=ForceReply(selective=True),
+                    disable_web_page_preview=True
+                )
+                await client.disconnect()
+                return []
 
-                out: List[Tuple[str, Optional[types.User]]] = []
-                for i in range(0, len(numbers), BATCH_SIZE):
-                    batch = numbers[i : i + BATCH_SIZE]
-                    print(f"Checking numbers: {batch}")
-                    batch_res = await self.check_numbers_registered(client, batch)
-                    print(f"Batch result: {batch_res}")
-                    out.extend(batch_res)
-                return out
+            # authorized → do the batch check
+            out: List[Tuple[str, Optional[types.User]]] = []
+            for i in range(0, len(numbers), BATCH_SIZE):
+                batch = numbers[i : i + BATCH_SIZE]
+                print(f"Checking batch: {batch}")
+                batch_res = await self.check_numbers_registered(client, batch)
+                out.extend(batch_res)
+
+            await client.disconnect()
+            return out
 
         except Exception as e:
-            self.logger.error(f"Chunk error for account {account_id}: {e}")
+            print(f"Chunk error for {account_id}: {e}", exc_info=True)
+            # ensure we clean up the connection
+            if client.is_connected():
+                await client.disconnect()
             return []
 
     async def start_contact_login(self, user_id: int, chat_id: int):
