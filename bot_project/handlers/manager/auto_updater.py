@@ -292,7 +292,7 @@ class AutoUpdater:
         try:
             app_price = float(raw_price)
         except (TypeError, ValueError):
-            self._logger.warning(f"Invalid price for app {app_id!r}: {raw_price!r}; defaulting to 0.0")
+            logging.warning(f"Invalid price for app {app_id!r}: {raw_price!r}; defaulting to 0.0")
             app_price = 0.0
 
         try:
@@ -313,7 +313,7 @@ class AutoUpdater:
 
         # optional skip
         if matches and f"{country_id}:{server_id}:{app_id}" in matches:
-            self._logger.info(f"Skipping app {app_name} ({code_field})")
+            logging.info(f"Skipping app {app_name} ({code_field})")
             return
 
         # queue flag‐sets
@@ -365,12 +365,26 @@ class AutoUpdater:
 
         # pre‐compute matches
         PREFIX = "free_numbers"
-        pattern = re.compile(rf"^{PREFIX}:(.+):free$")
-        matches = []
-        async for key in self.redis_client.scan_iter(match=f"{SERVICE_PREFIX}:*:free", count=1_000):
-            m = pattern.match(key)
-            if m:
-                matches.append(m.group(1))
+        match_pattern = f"{PREFIX}:*:free"
+        matches: list[str] = []
+
+        # Use connection pool via async context manager
+        async with self.redis_client as r:
+            cursor = 0
+            # Loop until SCAN returns cursor=0
+            while True:
+                cursor, keys = await r.scan(cursor=cursor, match=match_pattern, count=10_000)
+                if keys:
+                    # Fast parsing via split
+                    matches.extend(
+                        ":".join(key.split(":")[1:-1])
+                        for key in keys
+                        if key.startswith(f"{PREFIX}:") and key.endswith(":free")
+                    )
+                # Give up control so we don't starve the loop
+                await asyncio.sleep(0)
+                if cursor == 0:
+                    break
         print(colored(f"Matches found: {matches}", "green"))
 
         # split into country‐batches of N=1 (change N if you want larger batches)
