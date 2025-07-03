@@ -527,21 +527,16 @@ class ForwardManager:
                 return "📬 <b>Unread Messages:</b>\n" + "\n".join(messages)
         except Exception as e:
             return f"❌ Error checking messages: {str(e)}"
-
+    
     async def _format_and_filter_numbers(
         self,
         raw_input: Union[str, List[str]]
     ) -> List[str]:
         """
-        Step 1: Clean and validate.
-        Accept either a raw text block (str) or a pre-split list of lines.
-        Keep only lines that match 8–15 digits.
+        1) Accept either a raw text block or a list of lines.
+        2) Keep only lines matching 8–15 digits.
         """
-        # Normalize into list of lines
-        if isinstance(raw_input, list):
-            lines = raw_input
-        else:
-            lines = raw_input.splitlines()
+        lines = raw_input if isinstance(raw_input, list) else raw_input.splitlines()
 
         valid_numbers: List[str] = []
         for line in lines:
@@ -557,59 +552,59 @@ class ForwardManager:
         raw_input: Union[str, List[str]]
     ) -> List[Tuple[str, Optional[types.User]]]:
         """
-        Step 2: Parse, chunk, and process.
-        - Normalizes `raw_input` into validated numbers.
-        - Chunks them into up to MAX_NUMBERS_PER_CLIENT per account.
-        - Launches at most MAX_PARALLEL_CLIENTS async tasks.
+        Normalize → chunk → parallel‑check → gather → flatten → return.
         """
-        # 1) normalize & validate
+        # 1) Format & validate
         numbers = await self._format_and_filter_numbers(raw_input)
         if not numbers:
             await self.safe_send(chat_id, "❌ No valid phone numbers found.")
             return []
 
-        # 2) ensure logged-in accounts
+        # 2) Ensure we have logged‑in accounts
         accounts = self.session_manager.get_accounts(user_id)
         if not accounts:
-            await self.safe_send(chat_id, "⚠️ Pʟᴇᴀsᴇ Lᴏɢ‑ɪɴ Fɪʀsᴛ! Tʜᴇɴ Yᴏᴜ Cᴀɴ Usᴇ Nᴜᴍʙᴇʀ Cʜᴇᴄᴋᴇʀ!")
+            await self.safe_send(
+                chat_id,
+                "❌ No active account selected. Please log in first!"
+            )
             return []
 
-        # 3) split into 100-number chunks
-        num_chunks = [
+        # 3) Split into 100‑number chunks
+        chunks = [
             numbers[i : i + MAX_NUMBERS_PER_CLIENT]
             for i in range(0, len(numbers), MAX_NUMBERS_PER_CLIENT)
         ]
 
-        # 4) assign each chunk round-robin to accounts
+        # 4) Round‑robin assign to accounts
         account_chunks = [
             accounts[i % len(accounts)]
-            for i in range(len(num_chunks))
+            for i in range(len(chunks))
         ]
 
-        # 5) cap parallel tasks
-        if len(num_chunks) > MAX_PARALLEL_CLIENTS:
-            num_chunks = num_chunks[:MAX_PARALLEL_CLIENTS]
+        # 5) Cap parallelism
+        if len(chunks) > MAX_PARALLEL_CLIENTS:
+            chunks = chunks[:MAX_PARALLEL_CLIENTS]
             account_chunks = account_chunks[:MAX_PARALLEL_CLIENTS]
 
-        # 6) launch processing
+        # 6) Launch tasks
         tasks = [
             self._process_number_chunk(user_id, acct.account_id, chunk)
-            for acct, chunk in zip(account_chunks, num_chunks)
+            for acct, chunk in zip(account_chunks, chunks)
         ]
 
-        # 7) gather results
+        # 7) Gather
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        # 8) flatten and handle errors
-        final_results: List[Tuple[str, Optional[types.User]]] = []
+        # 8) Flatten & report errors
+        final: List[Tuple[str, Optional[types.User]]] = []
         for idx, res in enumerate(results):
             if isinstance(res, Exception):
                 self.logger.error(f"Error in chunk #{idx}: {res}")
-                await self.safe_send(chat_id, f"❌ Error processing chunk #{idx}: {res}")
+                await self.safe_send(chat_id, f"❌ Error in chunk #{idx}: {res}")
             elif res:
-                final_results.extend(res)
+                final.extend(res)
 
-        return final_results
+        return final
 
     async def _process_number_chunk(
         self,
@@ -617,23 +612,42 @@ class ForwardManager:
         account_id: str,
         numbers: List[str]
     ) -> List[Tuple[str, Optional[types.User]]]:
-        """Process a chunk of numbers with a specific account"""
-        session_path = self._contact_session_file(user_id, account_id)
+        """
+        Checks registration status in batches of BATCH_SIZE using a dedicated session.
+        """
+        session_path = f"./sessions/{user_id}_{account_id}.session"
         try:
             async with TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH) as client:
                 if not await client.is_user_authorized():
                     return []
 
-                results: List[Tuple[str, Optional[types.User]]] = []
+                out: List[Tuple[str, Optional[types.User]]] = []
                 for i in range(0, len(numbers), BATCH_SIZE):
                     batch = numbers[i : i + BATCH_SIZE]
-                    batch_results = await self.check_numbers_registered(client, batch)
-                    results.extend(batch_results)
-                return results
+                    batch_res = await self.check_numbers_registered(client, batch)
+                    out.extend(batch_res)
+                return out
 
         except Exception as e:
-            self.logger.error(f"Error processing chunk for account {account_id}: {e}")
+            self.logger.error(f"Chunk error for account {account_id}: {e}")
             return []
+
+    async def check_numbers_registered(
+        self,
+        client: TelegramClient,
+        numbers: List[str]
+    ) -> List[Tuple[str, Optional[types.User]]]:
+        """
+        Your actual per‑batch check here. Return list of (number, User|None).
+        """
+        results: List[Tuple[str, Optional[types.User]]] = []
+        for num in numbers:
+            try:
+                user = await client.get_entity(num)
+                results.append((num, user if isinstance(user, types.User) else None))
+            except Exception:
+                results.append((num, None))
+        return results
 
     async def start_contact_login(self, user_id: int, chat_id: int):
         """Initiate login flow for contact checker"""
@@ -894,24 +908,24 @@ class ForwardManager:
 
             elif data.startswith(self.CB_LOGOUT + ':'):
                 account_id = data.removeprefix(self.CB_LOGOUT + ":")
-                await self.safe_send(chat_id, account_id)
-                await self.safe_callback_query(call.id, "✅ Logged Out Contact checker session cleared")
                 await self.logout_user(user_id, account_id, force=True)
+
                 accounts = self.session_manager.get_accounts(user_id)
-                
-                if not accounts:
-                    await self.safe_callback_query(call.id, "⚠️ Pʟᴇᴀsᴇ Lᴏɢ‑ɪɴ Fɪʀsᴛ! Tʜᴇɴ Yᴏᴜ Cᴀɴ Usᴇ Nᴜᴍʙᴇʀ Cʜᴇᴄᴋᴇʀ!")
-                    return
-                
+                await self.safe_callback_query(call.id, "✅ Logged Out Contact checker session cleared")
+
                 kb = InlineKeyboardMarkup()
-                for account in accounts:
-                    national_code, national_number = await purchase_manager.format_phone_number(account.phone)
-                    kb.add(InlineKeyboardButton(
-                        f"{account.account_id[:10]} [{national_code} {national_number}]".translate(await small_caps()),
-                        callback_data=f"{self.CB_LOGOUT}:{account.account_id}"
-                    ))
-                kb.add(InlineKeyboardButton("• Aᴅᴅ", callback_data=self.CB_LOGIN), InlineKeyboardButton("🔙 Bᴀᴄᴋ", callback_data=self.CB_BACK))
-                
+                if accounts:
+                    for account in accounts:
+                        national_code, national_number = await purchase_manager.format_phone_number(account.phone)
+                        kb.add(InlineKeyboardButton(
+                            f"{account.account_id[:10]} [{national_code} {national_number}]".translate(await small_caps()),
+                            callback_data=f"{self.CB_LOGOUT}:{account.account_id}"
+                        ))
+                kb.add(
+                    InlineKeyboardButton("• Aᴅᴅ", callback_data=self.CB_LOGIN),
+                    InlineKeyboardButton("🔙 Bᴀᴄᴋ", callback_data=self.CB_BACK)
+                )
+
                 await self.safe_edit_message(
                     call.message.chat.id,
                     call.message.message_id,
@@ -919,7 +933,6 @@ class ForwardManager:
                     parse_mode="HTML",
                     reply_markup=kb
                 )
-                await self.safe_callback_query(call.id)
                 return
 
 
@@ -1247,7 +1260,7 @@ class ForwardManager:
     def should_handle_reply(self, m):
         reply = m.reply_to_message
         return (
-            (reply and reply.message_id in self.filter_states)
+            (reply and reply.get('message_id', None) in self.filter_states)
             or (m.from_user.id in self.login_states)
             or (reply and reply.text and reply.text.startswith("✉️ Cᴏᴅᴇ Sᴇɴᴛ Tᴏ"))
             or (reply and reply.text and reply.text.startswith("🔐 2Fᴀ Rᴇǫᴜɪʀᴇᴅ"))
