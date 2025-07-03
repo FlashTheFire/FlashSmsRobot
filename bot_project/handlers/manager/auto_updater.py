@@ -160,13 +160,9 @@ class DataTransformer:
             }
 
             for server_id, srv_payload in fetched_data.items():
-                with open(f"srv_payload_{server_id}.json", "w") as f:
-                    json.dump(srv_payload, f, indent=4)
                 prov        = self.sms_providers.get(server_id, {})
                 # try with the string key, if that returns falsy (None or empty), try the int key
                 country_data = srv_payload.get(str(record_id)) or srv_payload.get(int(record_id))
-
-                    
                 if not country_data:
                     logging.warning(f"No data for country {record_id} on server {server_id}")
                     continue
