@@ -318,7 +318,7 @@ class HistoryManager:
         # Action row
         buttons: list[InlineKeyboardButton] = []
         if start_date and end_date:
-            buttons.append(InlineKeyboardButton('🗙 Rᴇsᴇᴛ Dᴀᴛᴇs', callback_data='date_picker:CLEAR'))
+            buttons.append(InlineKeyboardButton('✗ Rᴇsᴇᴛ Dᴀᴛᴇs', callback_data='date_picker:CLEAR'))
             buttons.append(InlineKeyboardButton(
                 '🔍 Sᴇᴀʀᴄʜ Hɪsᴛᴏʀʏ', switch_inline_query_current_chat=search_query
             ))
@@ -704,22 +704,20 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
         start, end = state['start'], state['end']
 
         if data == 'OPEN':
+            await bot.answer_callback_query(call.id)
+            await asyncio.gather(
+                bot.send_message(
+                    chat_id=cid,
+                    text=f"{history_manager.HEADER_TEXT_HTML}",
+                    parse_mode='HTML',
+                    reply_markup=mk,
+                    disable_web_page_preview=False
+                ),
+                bot.delete_message(cid, mid)
+            )
             history_manager.SELECTIONS[cid] = {'start': None, 'end': None}
             now = datetime.now()
             mk = await history_manager.create_calendar(now.year, now.month)
-            await bot.send_message(
-                chat_id=cid,
-                text=f"{history_manager.HEADER_TEXT_HTML}",
-                parse_mode='HTML',
-                reply_markup=mk,
-                disable_web_page_preview=False
-            )
-            try:
-                await bot.delete_message(cid, mid)
-            except:
-                pass
-
-            await bot.answer_callback_query(call.id)
         elif data.startswith('DAY:'):
             date_str = data.split(':',1)[1]
             if not start or (start and end):
