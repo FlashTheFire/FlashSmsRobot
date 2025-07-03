@@ -650,7 +650,7 @@ class ForwardManager:
                     disable_web_page_preview=True
                 )
                 await client.disconnect()
-                raise Exception("Login Required")
+                return []
 
             # authorized → do the batch check
             out: List[Tuple[str, Optional[types.User]]] = []
@@ -1071,132 +1071,108 @@ class ForwardManager:
                 await self.safe_callback_query(call.id)
 
         @bot.message_handler(func=self.should_handle_reply)
-        async def handle_replies(message: Message):
+        async def handle_replies(self, message: Message):
+            """Single entry‑point for all tracked replies & login steps."""
             user_id = message.from_user.id
             chat_id = message.chat.id
             text = message.text.strip()
-            reply_msg_id = message.reply_to_message.message_id
+            reply = message.reply_to_message
+            reply_id = reply.message_id if reply else None
 
-            if reply_msg_id in self.filter_states:
-                action = self.filter_states.pop(reply_msg_id)
+            # ——— 1) CALLBACK‑DRIVEN FORMS ———
+            if reply_id in self.filter_states:
+                action = self.filter_states.pop(reply_id)
 
-                if action == self.CB_ADD_APP:
-                    await self._update_list(chat_id, text, self.app_list, "App", True)
-                elif action == self.CB_REMOVE_APP:
-                    await self._update_list(chat_id, text, self.app_list, "App", False)
-                elif action == self.CB_ADD_COUNTRY:
-                    await self._update_list(chat_id, text, self.country_list, "Country", True)
-                elif action == self.CB_REMOVE_COUNTRY:
-                    await self._update_list(chat_id, text, self.country_list, "Country", False)
-                elif action.startswith(self.CB_CHECK_NUM + ":"):
-                    all_numbers = [
-                        num.strip() 
-                        for num in text.splitlines() 
-                        if num.strip().isdigit()
-                    ]
+                # your CB_ADD_APP, CB_REMOVE_APP, etc. here…
+                if action.startswith(self.CB_CHECK_NUM + ":"):
+                    all_numbers = [ln for ln in text.splitlines() if ln.strip().isdigit()]
 
-                    response = []
                     try:
                         main_results = await self.process_numbers(user_id, chat_id, all_numbers)
-                        print(main_results)
-                        for num, user in main_results:
-                            if user:
-                                username = f"@{user.username}" if user.username else "Nᴏ Usᴇʀɴᴀᴍᴇ"
-                                response.append(
-                                    "✅ <code>{}</code> "
-                                    "<b>[<a href='tg://openmessage?user_id={}'>{}</a>]</b>\n"
-                                    "{}".format(
-                                        num,
-                                        user.id,
-                                        "Oᴘᴇɴ",
-                                        f"       • <a href='https://t.me/+{num}'>{username}</a>"
-                                    )
-                                )
                     except Exception as e:
-                        print(e)
-                        await self.safe_send(chat_id, f"<code>{e}</code>")
+                        return await self.safe_send(chat_id, f"<code>{e}</code>")
 
-                        # Send results
+                    response = []
+                    for num, user in main_results:
+                        if user:
+                            uname = f"@{user.username}" if user.username else "Nᴏ Usᴇʀɴᴀᴍᴇ"
+                            response.append(
+                                "✅ <code>{num}</code> <b>[<a href='tg://openmessage?user_id={uid}'>Oᴘᴇɴ</a>]</b>\n"
+                                "       • <a href='https://t.me/+{num}'>{uname}</a>".format(
+                                    num=num, uid=user.id, uname=uname
+                                )
+                            )
+
                     if not response:
-                        response.append("❌ <b>Nᴏ Pʀᴏᴠɪᴅᴇᴅ Nᴜᴍʙᴇʀs Aʀᴇ Rᴇɢɪsᴛᴇʀᴇᴅ</b>")
+                        response = ["❌ <b>No provided numbers are registered</b>"]
+
                     result_text = "\n\n".join(response)
-                    active_account = self.session_manager.get_active_account(user_id)
+                    active = self.session_manager.get_active_account(user_id)
+                    cb_data = f"{self.CB_CHECK_NUM}:{active.account_id or ''}"
+
                     markup = InlineKeyboardMarkup()
-                    markup.add(
-                        InlineKeyboardButton("🔄 Cʜᴇᴄᴋ Mᴏʀᴇ Nᴜᴍʙᴇʀs", callback_data=self.CB_CHECK_NUM + ':' + active_account.account_id or ''),
-                    )
-                    await self.safe_send(
+                    markup.add(InlineKeyboardButton("🔄 Check More Numbers", callback_data=cb_data))
+
+                    return await self.safe_send(
                         chat_id,
                         f"📊 <b>Number Check Results</b>\n\n{result_text}",
                         parse_mode="HTML",
                         reply_markup=markup
                     )
 
-            elif user_id in self.login_states:
-                await self.handle_login_message(message)
+            # ——— 2) LOGIN‑STATE FLOW ———
+            if user_id in self.login_states:
+                return await self.handle_login_message(message)
 
-            elif (message.reply_to_message and message.reply_to_message.text.startswith("✉️ Cᴏᴅᴇ Sᴇɴᴛ Tᴏ")):
+            # ——— 3) “✉️ Code Sent To …” REPLY ———
+            if reply and reply.text.startswith("✉️ Cᴏᴅᴇ Sᴇɴᴛ Tᴏ"):
+                prompt = reply.text
+                m = re.search(r'\b(\d{8,15})\b', prompt)
+                if not m:
+                    return await self.safe_send(chat_id, "❌ <b>Invalid prompt</b>", parse_mode="HTML")
+
+                number = m.group(1)
+                account = self.session_manager.get_account_by_phone(user_id, number)
+                if not account:
+                    return await self.safe_send(
+                        chat_id,
+                        "❌ <b>No account found for that number.</b>",
+                        parse_mode="HTML"
+                    )
+
+                session_path = f"./sessions/{user_id}_{account.account_id}.session"
+                client = TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH)
+                await client.connect()
                 try:
-                    number = None
-                    if user_id == ADMIN_USER_ID:
-                        await self.forward_client.sign_in(self.admin_phone, message.text)
-                        await self.forward_client.disconnect()
-                        await self.start_forward_client()
-                    else:
-                        prompt = message.reply_to_message.text or ""
-                        match = re.search(r'\b\d{8,15}\b', prompt)
-                        if match:
-                            number = match.group()
-                            account = self.session_manager.get_account_by_phone(user_id, number)
-                            if not account:
-                                return await self.safe_send(
-                                chat_id,
-                                "❌ <b>No account found for that number.</b>\n"
-                                "Make sure you’ve added/logged in with that phone first.",
-                                parse_mode="HTML"
-                                )
-                            session_path = f"./sessions/{user_id}_{account.account_id}.session"
-                            async with TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH) as client:
-                                await client.sign_in(number, message.text)
-                                await self.safe_send(chat_id, "✅ <b>Login Successful</b>\nYou can now check numbers", parse_mode="HTML")
-                        else:
-                            await self.safe_send(chat_id, "❌ <b>Invalid Number</b>\nPlease provide a valid number", parse_mode="HTML")
-                except errors.SessionPasswordNeededError:
-                    await self.safe_send(chat_id, f"🔐 <b>2Fᴀ Rᴇǫᴜɪʀᴇᴅ Fᴏʀ {number or self.admin_phone}</b>\nPʟᴇᴀsᴇ Sᴇɴᴅ Yᴏᴜʀ Pᴀssᴡᴏʀᴅ »", parse_mode="HTML", reply_markup=ForceReply(selective=True))
-                    await self.safe_send(chat_id, message)
-                except errors.PhoneCodeInvalidError:
-                    await self.safe_send(chat_id, "❌ <b>Invalid Code</b>\nPlease request a new code", parse_mode="HTML")
-                except Exception as e:
-                    await self.safe_send(chat_id, f"❌ <b>Login Failed</b>\n<code>{str(e)}</code>", parse_mode="HTML")
-            
-            elif (message.reply_to_message and message.reply_to_message.text.startswith("🔐 2Fᴀ Rᴇǫᴜɪʀᴇᴅ Fᴏʀ")):
+                    await client.sign_in(number, text)
+                    await self.safe_send(
+                        chat_id,
+                        "✅ <b>Login Successful</b>\nYou can now check numbers",
+                        parse_mode="HTML"
+                    )
+                finally:
+                    await client.disconnect()
+                return
+
+            # ——— 4) “🔐 2FA Required …” REPLY ———
+            if reply and reply.text.startswith("🔐 2Fᴀ Rᴇǫᴜɪʀᴇᴅ Fᴏʀ"):
+                prompt = reply.text
+                m = re.search(r'\b(\d{8,15})\b', prompt)
+                number = m.group(1) if m else None
+
+                session_path = f"./sessions/{user_id}_{self.login_states[user_id]['account_id']}.session"
+                client = TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH)
+                await client.connect()
                 try:
-                    if user_id == ADMIN_USER_ID:
-                        await self.forward_client.sign_in(self.admin_phone, password=message.text)
-                        await self.start_forward_client()
-                        await self.forward_client.disconnect()
-                        await self.safe_send(chat_id, "✅ <b>Login Successful</b>\nYou can now check numbers", parse_mode="HTML")
-                    else:
-                        prompt = message.reply_to_message.text or ""
-                        match = re.search(r'\b\d{8,15}\b', prompt)
-                        if match:
-                            number = match.group()
-                            account = self.session_manager.get_account_by_phone(user_id, number)
-                            if not account:
-                                return await self.safe_send(
-                                chat_id,
-                                "❌ <b>No account found for that number.</b>\n"
-                                "Make sure you’ve added/logged in with that phone first.",
-                                parse_mode="HTML"
-                                )
-                            session_path = f"./sessions/{user_id}_{account.account_id}.session"
-                            async with TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH) as client:
-                                await client.sign_in(number, password=message.text)
-                                await self.safe_send(chat_id, "✅ <b>Login Successful</b>\nYou can now check numbers", parse_mode="HTML")
-                        else:
-                            await self.safe_send(chat_id, "❌ <b>Invalid Number</b>\nPlease provide a valid number", parse_mode="HTML")
-                except Exception as e:
-                    await self.safe_send(chat_id, f"❌ <b>2FA Failed</b>\n<code>{str(e)}</code>", parse_mode="HTML")
+                    await client.sign_in(number, password=text)
+                    await self.safe_send(
+                        chat_id,
+                        "✅ <b>Login Successful</b>\nYou can now check numbers",
+                        parse_mode="HTML"
+                    )
+                finally:
+                    await client.disconnect()
+                return
 
     async def _update_list(self, chat_id, text, lst, label, add=True):       
         """Update filter lists"""
