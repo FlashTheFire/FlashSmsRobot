@@ -323,9 +323,9 @@ class UserOrderTrackerManagement:
                 order_id=order['order_id'],
                 action="status"
             )
-            print("----------------")
-            print(f"{order['order_id']} - {order['app_name']}")
-            print(status_result)
+            #print("----------------")
+            #print(f"{order['order_id']} - {order['app_name']}")
+            #print(status_result)
             return await self._parse_api_response(status_result.get('sms_waiting', 'ACCESS_DENIED'))
 
 
@@ -546,8 +546,8 @@ class UserOrderTrackerManagement:
                     timeout=5
                 ) as response:
                     response_text = await response.text()
-                    print(f"https://{server_name}/stubs/handler_api.php?api_key={api_key}&action=setStatus&id={order_data['order_id']}&status=3")
-                    print(f"SMS retry response: {response_text}")
+                    #print(f"https://{server_name}/stubs/handler_api.php?api_key={api_key}&action=setStatus&id={order_data['order_id']}&status=3")
+                    #print(f"SMS retry response: {response_text}")
                     if response_next:
                         response_text = response_next
                     # If response_text does not contain ACCESS_RETRY_GET and is not ACCESS_WAITING

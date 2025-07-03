@@ -460,9 +460,13 @@ class AutoUpdater:
                             logging.info(f"Fetching data from {service}...")
                             print(colored(f"Fetching data from {service_name}...", "blue"))
                             data = await service.fetch_all_data()
+                            with open(f"fetch_all_data_{service_name}.json", "w") as f:
+                                json.dump(data, f)
                             logging.info(f"Received data from {service_name}.")
                             if hasattr(ServiceClass, 'select_best_service'):
                                 best_data = ServiceClass.select_best_service(data)
+                                with open(f"select_best_service_{service_name}.json", "w") as f:
+                                    json.dump(best_data, f)
                                 logging.info(f"Selected best data from {service_name}.")
                             else:
                                 best_data = data
@@ -817,12 +821,13 @@ async def periodic_init_update(bot: AsyncTeleBot = None):
     while True:
         try:
             now_ist = datetime.utcnow().replace(tzinfo=pytz.utc).astimezone(IST)
-            if now_ist.minute == 0 and now_ist.hour in (0, 12) and now_ist.hour != last_run_hour:
+            #if now_ist.minute == 0 and now_ist.hour in (0, 12) and now_ist.hour != last_run_hour:
+            if last_run_hour == -1:
                 logging.info(f"Running init + update_data at {now_ist}")
                 await auto_updater.initialize(bot=bot)
                 await auto_updater.update_data()
                 last_run_hour = now_ist.hour
-            await asyncio.sleep(30)
+            await asyncio.sleep(30 * 120)
         except Exception as e:
             logging.error(f"Error in init_update: {e}")
             await asyncio.sleep(60)

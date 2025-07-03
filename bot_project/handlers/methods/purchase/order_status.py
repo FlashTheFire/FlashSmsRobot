@@ -61,7 +61,7 @@ class UserPurchaseStatusManagement:
         try:
             if str(order_id).startswith("987654321"):
                 order_data = (await self.order_manager.get_order_data(order_id))['result']
-                print(colored(f"Order Data: {order_data}", "yellow"))
+                #print(colored(f"Order Data: {order_data}", "yellow"))
                 cancel_result = await self.order_manager.manage_number_order(
                     redis_client=self.redis_client,
                     country_id=order_data['country_id'],
@@ -71,21 +71,20 @@ class UserPurchaseStatusManagement:
                     order_id=order_id,
                     action="cancel"
                 )
-                print(colored(f"Cancel: {cancel_result}", "red"))
+                #print(colored(f"Cancel: {cancel_result}", "red"))
                 if cancel_result['message']:
                     return {"response": True, "text": "<blockquote><b>✅ Nᴜᴍʙᴇʀ Cᴀɴᴄᴇʟʟᴇᴅ Sᴜᴄᴄᴇssғᴜʟʟʏ</b></blockquote>"}
                 return {"response": False, "text": "<blockquote><b>⚠️ Nᴇᴛᴡᴏʀᴋ Eʀʀᴏʀ Wʜɪʟᴇ Cᴀɴᴇʟʟɪɴɢ Tʜᴇ Nᴜᴍʙᴇʀ...</b></blockquote>"}
 
             server_name, api_key = await get_api_info(int(server_id))
             url = f"https://{server_name}/stubs/handler_api.php?api_key={api_key}&action=setStatus&id={order_id}&status=8"
-            print(url)
+            #print(url)
 
             async with aiohttp.ClientSession() as session:
                 async with session.get(url) as response:
                     if response.status == 200:
                         text = await response.text()
                         # Print/log asynchronously if needed.
-                        await asyncio.to_thread(print, f'{text}\n\n{sms_list}')
                         if text in ["NO_ACTIVATION", "WRONG_ACTIVATION_ID"]:
                             if not sms_list or sms_list in ["", "[]"]:
                                 return {"response": True, "text": "<blockquote><b>✅ Nᴜᴍʙᴇʀ Cᴀɴᴄᴇʟʟᴇᴅ Sᴜᴄᴄᴇssғᴜʟʟʏ</b></blockquote>"}
@@ -252,7 +251,7 @@ class UserPurchaseStatusManagement:
         """
         order_data = await self.order_manager.get_order_data(order_id)
         if not order_data.get('response'):
-            print(colored(f"Order Data: {order_data}", "yellow"))
+            #print(colored(f"Order Data: {order_data}", "yellow"))
             error_message = "<blockquote><b>👨🏻‍💻 Bᴀᴅ Aᴄᴛɪᴏɴ Pᴇʀғᴏʀᴍᴇᴅ, Yᴏᴜ Nᴇᴇᴅ Tᴏ Cᴏɴᴛᴀᴄᴛ Cᴜsᴛᴏᴍᴇʀ Sᴜᴘᴘᴏʀᴛ Fʀᴏᴍ Hᴇʟᴘ Dᴇsᴋ...</b></blockquote>"
             await self.bot.send_message(chat_id, error_message, parse_mode='html', reply_to_message_id=message_id)
             return
@@ -304,7 +303,7 @@ class UserPurchaseStatusManagement:
 
         cancel_result = await self.order_manager.cancel_order(order_id, order_user_id, status='CANCELLED')
         if not cancel_result.get('response'):
-            print(colored(f"Cancel Result: {cancel_result}", "yellow"))
+            #print(colored(f"Cancel Result: {cancel_result}", "yellow"))
             await self.bot.send_message(
                 chat_id=order_user_id,
                 text="<blockquote><b>👨🏻‍💻 Bᴀᴅ Aᴄᴛɪᴏɴ Pᴇʀғᴏʀᴍᴇᴅ, Yᴏᴜ Nᴇᴇᴅ Tᴏ Cᴏɴᴛᴀᴄᴛ Cᴜsᴛᴏᴍᴇʀ Sᴜᴘᴘᴏʀᴛ Fʀᴏᴍ Hᴇʟᴘ Dᴇsᴋ...</b></blockquote>",
@@ -379,7 +378,7 @@ class UserPurchaseStatusManagement:
         chat_id = parsed["chat_id"]
         message_id = parsed["message_id"]
         order_id = parsed["order_id"]
-        print(colored(f"Order ID: {order_id}", "yellow"))
+        #print(colored(f"Order ID: {order_id}", "yellow"))
         user_id = parsed["user_id"]
         transaction_key = RedisKeys.transaction_lock_key(user_id, f"cancel:{order_id}")
         async with TransactionGuard(self.redis_client) as guard:
@@ -388,7 +387,7 @@ class UserPurchaseStatusManagement:
             try:
                 await self._process_cancel_flow(input_data, is_callback, chat_id, message_id, order_id, user_id)
             except Exception as e:
-                print(colored(f"Error: {e}", "red"))
+                #print(colored(f"Error: {e}", "red"))
                 error_message = "<blockquote><b>👨🏻‍💻 Bᴀᴅ Aᴄᴛɪᴏɴ Pᴇʀғᴏʀᴍᴇᴅ, Yᴏᴜ Nᴇᴇᴅ Tᴏ Cᴏɴᴛᴀᴄᴛ Cᴜsᴛᴏᴍᴇʀ Sᴜᴘᴘᴏʀᴛ Fʀᴏᴍ Hᴇʟᴘ Dᴇsᴋ...</b></blockquote>"
                 if is_callback:
                     await self.bot.answer_callback_query(input_data.id, error_message.replace("<blockquote>", "").replace("</blockquote>", ""), show_alert=True)

@@ -141,7 +141,7 @@ class UserPurchaseManagement:
         base_q = " ".join(tags) or "*"
 
         # Build the RedisSearch query
-        print(base_q)
+        #print(base_q)
         if price is None:
             q = Query(base_q).sort_by("app_price", asc=True).paging(0, 1)
         else:
@@ -246,7 +246,7 @@ class UserPurchaseManagement:
             if not await self._acquire_transaction_lock(guard, transaction_key, call, progress_msg.message_id):
                 return False
             end_time = time.time()
-            print(f"Transaction lock acquired in {end_time - start_time:.8f} seconds")
+            #print(f"Transaction lock acquired in {end_time - start_time:.8f} seconds")
 
             try:
                 return await self._execute_purchase_steps(call, user_id, app_id, price, 
@@ -295,7 +295,7 @@ class UserPurchaseManagement:
             return False
         
         app_data = await self.fetch_app_data(app_id, country_id, server_id)
-        print(app_data)
+        #print(app_data)
         if not app_data.get("status"):
             raise ValueError(f"🚫 Iɴᴠᴀʟɪᴅ Aᴘᴘʟɪᴄᴀᴛɪᴏɴ Cᴏɴғɪɢᴜʀᴀᴛɪᴏɴ, {app_data.get('message')}")
 
@@ -306,7 +306,7 @@ class UserPurchaseManagement:
             parse_mode="HTML"
         )
         phone_result = await self.fetch_phone_number(server_id, app_data['app_code'], country_id, price=price, operator=app_data['server_name'], app_name=app_data['app_name'], chat_id=chat_id, app_id=app_id)
-        print(json.dumps(phone_result, indent=4))
+        #print(json.dumps(phone_result, indent=4))
         if not phone_result.get("status"):
             # Release lock & notify error
             if phone_result.get("message"):
@@ -382,7 +382,7 @@ class UserPurchaseManagement:
                     )
                     return False
                 except Exception as e:
-                    print(f"Error sending notification: {e}")
+                    #print(f"Error sending notification: {e}")
                     return False
             else:
                 raise False
@@ -419,7 +419,7 @@ class UserPurchaseManagement:
             # Fetch and validate user data
             user_data = await self.aggregator.get_user(user_id)
             if not user_data or not user_data.get("response"):
-                print("Failed to retrieve valid user data for %s", user_id)
+                #print("Failed to retrieve valid user data for %s", user_id)
                 return False
 
             # Convert to Decimal with exactly two decimal places
@@ -521,7 +521,7 @@ class UserPurchaseManagement:
                 action="reserve",
                 user_id=chat_id
             )
-            print("RESERVE →", json.dumps(reserve_result, indent=2))
+            #print("RESERVE →", json.dumps(reserve_result, indent=2))
             if reserve_result["status"] == False:
                 response = reserve_result['message']
             elif reserve_result["status"] == True:
@@ -541,8 +541,8 @@ class UserPurchaseManagement:
 
 
             url = await self._build_api_url(server_name, api_key, api_name, country, price, operator)
-            print(f"🔢 Attempt {attempt + 1}: Fetching Number From Server {server} For {api_name}")
-            print(f"API URL: {url}")
+            #print(f"🔢 Attempt {attempt + 1}: Fetching Number From Server {server} For {api_name}")
+            #print(f"API URL: {url}")
             try:
                 timeout = aiohttp.ClientTimeout(total=5)
                 async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -551,7 +551,7 @@ class UserPurchaseManagement:
                             result = {"status": False, "message": f"HTTP {response.status}"}
                             break
                         response_text = await response.text()
-                        print(f"API Response: {response_text}")
+                        #print(f"API Response: {response_text}")
                         if response_text.startswith("ACCESS_NUMBER:"):
                             result = await self._process_api_response(service_parts, response_text)
                             break
@@ -668,7 +668,7 @@ class UserPurchaseManagement:
         try:
             order_id = await self._send_purchase_confirmation(call, purchase_data, is_new, is_api)
         except Exception as e:
-            print(f"Finalization error: {e}")
+            #print(f"Finalization error: {e}")
             raise e
         return order_id
         
@@ -745,8 +745,8 @@ class UserPurchaseManagement:
 
     async def _send_purchase_confirmation(self, call, data: Dict, is_new: bool = False, is_api: bool = False) -> None:
         """Send purchase confirmation to user"""
-        print("_send_purchase_confirmation")
-        print(data)
+        #print("_send_purchase_confirmation")
+        #print(data)
         order_id = await self.order_manager.create_order_id(user_id=data['user_id'])
         if not order_id.get('response'):
             raise Exception("⚠️ Oʀᴅᴇʀ ID Cʀᴇᴀᴛɪᴏɴ Fᴀɪʟᴇᴅ")
@@ -957,7 +957,7 @@ class UserPurchaseManagement:
             for raw_key in keys:
                 key = raw_key.decode() if isinstance(raw_key, bytes) else raw_key
                 if key not in self._running_schedules:
-                    print(colored(f"Bootstrapping existing schedule: {key}", 'magenta'))
+                    #print(colored(f"Bootstrapping existing schedule: {key}", 'magenta'))
                     self._start_schedule_loop(key)
             if cursor == '0':
                 break
@@ -965,7 +965,7 @@ class UserPurchaseManagement:
         # 3) Subscribe to keyspace pattern for real-time adds
         pubsub = self.redis_client.pubsub()
         await pubsub.psubscribe('__keyspace@0__:schedule:service_data:*')
-        print(colored("Listening for schedule events...", "green"))
+        #print(colored("Listening for schedule events...", "green"))
 
         async for message in pubsub.listen():
             if message['type'] != 'pmessage':
@@ -983,7 +983,7 @@ class UserPurchaseManagement:
             # Extract the actual Redis key
             _, key = channel.split('__keyspace@0__:', 1)
 
-            print(colored(f"New schedule event for key: {key}", "green"))
+            #print(colored(f"New schedule event for key: {key}", "green"))
             self._start_schedule_loop(key)
 
     def _start_schedule_loop(self, key: str):
@@ -996,7 +996,7 @@ class UserPurchaseManagement:
             finally:
                 # Ensure we clear the flag when the loop exits
                 self._running_schedules.discard(key)
-                print(colored(f"Schedule loop ended for {key}", "yellow"))
+                #print(colored(f"Schedule loop ended for {key}", "yellow"))
 
         # Mark as running
         if key not in self._running_schedules:
@@ -1009,7 +1009,7 @@ class UserPurchaseManagement:
         """
         Periodically checks availability and notifies users, with batch balance check every 30 polls.
         """
-        print(colored(f"Starting background check loop for {redis_key}", "green"))
+        #print(colored(f"Starting background check loop for {redis_key}", "green"))
 
         # Retrieve full_data from the first member's schedule:callback_data
         uids = await self.redis_client.zrange(redis_key, 0, 0)
@@ -1018,7 +1018,7 @@ class UserPurchaseManagement:
         first_id = uids[0]
         full_data = json.loads(await self.redis_client.get(f"schedule:callback_data:{first_id}") or '{}')
         if not full_data:
-            print(colored(f"No full_data found for {first_id}", "red"))
+            #print(colored(f"No full_data found for {first_id}", "red"))
             return
         # Counter for batch balance checks
         check_count = 0
@@ -1037,7 +1037,7 @@ class UserPurchaseManagement:
                     try:
                         await self.bot.send_message(int(user_id), message_fn, reply_markup=keyboard, parse_mode="HTML")
                     except Exception as e:
-                        print(colored(f"Failed notifying uid {user_id}: {e}", "red"))
+                        #print(colored(f"Failed notifying uid {user_id}: {e}", "red"))
                         print(f"Failed notifying  uid {user_id}: {e}")
                 try:
                     callback_id = user_full_data['callback_id']
@@ -1080,7 +1080,7 @@ class UserPurchaseManagement:
 
         while True:
             now = int(time.time())
-            print(colored(f"Polling for {full_data['app_name']} (server {full_data['server_id']})…", "green"))
+            #print(colored(f"Polling for {full_data['app_name']} (server {full_data['server_id']})…", "green"))
 
             # Increment our counter and perform batch balance check every 30 iterations
             check_count += 1
@@ -1129,11 +1129,11 @@ class UserPurchaseManagement:
             # 2) Exit if none
             remaining = await self.redis_client.zrange(redis_key, 0, -1)
             if not remaining:
-                print("No more waiting users; exiting loop.")
+                #print("No more waiting users; exiting loop.")
                 return
 
             # 3) Check availability
-            print(colored(f"Checking availability for {full_data['app_name']}…", "yellow"))
+            #print(colored(f"Checking availability for {full_data['app_name']}…", "yellow"))
             try:
                 phone_result = await self.fetch_phone_number(
                     full_data['server_id'],
@@ -1145,7 +1145,7 @@ class UserPurchaseManagement:
                     chat_id=int(first_id.split(':')[0]),
                     app_id=full_data['app_id']
                 )
-                print(colored(f"Fetch result: {phone_result}", "cyan"))
+                #print(colored(f"Fetch result: {phone_result}", "cyan"))
 
                 if phone_result.get('status'):
                     # 4) Process first able user
@@ -1199,7 +1199,7 @@ class UserPurchaseManagement:
                                 ),
                                 message_notify="🟢 Sᴛᴏᴄᴋ Aᴠᴀɪʟᴀʙʟᴇ – Pʀᴏᴄᴇᴇᴅ Tᴏ Bᴜʏ Nᴏᴡ!",
                             )
-                            print(colored(f"User {user_id} has insufficient balance, skipping.", "red"))
+                            #print(colored(f"User {user_id} has insufficient balance, skipping.", "red"))
                     
                     # 5) Notify all remaining
                     post_remaining = await self.redis_client.zrange(redis_key, 0, -1)
@@ -1227,7 +1227,7 @@ class UserPurchaseManagement:
                 print(colored(f"Error during availability check: {e}", "red"))
 
             # 6) Sleep
-            print(colored(f"Sleeping for {full_data.get('poll_interval', 10)} seconds", "blue"))
+            #print(colored(f"Sleeping for {full_data.get('poll_interval', 10)} seconds", "blue"))
             await asyncio.sleep(full_data.get('poll_interval', 10))
 
 
