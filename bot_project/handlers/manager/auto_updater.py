@@ -146,8 +146,6 @@ class DataTransformer:
         return None  # No valid mapping found
 
     def transform_data(self, fetched_data: Dict[str, Any]) -> List[Dict[str, Any]]:
-        with open("fetched_data.json", "w") as f:
-            json.dump(fetched_data, f, indent=4)
         transformed: List[Dict[str, Any]] = []
 
         for record_id, country_info in self.country_map.items():
@@ -204,8 +202,6 @@ class DataTransformer:
 
         # Sort and write out
         transformed.sort(key=lambda x: x["name"] or "")
-        with open("transformed_data.json", "w") as f:
-            json.dump(transformed, f, indent=4)
         return transformed
 
 
