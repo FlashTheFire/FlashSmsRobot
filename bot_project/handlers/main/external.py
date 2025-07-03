@@ -1140,7 +1140,8 @@ class ForwardManager:
                 state = self.login_states[user_id]
                 phone, code_hash = state["phone"], state["phone_code_hash"]
                 account_id       = state["account_id"]
-                login_type       = state.get("type", "")  # New: identify login type
+                login_type       = state.get("type", "")  # Identify login type
+                pending_numbers  = state.get("pending_numbers", [])  # Get stored numbers
 
                 session_path = f"./sessions/{user_id}_{account_id}.session"
                 client = TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH)
@@ -1164,10 +1165,8 @@ class ForwardManager:
                             parse_mode="HTML"
                         )
                         
-                        # Retrieve stored numbers from state
-                        pending_numbers = state.get("pending_numbers", [])
                         if pending_numbers:
-                            # Process the numbers again
+                            # Process the numbers again with the same account
                             results = await self._process_number_chunk(
                                 user_id, account_id, pending_numbers
                             )
@@ -1394,8 +1393,11 @@ class ForwardManager:
         except Exception as e:
             self.logger.exception(f"Failed to answer callback query: {e}")
 
-
     def should_handle_reply(self, m: Message) -> bool:
+        if not m.chat:
+            print(f"Missing 'chat_id' in message: {m}")
+            return False
+
         reply = m.reply_to_message
         rid   = reply.message_id if reply else None
 
