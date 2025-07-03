@@ -1071,7 +1071,7 @@ class ForwardManager:
                 await self.safe_callback_query(call.id)
 
         @bot.message_handler(func=self.should_handle_reply)
-        async def handle_replies(self, message: Message):
+        async def handle_replies(message: Message):
             """Single entry‑point for all tracked replies & login steps."""
             user_id = message.from_user.id
             chat_id = message.chat.id
