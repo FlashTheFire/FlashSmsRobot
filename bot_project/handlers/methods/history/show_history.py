@@ -19,7 +19,7 @@ from telebot.async_telebot import AsyncTeleBot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from datetime import datetime, timedelta, date
 import calendar
-
+from typing import Dict, Optional
 # Local imports
 from utils.redis_manager import redis_manager
 from handlers.manager.operation import (
@@ -85,7 +85,8 @@ class HistoryManager:
         self.aggregator: Optional[FinancialManagement] = None
         self.user_mgr: Optional[UserManagement] = None
         self.redis_client = None
-        self.SELECTIONS: dict[int, dict[str, str | None]] = {}
+        self.SELECTIONS: Dict[int, Dict[str, Optional[str]]] = {}
+
         self.PREVIEW_URL = 'https://i.ibb.co/Xkb6XgFD/20250703-111741.jpg'
         self.HEADER_TEXT_HTML = f'<a href="{self.PREVIEW_URL}">﻿</a><b>Cʜᴏᴏsᴇ Tʜᴇ Dᴀᴛᴇ Fʀᴏᴍ Iᴛ!</b>'
         self.MIN_DATE = datetime.strptime('2024-02-20', '%Y-%m-%d').date()
