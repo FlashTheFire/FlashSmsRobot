@@ -146,7 +146,8 @@ class DataTransformer:
         return None  # No valid mapping found
 
     def transform_data(self, fetched_data: Dict[str, Any]) -> List[Dict[str, Any]]:
-
+        with open("fetched_data.json", "w") as f:
+            json.dump(fetched_data, f, indent=4)
         transformed: List[Dict[str, Any]] = []
 
         for record_id, country_info in self.country_map.items():
@@ -202,6 +203,8 @@ class DataTransformer:
 
         # Sort and write out
         transformed.sort(key=lambda x: x["name"] or "")
+        with open("transformed_data.json", "w") as f:
+            json.dump(transformed, f, indent=4)
         return transformed
 
 
@@ -354,6 +357,7 @@ class AutoUpdater:
         if server_id == 1:
             five_sim = FiveSimManagement()
             server_data = await five_sim.get_servers(country_data["record_id"])
+            print(colored(f"Server Data: {server_data}", "blue"))
         
         for app in server["apps"]:
             await self.queue_app(pipe, app, server_data, country_data, server_id, matches)
@@ -460,13 +464,9 @@ class AutoUpdater:
                             logging.info(f"Fetching data from {service}...")
                             print(colored(f"Fetching data from {service_name}...", "blue"))
                             data = await service.fetch_all_data()
-                            with open(f"fetch_all_data_{service_name}.json", "w") as f:
-                                json.dump(data, f)
                             logging.info(f"Received data from {service_name}.")
                             if hasattr(ServiceClass, 'select_best_service'):
                                 best_data = ServiceClass.select_best_service(data)
-                                with open(f"select_best_service_{service_name}.json", "w") as f:
-                                    json.dump(best_data, f)
                                 logging.info(f"Selected best data from {service_name}.")
                             else:
                                 best_data = data
@@ -486,6 +486,7 @@ class AutoUpdater:
         try:
             data = await self.fetch_transform_data()
             if data:
+                print(colored("Data successfully transformed and stored in Redis", "green"))
                 await self.insert_data(data)
                 logging.info("Data update completed successfully")
         except Exception as e:
