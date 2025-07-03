@@ -1259,9 +1259,16 @@ class ForwardManager:
 
     def should_handle_reply(self, m):
         reply = m.reply_to_message
+        reply_id = reply.message_id if reply else None
+
         return (
-            (reply and reply.get('message_id', None) in self.filter_states)
+            # Was it a reply to a message we’re tracking?
+            (reply_id in self.filter_states)
+
+            # Or is the user mid‑login?
             or (m.from_user.id in self.login_states)
+
+            # Or does the replied‑to text start with one of our prompts?
             or (reply and reply.text and reply.text.startswith("✉️ Cᴏᴅᴇ Sᴇɴᴛ Tᴏ"))
             or (reply and reply.text and reply.text.startswith("🔐 2Fᴀ Rᴇǫᴜɪʀᴇᴅ"))
         )
