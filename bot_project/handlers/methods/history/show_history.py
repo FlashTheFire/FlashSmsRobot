@@ -704,6 +704,8 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
         start, end = state['start'], state['end']
 
         if data == 'OPEN':
+            now = datetime.now()
+            mk = await history_manager.create_calendar(now.year, now.month)
             await bot.answer_callback_query(call.id)
             await asyncio.gather(
                 bot.send_message(
@@ -716,8 +718,6 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
                 bot.delete_message(cid, mid)
             )
             history_manager.SELECTIONS[cid] = {'start': None, 'end': None}
-            now = datetime.now()
-            mk = await history_manager.create_calendar(now.year, now.month)
         elif data.startswith('DAY:'):
             date_str = data.split(':',1)[1]
             if not start or (start and end):
