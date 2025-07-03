@@ -823,8 +823,7 @@ async def periodic_init_update(bot: AsyncTeleBot = None):
     while True:
         try:
             now_ist = datetime.utcnow().replace(tzinfo=pytz.utc).astimezone(IST)
-            #if now_ist.minute == 0 and now_ist.hour in (0, 12) and now_ist.hour != last_run_hour:
-            if last_run_hour == -1:
+            if now_ist.minute == 0 and now_ist.hour in (0, 12) and now_ist.hour != last_run_hour:
                 logging.info(f"Running init + update_data at {now_ist}")
                 await auto_updater.initialize(bot=bot)
                 await auto_updater.update_data()
