@@ -711,9 +711,8 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
                 await bot.delete_message(cid, mid)
             except:
                 pass
-            await bot.edit_message_text(
+            await bot.send_message(
                 chat_id=cid,
-                message_id=mid,
                 text=f"{history_manager.PREVIEW_URL}\n{history_manager.HEADER_TEXT_HTML}",
                 parse_mode='HTML',
                 reply_markup=mk,
