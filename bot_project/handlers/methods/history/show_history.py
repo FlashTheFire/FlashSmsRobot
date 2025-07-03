@@ -22,7 +22,7 @@ from handlers.manager.operation import (
     UserManagement, FinancialManagement, user_mgr
 )
 from handlers.security import RateLimiter
-from utils.functions import small_caps, encode_order_id, decode_barcode_id
+from utils.functions import small_caps, encode_order_id, decode_barcode_id, date_to_unix
 from utils.config import LOADING_GIF
 from redis.commands.search.query import Query
 from functools import partial
@@ -385,16 +385,25 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
     async def handle_history_inline(inline_query):
         user_id = str(inline_query.from_user.id)
         query_parts = inline_query.query.split('#')
+
         try:
             if len(query_parts) < 2:
                 return
+            # Extract main part: e.g., "Hɪsᴛᴏʀʏ-Aʟʟ 2025-06-12|2025-06-20"
+            main_part = query_parts[1].strip()
+            action_and_date = main_part.split(" ", 1)
+
+            history_type = action_and_date[0].split('-')[1].strip()  # e.g. Aʟʟ
+            date_input = action_and_date[1].strip() if len(action_and_date) > 1 else None
+
         except Exception as e:
-            logger.error(f"Error processing query parts: {e}")
+            logger.error(f"Error processing query: {e}")
             return
-        # Extract history type (e.g., "Oʀᴅᴇʀ", "Dᴇᴘᴏsɪᴛ", or "Aʟʟ")
-        history_type = query_parts[1].split('-')[1].strip()
+
         filters = {'user_id': user_id}
 
+
+        # Parse optional user_id and deposit_status filters from inline query
         if '@user_id:' in inline_query.query:
             user_id = inline_query.query.split('@user_id:')[1].split()[0]
             filters['user_id'] = user_id
@@ -402,6 +411,15 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
         if '@deposit_status:' in inline_query.query:
             deposit_status = inline_query.query.split('@deposit_status:')[1].split()[0]
             filters['deposit_status'] = deposit_status.strip('()').split('|')
+
+        # Add recorded_at range filter if date input is present
+        if date_input:
+            try:
+                start_ts, end_ts = date_to_unix(date_input)
+                filters['recorded_at'] = (start_ts, end_ts)
+            except Exception as e:
+                logger.error(f"Invalid date format in inline query: {e}")
+                return
 
         result = await history_manager.search_history(
             history_type=history_type,
