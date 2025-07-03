@@ -76,7 +76,7 @@ RESULT_LIMIT = 10
 
 class HistoryManager:
     """Advanced history management system with Redis integration."""
-    __slots__ = ('bot', 'order_mgr', 'deposit_mgr', 'aggregator', 'redis_client', 'user_mgr')
+    __slots__ = ('bot', 'order_mgr', 'deposit_mgr', 'aggregator', 'redis_client', 'user_mgr', 'SELECTIONS', 'PREVIEW_URL', 'HEADER_TEXT_HTML', 'MIN_DATE')
 
     def __init__(self):
         self.bot: Optional[AsyncTeleBot] = None
