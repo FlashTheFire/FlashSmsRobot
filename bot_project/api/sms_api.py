@@ -565,6 +565,10 @@ class CombinedAPI:
         if path == "/health":
             return await handler(request)
 
+        # 2) Allow /faq with no API key required
+        if path.startswith("/faq"):
+            return await handler(request)
+
         query_key = request.rel_url.query.get("api_key")
         auth_header = request.headers.get("Authorization", "")
         header_key = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else None
@@ -1240,6 +1244,24 @@ class CombinedAPI:
         # Attach middleware
         app.middlewares.append(CombinedAPI.api_key_rate_limit_middleware)
 
+        app.router.add_get("/faq", self.handle_faq_redirect, allow_head=False)
+        #    - serve index.html + any other assets in files/
+        app.router.add_static(
+            prefix="/faq/",
+            path=str(FILES_DIR),
+            show_index=True,
+            follow_symlinks=True
+        )
+
+        # 3) Fonts static files
+        #    referenced in your CSS by ../fonts/…
+        app.router.add_static(
+            prefix="/fonts/",
+            path=str(FONTS_DIR),
+            show_index=False,
+            follow_symlinks=True
+        )
+
         # Healthcheck route
         app.router.add_get("/health", self.handle_health, allow_head=False)
 
@@ -1271,23 +1293,6 @@ class CombinedAPI:
         # V1 legacy route (single handler for all actions)
         app.router.add_route("GET", V1_BASE_PATH, self.handle_v1_sms_api)
         
-        app.router.add_get("/faq", self.handle_faq_redirect, allow_head=False)
-        #    - serve index.html + any other assets in files/
-        app.router.add_static(
-            prefix="/faq/",
-            path=str(FILES_DIR),
-            show_index=True,
-            follow_symlinks=True
-        )
-
-        # 3) Fonts static files
-        #    referenced in your CSS by ../fonts/…
-        app.router.add_static(
-            prefix="/fonts/",
-            path=str(FONTS_DIR),
-            show_index=False,
-            follow_symlinks=True
-        )
 
 
 
