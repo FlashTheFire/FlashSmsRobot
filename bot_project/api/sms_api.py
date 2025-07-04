@@ -32,6 +32,14 @@ from utils.redis_keys import RedisKeys
 from handlers.security import RateLimiter, InputValidator, TransactionGuard
 from handlers.methods.purchase.order_status import purchase_status
 from handlers.manager.operation import order_mgr, user_mgr
+import pathlib
+from aiohttp import web
+
+BASE_DIR     = pathlib.Path(__file__).parent
+FILES_DIR    = BASE_DIR.parent / "files"
+FONTS_DIR    = BASE_DIR.parent / "fonts"
+
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1218,6 +1226,13 @@ class CombinedAPI:
             logger.exception("Error in V1 SMS API handler: %s", exc)
             return web.json_response({"error": "INTERNAL_ERROR"}, status=500)
 
+
+    async def handle_faq_redirect(self, request: web.Request) -> web.Response:
+        """
+        Redirect /faq → /faq/ to serve index.html correctly.
+        """
+        raise web.HTTPFound(location=request.path + "/")
+
     # ─────────────────────────────────────────────────────────────────────────
     # Register all routes on the given `app`
     # ─────────────────────────────────────────────────────────────────────────
@@ -1255,6 +1270,25 @@ class CombinedAPI:
 
         # V1 legacy route (single handler for all actions)
         app.router.add_route("GET", V1_BASE_PATH, self.handle_v1_sms_api)
+        
+        app.router.add_get("/faq", self.handle_faq_redirect, allow_head=False)
+        #    - serve index.html + any other assets in files/
+        app.router.add_static(
+            prefix="/faq/",
+            path=str(FILES_DIR),
+            show_index=True,
+            follow_symlinks=True
+        )
+
+        # 3) Fonts static files
+        #    referenced in your CSS by ../fonts/…
+        app.router.add_static(
+            prefix="/fonts/",
+            path=str(FONTS_DIR),
+            show_index=False,
+            follow_symlinks=True
+        )
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
