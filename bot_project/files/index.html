@@ -5,17 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>FAQ</title>
 
-  <!-- Bootstrap CSS -->
+  <!-- Bootstrap CSS (cache‑busted) -->
   <link
     rel="stylesheet"
-    href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css?v=2"
   />
 
   <style>
     /* === Custom Fonts === */
     @font-face {
       font-family: 'SmallCaps';
-    /* absolute URL into your /fonts/ route */
       src: url('/fonts/CarroisGothicSC-Regular.ttf') format('truetype');
       font-weight: normal;
       font-style: normal;
@@ -135,6 +134,11 @@
 </head>
 
 <body>
+  <!-- Logo (drop logo.png into files/) -->
+  <div class="text-center mb-4">
+    <img src="/faq/logo.png" alt="Flash SMS Logo" style="max-width:200px;" />
+  </div>
+
   <div class="container our-faq-wrapper">
     <div class="faq-title text-center">
       <h2>Frequently Asked Questions</h2>
@@ -314,7 +318,6 @@
               </div>
             </div>
           </div>
-          <!-- Add more items here as needed... -->
         </div>
       </div>
     </div>
