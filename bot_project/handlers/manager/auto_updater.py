@@ -838,12 +838,6 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
     """
 
     # Run one-time update if requested
-    await auto_updater.initialize(bot=bot)
-    await auto_updater.update_data()
-    while True:
-        await asyncio.sleep(3600 * 3600)  # Keep parent task alive
-
-    return
     if update:
         if not hasattr(auto_updater, 'initialized'):
             await auto_updater.initialize(bot=bot)
