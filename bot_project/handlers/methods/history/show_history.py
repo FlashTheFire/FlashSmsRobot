@@ -27,7 +27,7 @@ from handlers.manager.operation import (
     UserManagement, FinancialManagement, user_mgr
 )
 from handlers.security import RateLimiter
-from utils.functions import small_caps, encode_order_id, decode_barcode_id, date_to_unix, large_caps
+from utils.functions import small_caps, encode_order_id, decode_barcode_id, date_to_unix, large_caps, subscript_small_caps
 from utils.config import LOADING_GIF
 from redis.commands.search.query import Query
 from functools import partial
@@ -69,6 +69,16 @@ def time_ago(timestamp: float) -> str:
         years = int(diff // 31536000)
         months = int((diff % 31536000) // 2592000)
         return f"{years}ʏ {months}ᴍᴏ" if months else f"{years}ʏ Aɢᴏ"
+def get_circled_number(n: int) -> str:
+    """Return circled number (Unicode) for integers 1–31."""
+    circled_map = {
+        1: "①", 2: "②", 3: "③", 4: "④", 5: "⑤", 6: "⑥", 7: "⑦", 8: "⑧", 9: "⑨", 10: "⑩",
+        11: "⑪", 12: "⑫", 13: "⑬", 14: "⑭", 15: "⑮", 16: "⑯", 17: "⑰", 18: "⑱", 19: "⑲", 20: "⑳",
+        21: "㉑", 22: "㉒", 23: "㉓", 24: "㉔", 25: "㉕", 26: "㉖", 27: "㉗", 28: "㉘", 29: "㉙", 30: "㉚",
+        31: "㉛"
+    }
+    return circled_map.get(n, str(n))  # fallback to normal number
+
 
 
 RESULT_LIMIT = 10
@@ -277,7 +287,7 @@ class HistoryManager:
         # Header row
         title = f'📅 Calendar – {calendar.month_name[month]} {year}'.translate(await small_caps())
         markup.add(InlineKeyboardButton(text=title, callback_data='date_picker:ignore'))
-        weekdays = ['Mᴏɴ','Tᴜᴇ','Wᴇᴅ','Tʜᴜ','Fʀɪ','Sᴀᴛ','Sᴜᴍ']
+        weekdays = ['Mᴏɴ','Tᴜᴇ','Wᴇᴅ','Tʜᴜ','Fʀɪ','Sᴀᴛ','Sᴜɴ']
         markup.add(*[InlineKeyboardButton(text=d, callback_data='date_picker:ignore') for d in weekdays])
 
         # Days grid
@@ -292,13 +302,16 @@ class HistoryManager:
                     continue
                 ds = f'{year:04d}-{month:02d}-{day:02d}'
                 current = date(year, month, day)
-                if current < self.MIN_DATE or current > today:
+                if current < self.MIN_DATE:
                     text = ' '
+                    cb = 'date_picker:ignore'
+                elif current > today:
+                    text = f'{day}'.translate(await subscript_small_caps())
                     cb = 'date_picker:ignore'
                 else:
                     # selection styling
                     if start_date and not end_date and ds == start_date:
-                        disp = f'⃝{day}'
+                        disp = get_circled_number(int(day))
                     elif start_date and end_date:
                         if ds == start_date:
                             disp = f'»{day}'
@@ -706,7 +719,7 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
         if data == 'OPEN':
             now = datetime.now()
             mk = await history_manager.create_calendar(now.year, now.month)
-            await bot.answer_callback_query(call.id)
+            await bot.answer_callback_query(call.id, text="📅 Cᴀʟᴇɴᴅᴀʀ Iɴɪᴛɪᴀʟɪᴢᴇᴅ – Sᴇʟᴇᴄᴛ Yᴏᴜʀ Dᴀᴛᴇ Rᴀɴɢᴇ")
             await asyncio.gather(
                 bot.send_message(
                     chat_id=cid,
@@ -718,18 +731,19 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
                 bot.delete_message(cid, mid)
             )
             history_manager.SELECTIONS[cid] = {'start': None, 'end': None}
+
         elif data.startswith('DAY:'):
-            date_str = data.split(':',1)[1]
+            date_str = data.split(':', 1)[1]
             if not start or (start and end):
                 state['start'], state['end'] = date_str, None
-                await bot.answer_callback_query(call.id, text=f'Start: {date_str}')
+                await bot.answer_callback_query(call.id, text=f"🟢 Sᴛᴀʀᴛ Dᴀᴛᴇ Sᴇʟᴇᴄᴛᴇᴅ – {date_str}")
             else:
                 if date_str < start:
                     state['start'], date_str = date_str, start
                 state['end'] = date_str
-                await bot.answer_callback_query(call.id, text=f'End: {date_str}')
-            y,m = map(int, date_str.split('-')[:2])
-            mk = await history_manager.create_calendar(y,m,state['start'],state['end'])
+                await bot.answer_callback_query(call.id, text=f"🔴 Eɴᴅ Dᴀᴛᴇ Cᴏɴғɪʀᴍᴇᴅ – {date_str}")
+            y, m = map(int, date_str.split('-')[:2])
+            mk = await history_manager.create_calendar(y, m, state['start'], state['end'])
             await bot.edit_message_text(
                 chat_id=cid,
                 message_id=mid,
@@ -738,10 +752,11 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
                 reply_markup=mk,
                 disable_web_page_preview=False
             )
+
         elif data.startswith('PREV:') or data.startswith('NEXT:'):
-            _, ym = data.split(':',1)
-            y,m = map(int, ym.split('-'))
-            mk = await history_manager.create_calendar(y,m,state.get('start'),state.get('end'))
+            _, ym = data.split(':', 1)
+            y, m = map(int, ym.split('-'))
+            mk = await history_manager.create_calendar(y, m, state.get('start'), state.get('end'))
             await bot.edit_message_text(
                 chat_id=cid,
                 message_id=mid,
@@ -750,7 +765,8 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
                 reply_markup=mk,
                 disable_web_page_preview=False
             )
-            await bot.answer_callback_query(call.id)
+            await bot.answer_callback_query(call.id, text="🔁 Vɪᴇᴡ Uᴘᴅᴀᴛᴇᴅ – Nᴀᴠɪɢᴀᴛɪɴɢ Mᴏɴᴛʜs")
+
         elif data == 'CLEAR':
             history_manager.SELECTIONS[cid] = {'start': None, 'end': None}
             now = datetime.now()
@@ -763,9 +779,10 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
                 reply_markup=mk,
                 disable_web_page_preview=False
             )
-            await bot.answer_callback_query(call.id, text='Cleared')
+            await bot.answer_callback_query(call.id, text="🧹 Sᴇʟᴇᴄᴛɪᴏɴ Rᴇsᴇᴛ – Sᴛᴀʀᴛ Aɢᴀɪɴ Fʀᴇsʜ")
+
         else:
-            await bot.answer_callback_query(call.id)
+            await bot.answer_callback_query(call.id, text="⚠️ Iɴᴠᴀʟɪᴅ Aᴄᴛɪᴏɴ – Pʟᴇᴀsᴇ Tʀʏ Aɢᴀɪɴ")
 
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith("#RᴇғʀᴇsʜMᴇᴛʀɪᴄs"))

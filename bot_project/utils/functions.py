@@ -418,7 +418,12 @@ async def large_caps() -> dict:
         'ᴀʙᴄᴅᴇғɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢ𝟷𝟸𝟹𝟺𝟻𝟼𝟽𝟾𝟿𝟶',
         'abcdefghijklmnopqrstuvwxyz1234567890'
     )
-
+async def subscript_small_caps() -> dict:
+    """Asynchronously returns a translation table for subscript small caps conversion."""
+    return str.maketrans(
+        '1234567890',
+        '¹²³⁴⁵⁶⁷⁸⁹⁰'
+    )
 async def large_nums() -> dict:
     """Returns translation table for large numbers conversion"""
     return str.maketrans(
