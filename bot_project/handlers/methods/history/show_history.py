@@ -98,8 +98,8 @@ class HistoryManager:
         self.SELECTIONS: Dict[int, Dict[str, Optional[str]]] = {}
 
         self.PREVIEW_URL = 'https://i.ibb.co/Xkb6XgFD/20250703-111741.jpg'
-        self.HEADER_TEXT_HTML = f'<a href="{self.PREVIEW_URL}">﻿</a><b>Cʜᴏᴏsᴇ Tʜᴇ Dᴀᴛᴇ Fʀᴏᴍ Iᴛ!</b>'
-        self.MIN_DATE = datetime.strptime('2024-02-20', '%Y-%m-%d').date()
+        self.HEADER_TEXT_HTML = f'<a href="{self.PREVIEW_URL}">📅</a> <b>Sᴇʟᴇᴄᴛ A Dᴀᴛᴇ Fʀᴏᴍ Tʜᴇ Cᴀʟᴇɴᴅᴀʀ Bᴇʟᴏᴡ</b>'
+        self.MIN_DATE = datetime.strptime('2025-02-20', '%Y-%m-%d').date()
 
     async def init_managers(self, order_mgr: OrderManagement, user_mgr: UserManagement, deposit_mgr: DepositManagement, bot: AsyncTeleBot) -> bool:
         """Initialize required components for history handling asynchronously."""
@@ -303,11 +303,11 @@ class HistoryManager:
                 ds = f'{year:04d}-{month:02d}-{day:02d}'
                 current = date(year, month, day)
                 if current < self.MIN_DATE:
-                    text = ' '
-                    cb = 'date_picker:ignore'
+                    text = f'{day}'.translate(await subscript_small_caps())
+                    cb = 'date_picker:NO-PREV'
                 elif current > today:
                     text = f'{day}'.translate(await subscript_small_caps())
-                    cb = 'date_picker:ignore'
+                    cb = 'date_picker:NO-NEXT'
                 else:
                     # selection styling
                     if start_date and not end_date and ds == start_date:
@@ -765,7 +765,7 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
                 reply_markup=mk,
                 disable_web_page_preview=False
             )
-            await bot.answer_callback_query(call.id, text="🔁 Vɪᴇᴡ Uᴘᴅᴀᴛᴇᴅ – Nᴀᴠɪɢᴀᴛɪɴɢ Mᴏɴᴛʜs")
+            await bot.answer_callback_query(call.id, text="🔁 Vɪᴇᴡ Uᴘᴅᴀᴛᴇᴅ – Nᴀᴠɪɢᴀᴛɪɴɢ Mᴏɴᴛʜs.")
 
         elif data == 'CLEAR':
             history_manager.SELECTIONS[cid] = {'start': None, 'end': None}
@@ -779,8 +779,19 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
                 reply_markup=mk,
                 disable_web_page_preview=False
             )
-            await bot.answer_callback_query(call.id, text="🧹 Sᴇʟᴇᴄᴛɪᴏɴ Rᴇsᴇᴛ – Sᴛᴀʀᴛ Aɢᴀɪɴ Fʀᴇsʜ")
-
+            await bot.answer_callback_query(call.id, text="🧹 Sᴇʟᴇᴄᴛɪᴏɴ Rᴇsᴇᴛ – Sᴛᴀʀᴛ Aɢᴀɪɴ Fʀᴇsʜ.")
+        elif data == 'NO-NEXT':
+            await bot.answer_callback_query(
+                call.id,
+                text="📅 Yᴏᴜ Cᴀɴɴᴏᴛ Cʜᴏᴏsᴇ Uᴘᴄᴏᴍɪɴɢ Dᴀᴛᴇs – Sᴇʟᴇᴄᴛ A Vᴀʟɪᴅ Dᴀʏ."
+            )
+        elif data == 'NO-PREV':
+            await bot.answer_callback_query(
+                call.id,
+                text="⏳ Dᴀᴛᴇ Bᴇғᴏʀᴇ Aʟʟᴏᴡᴇᴅ Rᴀɴɢᴇ – Pʟᴇᴀsᴇ Sᴇʟᴇᴄᴛ A Fʀᴏᴍ Dᴀʏ."
+            )
+        elif data == 'ignore':
+            await bot.answer_callback_query(call.id)
         else:
             await bot.answer_callback_query(call.id, text="⚠️ Iɴᴠᴀʟɪᴅ Aᴄᴛɪᴏɴ – Pʟᴇᴀsᴇ Tʀʏ Aɢᴀɪɴ")
 

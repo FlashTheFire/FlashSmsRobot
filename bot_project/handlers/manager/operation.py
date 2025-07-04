@@ -66,7 +66,7 @@ from utils.redis_keys import RedisKeys
 from handlers.manager.operation_lock import  OperationType, AsyncOperationContext, operation_lock_manager
 
 SMS_BOWER_TAX = 1.27
-GRIZZLY_SMS_TAX = 1.208
+GRIZZLY_SMS_TAX = 1.25
 SMS_ACTIVATE_TAX = 1.14
 FIVE_SIM_TAX = 1.12
 
