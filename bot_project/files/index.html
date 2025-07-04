@@ -5,32 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>FAQ</title>
 
-  <!-- Bootstrap CSS (cache‑busted) -->
+  <!-- Bootstrap CSS -->
   <link
     rel="stylesheet"
-    href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css?v=2"
+    href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
   />
 
   <style>
-    /* === Custom Fonts === */
+    /* === Custom FontFace === */
     @font-face {
       font-family: 'SmallCaps';
+      /* absolute URL into your /fonts/ route */
       src: url('/fonts/CarroisGothicSC-Regular.ttf') format('truetype');
       font-weight: normal;
       font-style: normal;
       font-display: swap;
     }
-    @font-face {
-      font-family: 'CarroisGothic';
-      src: url('/fonts/CarroisGothic-Regular.ttf') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-      font-display: swap;
-    }
 
-    /* Apply small‑caps font site‑wide, with a fallback */
+    /* Apply SmallCaps everywhere, falling back to sans-serif */
     * {
-      font-family: 'SmallCaps', 'CarroisGothic', sans-serif;
+      font-family: 'SmallCaps', sans-serif;
       line-height: 1.5;
     }
 
@@ -41,284 +35,314 @@
     }
 
     .our-faq-wrapper {
+      float: left;
+      width: 100%;
+      padding: 90px 0 60px;
       background: #fff;
-      padding: 60px 0;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-      border-radius: 8px;
-    }
-
-    .faq-title h2 {
-      font-size: 2.5rem;
-      margin-bottom: 1rem;
-      color: #242c42;
-      font-family: 'CarroisGothic', sans-serif;
     }
 
     .accordion .card {
       border: none;
-      margin-bottom: 1.5rem;
+      margin-bottom: 30px;
     }
-    .accordion .btn-link {
+
+    .our-faq-wrapper .btn-link {
       display: block;
       width: 100%;
       text-align: left;
       position: relative;
       background: #242c42;
       color: #fff;
-      padding: 0.75rem 1.25rem;
-      font-size: 1.125rem;
+      border-radius: 0;
+      padding: 7px 15px 12px;
+      font-size: 16px;
       font-weight: 600;
       border: none;
-      border-radius: 4px;
-      transition: background 0.3s ease;
+      overflow: hidden;
     }
-    .accordion .btn-link:hover,
-    .accordion .btn-link:focus {
-      background: #1d2438;
+    .our-faq-wrapper .btn-link:hover,
+    .our-faq-wrapper .btn-link:focus {
       text-decoration: none;
     }
-    .accordion .btn-link:after {
-      font-family: FontAwesome;
-      content: '\f068'; /* minus sign */
+    .our-faq-wrapper .btn-link:after {
       position: absolute;
-      right: 1.25rem;
+      content: '\f068';
+      right: 15px;
       top: 50%;
       transform: translateY(-50%);
+      font-family: FontAwesome;
     }
-    .accordion .btn-link.collapsed:after {
-      content: '\f067'; /* plus sign */
+    .our-faq-wrapper .btn-link.collapsed:after {
+      content: '\f067';
     }
-    .accordion .btn-link:before {
-      content: '';
+    .our-faq-wrapper .btn-link:before {
       position: absolute;
-      top: 0;
-      left: 85%;
-      width: 15%;
-      height: 100%;
+      content: '';
       background: #86bc42;
-      transform: skewX(-35deg);
+      transform: skew(-35deg);
+      height: 100%;
+      width: 50%;
+      left: 90%;
+      top: 0;
       transition: left 0.3s ease;
     }
-    .accordion .btn-link:hover:before,
-    .accordion .btn-link:focus:before {
-      left: 75%;
+    .our-faq-wrapper .btn-link:hover:before,
+    .our-faq-wrapper .btn-link:focus:before {
+      left: 80%;
+    }
+
+    .card-header {
+      padding: 0;
+      background: transparent;
+      border-bottom: none;
     }
 
     .card-body {
-      font-size: 1rem;
-      color: #333;
-      padding: 1rem 1.25rem;
-      border-bottom: 2px solid #242c42;
       position: relative;
+      padding: 15px;
+    }
+    .card-body:after {
+      position: absolute;
+      content: '';
+      height: 2px;
+      width: 100%;
+      left: 0;
+      bottom: 0;
+      background: #242c42;
     }
     .card-body:before {
-      content: '';
       position: absolute;
-      bottom: -2px;
-      left: 0;
-      width: 50%;
+      content: '';
       height: 2px;
+      width: 50%;
+      left: 0;
+      bottom: 0;
       background: #86bc42;
-    }
-
-    ul {
-      padding-left: 1.25rem;
-    }
-    ul li {
-      margin-bottom: 0.5rem;
-    }
-    ul li strong {
-      color: #242c42;
+      z-index: 1;
     }
   </style>
 </head>
 
 <body>
-  <!-- Logo (drop logo.png into files/) -->
+  <!-- Logo (ensure files/logo.png exists) -->
   <div class="text-center mb-4">
-    <img src="/faq/logo.png" alt="Flash SMS Logo" style="max-width:200px;" />
+    <img src="/faq/logo.png"
+         alt="Flash SMS Logo"
+         style="max-width:200px; height:auto;" />
   </div>
 
-  <div class="container our-faq-wrapper">
-    <div class="faq-title text-center">
-      <h2>Frequently Asked Questions</h2>
-    </div>
-    <div class="row">
-      <div class="col-lg-6">
-        <div class="accordion" id="accordionOne">
-          <!-- FAQ Item 1 -->
-          <div class="card">
-            <div class="card-header" id="headingOne">
-              <button
-                class="btn btn-link"
-                data-toggle="collapse"
-                data-target="#collapseOne"
-                aria-expanded="true"
-                aria-controls="collapseOne"
-              >
-                How to Buy Numbers
-              </button>
-            </div>
-            <div
-              id="collapseOne"
-              class="collapse show"
-              aria-labelledby="headingOne"
-              data-parent="#accordionOne"
-            >
-              <div class="card-body">
-                <ul>
-                  <li><strong>Search the Service:</strong> Identify the app or website where you need a temporary number.</li>
-                  <li><strong>Select Server:</strong> Choose a server offering your desired service.</li>
-                  <li><strong>Pick Country:</strong> Click the country button to process a number in that locale.</li>
-                  <li><strong>Send SMS:</strong> Send the code request—if it doesn’t appear right away, retry shortly.</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-          <!-- FAQ Item 2 -->
-          <div class="card">
-            <div class="card-header" id="headingTwo">
-              <button
-                class="btn btn-link collapsed"
-                data-toggle="collapse"
-                data-target="#collapseTwo"
-                aria-expanded="false"
-                aria-controls="collapseTwo"
-              >
-                How to Deposit Funds
-              </button>
-            </div>
-            <div
-              id="collapseTwo"
-              class="collapse"
-              aria-labelledby="headingTwo"
-              data-parent="#accordionOne"
-            >
-              <div class="card-body">
-                <ul>
-                  <li><strong>Click Deposit:</strong> Start from your account dashboard.</li>
-                  <li><strong>Choose UPI or TRX:</strong> UPI gives a QR (valid 30 min); TRX works similarly.</li>
-                  <li><strong>Complete Payment:</strong> Within 30 min for UPI, or as instructed for TRX.</li>
-                  <li><strong>Need Help?</strong> Hit Help &amp; Support for any payment errors or timeouts.</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-          <!-- FAQ Item 3 -->
-          <div class="card">
-            <div class="card-header" id="headingThree">
-              <button
-                class="btn btn-link collapsed"
-                data-toggle="collapse"
-                data-target="#collapseThree"
-                aria-expanded="false"
-                aria-controls="collapseThree"
-              >
-                Check Transaction History
-              </button>
-            </div>
-            <div
-              id="collapseThree"
-              class="collapse"
-              aria-labelledby="headingThree"
-              data-parent="#accordionOne"
-            >
-              <div class="card-body">
-                <ul>
-                  <li><strong>Access History:</strong> From main or profile menu.</li>
-                  <li><strong>View Last Week:</strong> See all deposits and orders.</li>
-                  <li><strong>Detailed Filters:</strong> Toggle between deposits &amp; orders for specifics.</li>
-                </ul>
-              </div>
-            </div>
-          </div>
+  <div class="our-faq-wrapper">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-12 text-center pb-3">
+          <h2>FAQ</h2>
         </div>
-      </div>
 
-      <div class="col-lg-6">
-        <div class="accordion" id="accordionTwo">
-          <!-- FAQ Item 4 -->
-          <div class="card">
-            <div class="card-header" id="headingFour">
-              <button
-                class="btn btn-link"
-                data-toggle="collapse"
-                data-target="#collapseFour"
-                aria-expanded="false"
-                aria-controls="collapseFour"
-              >
-                UPI Deposit Issues
-              </button>
-            </div>
-            <div
-              id="collapseFour"
-              class="collapse"
-              aria-labelledby="headingFour"
-              data-parent="#accordionTwo"
-            >
-              <div class="card-body">
-                <ul>
-                  <li><strong>QR Validity:</strong> Must pay within 30 min.</li>
-                  <li><strong>Still Stuck?</strong> Contact Support via Help button.</li>
-                </ul>
+        <div class="col-lg-6">
+          <div class="accordion" id="accordionOne">
+            <!-- FAQ Item 1 -->
+            <div class="card">
+              <div class="card-header" id="headingOne">
+                <h5 class="mb-0">
+                  <button class="btn btn-link"
+                          type="button"
+                          data-toggle="collapse"
+                          data-target="#collapseOne"
+                          aria-expanded="true"
+                          aria-controls="collapseOne">
+                    How to Buy Numbers
+                  </button>
+                </h5>
+              </div>
+              <div id="collapseOne"
+                   class="collapse show"
+                   aria-labelledby="headingOne"
+                   data-parent="#accordionOne">
+                <div class="card-body">
+                  <ul>
+                    <li><strong>Search the Application/Website:</strong> Begin by identifying the service for which you need to buy a number or account.</li>
+                    <li><strong>Click the App Button:</strong> If it’s the same, click the app button.</li>
+                    <li><strong>Choose a Server:</strong> Pick one based on your preference.</li>
+                    <li><strong>Select a Country:</strong> Choose by pricing. Click to process your number.</li>
+                    <li><strong>Send SMS:</strong> Send the code request. If it doesn’t appear immediately, retry later.</li>
+                  </ul>
+                </div>
               </div>
             </div>
-          </div>
-          <!-- FAQ Item 5 -->
-          <div class="card">
-            <div class="card-header" id="headingFive">
-              <button
-                class="btn btn-link collapsed"
-                data-toggle="collapse"
-                data-target="#collapseFive"
-                aria-expanded="false"
-                aria-controls="collapseFive"
-              >
-                TRX Deposit Issues
-              </button>
-            </div>
-            <div
-              id="collapseFive"
-              class="collapse"
-              aria-labelledby="headingFive"
-              data-parent="#accordionTwo"
-            >
-              <div class="card-body">
-                <ul>
-                  <li><strong>Verify TX:</strong> Ensure it completed on-chain.</li>
-                  <li><strong>Help?</strong> Reach out via Support.</li>
-                </ul>
+
+            <!-- FAQ Item 2 -->
+            <div class="card">
+              <div class="card-header" id="headingTwo">
+                <h5 class="mb-0">
+                  <button class="btn btn-link collapsed"
+                          type="button"
+                          data-toggle="collapse"
+                          data-target="#collapseTwo"
+                          aria-expanded="false"
+                          aria-controls="collapseTwo">
+                    How to Deposit Funds
+                  </button>
+                </h5>
+              </div>
+              <div id="collapseTwo"
+                   class="collapse"
+                   aria-labelledby="headingTwo"
+                   data-parent="#accordionOne">
+                <div class="card-body">
+                  <ul>
+                    <li><strong>Click Deposit:</strong> From your account, click the Deposit button.</li>
+                    <li><strong>Choose Payment Method:</strong> Select TRX (TRC20) or UPI.</li>
+                    <li><strong>UPI:</strong> QR code valid for 30 min—complete payment within that time.</li>
+                    <li><strong>TRX:</strong> Follow similar steps to UPI.</li>
+                    <li><strong>Issues?</strong> Click Help & Support for assistance.</li>
+                  </ul>
+                </div>
               </div>
             </div>
-          </div>
-          <!-- FAQ Item 6 -->
-          <div class="card">
-            <div class="card-header" id="headingSix">
-              <button
-                class="btn btn-link collapsed"
-                data-toggle="collapse"
-                data-target="#collapseSix"
-                aria-expanded="false"
-                aria-controls="collapseSix"
-              >
-                Number Ban & Refund
-              </button>
-            </div>
-            <div
-              id="collapseSix"
-              class="collapse"
-              aria-labelledby="headingSix"
-              data-parent="#accordionTwo"
-            >
-              <div class="card-body">
-                <ul>
-                  <li><strong>Auto‑Refund:</strong> After 20 min if no SMS received.</li>
-                  <li><strong>Note:</strong> No refund if SMS has already come through.</li>
-                </ul>
+
+            <!-- FAQ Item 3 -->
+            <div class="card">
+              <div class="card-header" id="headingThree">
+                <h5 class="mb-0">
+                  <button class="btn btn-link collapsed"
+                          type="button"
+                          data-toggle="collapse"
+                          data-target="#collapseThree"
+                          aria-expanded="false"
+                          aria-controls="collapseThree">
+                    Check Transaction History
+                  </button>
+                </h5>
+              </div>
+              <div id="collapseThree"
+                   class="collapse"
+                   aria-labelledby="headingThree"
+                   data-parent="#accordionOne">
+                <div class="card-body">
+                  <ul>
+                    <li><strong>Access History:</strong> From main or profile menu.</li>
+                    <li><strong>View Last Week:</strong> See all deposits and orders.</li>
+                    <li><strong>Detailed Filters:</strong> Toggle between deposits & orders.</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
+        <div class="col-lg-6">
+          <div class="accordion" id="accordionTwo">
+            <!-- FAQ Item 4 -->
+            <div class="card">
+              <div class="card-header" id="heading4">
+                <h5 class="mb-0">
+                  <button class="btn btn-link"
+                          type="button"
+                          data-toggle="collapse"
+                          data-target="#collapse4"
+                          aria-expanded="false"
+                          aria-controls="collapse4">
+                    UPI Deposit Issues
+                  </button>
+                </h5>
+              </div>
+              <div id="collapse4"
+                   class="collapse"
+                   aria-labelledby="heading4"
+                   data-parent="#accordionTwo">
+                <div class="card-body">
+                  <ul>
+                    <li><strong>Validate QR Code:</strong> Pay within the 30‑minute validity.</li>
+                    <li><strong>Contact Support:</strong> Use Help & Support if it persists.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- FAQ Item 5 -->
+            <div class="card">
+              <div class="card-header" id="heading5">
+                <h5 class="mb-0">
+                  <button class="btn btn-link collapsed"
+                          type="button"
+                          data-toggle="collapse"
+                          data-target="#collapse5"
+                          aria-expanded="false"
+                          aria-controls="collapse5">
+                    TRX Deposit Issues
+                  </button>
+                </h5>
+              </div>
+              <div id="collapse5"
+                   class="collapse"
+                   aria-labelledby="heading5"
+                   data-parent="#accordionTwo">
+                <div class="card-body">
+                  <ul>
+                    <li><strong>Verify Transaction:</strong> Ensure it’s completed correctly.</li>
+                    <li><strong>Contact Support:</strong> If it continues, reach out.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- FAQ Item 6 -->
+            <div class="card">
+              <div class="card-header" id="heading6">
+                <h5 class="mb-0">
+                  <button class="btn btn-link collapsed"
+                          type="button"
+                          data-toggle="collapse"
+                          data-target="#collapse6"
+                          aria-expanded="false"
+                          aria-controls="collapse6">
+                    Number Purchase Unavailable
+                  </button>
+                </h5>
+              </div>
+              <div id="collapse6"
+                   class="collapse"
+                   aria-labelledby="heading6"
+                   data-parent="#accordionTwo">
+                <div class="card-body">
+                  <ul>
+                    <li><strong>Retry Later:</strong> New numbers are added regularly.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- FAQ Item 7 -->
+            <div class="card">
+              <div class="card-header" id="heading7">
+                <h5 class="mb-0">
+                  <button class="btn btn-link collapsed"
+                          type="button"
+                          data-toggle="collapse"
+                          data-target="#collapse7"
+                          aria-expanded="false"
+                          aria-controls="collapse7">
+                    Number Ban Issues
+                  </button>
+                </h5>
+              </div>
+              <div id="collapse7"
+                   class="collapse"
+                   aria-labelledby="heading7"
+                   data-parent="#accordionTwo">
+                <div class="card-body">
+                  <ul>
+                    <li><strong>Automatic Refund:</strong> Wait 20 min for auto‑refund if no SMS.</li>
+                    <li><strong>Note:</strong> No refund if SMS has already been received.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- Add more items as needed… -->
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
