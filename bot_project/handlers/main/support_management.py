@@ -1414,15 +1414,27 @@ class AISupportManagement:
         @self.bot.message_handler(func=lambda message: message.reply_to_message)
         async def handle_message(message: Message):
             user_id = str(message.from_user.id)
-            user_input = f"{await process_barcode_from_input(input_string=message.text.strip())}"
+
+            # Get text from message or caption (for media)
+            raw_input = message.text or message.caption
+            if not raw_input:
+                return await self.bot.send_message(
+                    message.chat.id,
+                    "⚠️ Please send text or media with a caption.",
+                    reply_to_message_id=message.message_id
+                )
+
             try:
+                user_input = f"{await process_barcode_from_input(input_string=raw_input.strip())}"
                 response = await self.run_agent(user_id, user_input, message)
+
                 print("-_-_" * 10)
                 print(response)
                 print("-_-_" * 10)
+
                 response = await process_input_from_barcode(response)
-                '''chunks = self.prepare_message_chunks(response, single=True)'''
                 reply_to = message.message_id
+
                 sent = await self.simulate_typing_and_send(
                     message.chat.id,
                     response,
@@ -1432,11 +1444,10 @@ class AISupportManagement:
                 logger.error(f"Error handling message for {user_id}: {e}")
                 await self.bot.send_message(
                     message.chat.id,
-                    "Sorry, something went wrong. Please try again or contact @flashsmsowner for help!",
+                    "❌ Something went wrong. Please try again or contact @flashsmsowner for help!",
                     parse_mode="HTML",
                     reply_to_message_id=message.message_id
                 )
-
 
 
 # ========== INITIALIZATION AND REGISTRATION ==========

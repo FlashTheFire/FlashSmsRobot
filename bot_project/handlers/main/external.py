@@ -54,6 +54,7 @@ from termcolor import colored
 import asyncio
 import logging
 import os
+from cachetools import TTLCache
 import re
 import html
 from typing import List, Dict, Any, Optional, Tuple, Set
@@ -318,8 +319,8 @@ class ForwardManager:
         self.logger.propagate = False
         self.logger.handlers.clear()
         self.login_states: Dict[int, Dict] = {}
-        self.filter_states: Dict[int, str] = {}
-        self.account_states: Dict[int, Dict] = {}
+        self.login_states: TTLCache[int, Dict[str, Any]] = TTLCache(maxsize=None, ttl=300)
+        self.filter_states: TTLCache[int, str]       = TTLCache(maxsize=None, ttl=300)
 
     def _contact_session_file(self, user_id: int, account_id: str) -> str:
         return os.path.join(SESSIONS_DIR, f"contact_{user_id}_{account_id}.session")
@@ -856,7 +857,7 @@ class ForwardManager:
             await self.bot.send_message(message.chat.id, "\n".join(lines), parse_mode="Markdown")
 
 
-        @bot.message_handler(func=lambda message: message.reply_to_message and message.reply_to_message.text.startswith('✍️ Reply with your regex pattern:' and message.from_user.id == ADMIN_USER_ID), content_types=['text'])
+        @bot.message_handler(func=lambda message: message.reply_to_message and message.reply_to_message.text.startswith('✍️ Reply with your regex pattern:') and message.from_user.id == ADMIN_USER_ID, content_types=['text'])
         async def handle_message(message: Message):
             text = message.text or ""
             raw = text.strip('"')
