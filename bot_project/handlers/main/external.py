@@ -290,14 +290,22 @@ class ForwardManager:
         self.redis_client: Optional[RedisManager] = None
         self.patterns = [
             re.compile(r"""
-                ^\s*🔥.*?✨\s*\n+
-                ^\s*⏰\s*Time:\s*(?P<time>[^\n]+)\s*\n+
-                ^\s*🌍\s*Country:\s*(?P<country>[^\n🇦-🇿]+)(?P<flag>[\U0001F1E6-\U0001F1FF]{2})\s*\n+
-                ^\s*⚙️\s*Service:\s*(?P<service>[^\n]+)\s*\n+
-                ^\s*☎️\s*Number:\s*(?P<number>[^\n]+)\s*\n+
-                ^\s*🔑\s*OTP:\s*(?P<otp>[^\n]+)\s*\n+
-                ^\s*📩\s*Full\s*Message:\s*\n(?P<full_message>.*?)(?=(?:\n^🔥|$))
-            """, re.VERBOSE | re.MULTILINE | re.DOTALL)
+                🔥.*?✨\s*                                   # Header
+                \n*
+                ⏰\s*Time:\s*(?P<time>[^\n]+)\s*
+                \n+
+                🌍\s*Country:\s*(?P<country>[^\n]+)(?P<flag>[\U0001F1E6-\U0001F1FF]{2})\s*
+                \n+
+                ⚙️\s*Service:\s*(?P<service>[^\n]+)\s*
+                \n+
+                ☎️\s*Number:\s*(?P<number>[^\n]+)\s*
+                \n+
+                🔑\s*OTP:\s*(?P<otp>[^\n]+)\s*
+                \n+
+                📩\s*Full\s*Message:\s*
+                \n*
+                (?P<full_message>.*?)(?=\n+🔥|\Z)           # Match until next 🔥 or end of string
+            """, re.VERBOSE | re.IGNORECASE | re.MULTILINE | re.DOTALL)
         ]
         # Initialize forward client for admin
         session_path = self._contact_session_file(ADMIN_USER_ID, "admin")
@@ -715,39 +723,36 @@ class ForwardManager:
 
         @bot.channel_post_handler()
         async def otp_handler(msg: Message) -> None:
-            """
-            Handler for OTP channel posts. Parses the message, extracts fields via self.patterns,
-            then sends a Markdown summary back to the chat.
-            """
-            def parse_fields(text: str) -> Optional[Dict[str, Any]]:
-                for pat in self.patterns:
-                    m = pat.search(text)
-                    if not m:
-                        continue
+            # Only process messages from destination channel
 
-                    gd = m.groupdict()
-                    # parse and normalize time if possible
-                    raw_time = gd.get("time", "").strip()
+            def parse_fields(text: str, time: str) -> Optional[Dict[str, Any]]:
+                for pat in self.patterns:
+                    match = pat.search(text)
+
+                    if not match:
+                        return None
+
+                    raw_time = match["time"].strip()
                     try:
                         parsed_time = datetime.strptime(raw_time, "%Y-%m-%d %H:%M:%S")
-                    except (ValueError, TypeError):
-                        parsed_time = raw_time or None
+                    except ValueError:
+                        parsed_time = raw_time
 
                     return {
                         "time": parsed_time,
-                        "country": gd.get("country", "").strip(),
-                        "service": gd.get("service", "").strip(),
-                        "number": gd.get("number", "").strip(),
-                        "otp": gd.get("otp", "").strip(),
+                        "country": match["country"].strip(),
+                        "service": match["service"].strip(),
+                        "number": match["number"].strip(),
+                        "otp": match["otp"].strip(),
                         "amount": "0.49",
-                        "flag": gd.get("flag", "").strip(),
-                        "full_message": self.wrap(gd.get("full_message", "").strip()),
+                        "flag": match["flag"].strip(),
+                        "full_message": self.wrap(match["full_message"].strip()),
+                        "time": time,
                         "number_data": {
-                            "national_code": gd.get("number", "").strip()[:2],
-                            "national_number": gd.get("number", "").strip()[2:]
+                            "national_code": match["number"].strip()[:2],
+                            "national_number": match["number"].strip()[2:]
                         }
                     }
-                return None
 
             def build_message(data: Dict[str, Any], small_cap) -> str:
                 mask = lambda s: s[:4] + "•"*(len(s)-8) + s[-4:]
@@ -826,7 +831,8 @@ class ForwardManager:
                 #print("OTP forwarded successfully:", parsed)
             except Exception as exc:
                 print("Unexpected error in otp_handler:", exc)
-        
+
+
         @self.forward_client.on(events.NewMessage(chats=self.source_chats))
         async def on_new(event):
             """Register bot event handlers"""
@@ -862,7 +868,7 @@ class ForwardManager:
             text = message.text or ""
             raw = text.strip('"')
             try:
-                new_pat = re.compile(raw, re.VERBOSE | re.DOTALL)
+                new_pat = re.compile(raw,  re.VERBOSE | re.IGNORECASE | re.MULTILINE | re.DOTALL)
                 self.patterns.append(new_pat)
                 return await self.bot.send_message(
                     message.chat.id,
