@@ -287,6 +287,17 @@ class ForwardManager:
         self.contact_clients: Dict[int, TelegramClient] = {}
         self.session_manager = SessionManager()
         self.redis_client: Optional[RedisManager] = None
+        self.patterns = [
+            re.compile(r"""
+                ^\s*🔥.*?✨\s*\n+
+                ^\s*⏰\s*Time:\s*(?P<time>[^\n]+)\s*\n+
+                ^\s*🌍\s*Country:\s*(?P<country>[^\n🇦-🇿]+)(?P<flag>[\U0001F1E6-\U0001F1FF]{2})\s*\n+
+                ^\s*⚙️\s*Service:\s*(?P<service>[^\n]+)\s*\n+
+                ^\s*☎️\s*Number:\s*(?P<number>[^\n]+)\s*\n+
+                ^\s*🔑\s*OTP:\s*(?P<otp>[^\n]+)\s*\n+
+                ^\s*📩\s*Full\s*Message:\s*\n(?P<full_message>.*?)(?=(?:\n^🔥|$))
+            """, re.VERBOSE | re.MULTILINE | re.DOTALL)
+        ]
         # Initialize forward client for admin
         session_path = self._contact_session_file(ADMIN_USER_ID, "admin")
         self.forward_client: Optional[TelegramClient] = TelegramClient(
@@ -702,51 +713,40 @@ class ForwardManager:
                 )
 
         @bot.channel_post_handler()
-        async def otp_handler(msg: Message) -> None:
-            # Only process messages from destination channel
-            pattern = re.compile(r"""
-                🔥.*?✨\s*                                      # Flexible header match
-                \n+
-                ⏰\s*Time:\s*(?P<time>[^\n]+)\s*
-                \n+
-                🌍\s*Country:\s*(?P<country>[^\n🇦-🇿]+)(?P<flag>[\U0001F1E6-\U0001F1FF]{2})\s*
-                \n+
-                ⚙️\s*Service:\s*(?P<service>[^\n]+)\s*
-                \n+
-                ☎️\s*Number:\s*(?P<number>[^\n]+)\s*
-                \n+
-                🔑\s*OTP:\s*(?P<otp>[^\n]+)\s*
-                \n+
-                📩\s*Full\s*Message:\s*\n
-                (?P<full_message>.*?)(?=(?:\n🔥|$))              # Match until next 🔥 or end of string
-            """, re.VERBOSE | re.IGNORECASE | re.MULTILINE | re.DOTALL)
+        async def otp_handler(self, msg: Message) -> None:
+            """
+            Handler for OTP channel posts. Parses the message, extracts fields via self.patterns,
+            then sends a Markdown summary back to the chat.
+            """
+            def parse_fields(text: str) -> Optional[Dict[str, Any]]:
+                for pat in self.patterns:
+                    m = pat.search(text)
+                    if not m:
+                        continue
 
-            def parse_fields(text: str, time: str) -> Optional[Dict[str, Any]]:
-                match = pattern.search(text)
-                if not match:
-                    return None
+                    gd = m.groupdict()
+                    # parse and normalize time if possible
+                    raw_time = gd.get("time", "").strip()
+                    try:
+                        parsed_time = datetime.strptime(raw_time, "%Y-%m-%d %H:%M:%S")
+                    except (ValueError, TypeError):
+                        parsed_time = raw_time or None
 
-                raw_time = match["time"].strip()
-                try:
-                    parsed_time = datetime.strptime(raw_time, "%Y-%m-%d %H:%M:%S")
-                except ValueError:
-                    parsed_time = raw_time
-
-                return {
-                    "time": parsed_time,
-                    "country": match["country"].strip(),
-                    "service": match["service"].strip(),
-                    "number": match["number"].strip(),
-                    "otp": match["otp"].strip(),
-                    "amount": "0.49",
-                    "flag": match["flag"].strip(),
-                    "full_message": self.wrap(match["full_message"].strip()),
-                    "time": time,
-                    "number_data": {
-                        "national_code": match["number"].strip()[:2],
-                        "national_number": match["number"].strip()[2:]
+                    return {
+                        "time": parsed_time,
+                        "country": gd.get("country", "").strip(),
+                        "service": gd.get("service", "").strip(),
+                        "number": gd.get("number", "").strip(),
+                        "otp": gd.get("otp", "").strip(),
+                        "amount": "0.49",
+                        "flag": gd.get("flag", "").strip(),
+                        "full_message": self.wrap(gd.get("full_message", "").strip()),
+                        "number_data": {
+                            "national_code": gd.get("number", "").strip()[:2],
+                            "national_number": gd.get("number", "").strip()[2:]
+                        }
                     }
-                }
+                return None
 
             def build_message(data: Dict[str, Any], small_cap) -> str:
                 mask = lambda s: s[:4] + "•"*(len(s)-8) + s[-4:]
@@ -837,6 +837,44 @@ class ForwardManager:
             except (errors.ConnectionSystemEmptyError, errors.AlreadyInConversationError) as e:
                 self.logger.warning(f"Connection issue: {e}")
                 await asyncio.sleep(5)
+
+        @bot.message_handler(commands=['savePattern'], func=lambda m: m.from_user.id == ADMIN_USER_ID)
+        async def handle_save_pattern(message: Message):
+            await self.bot.send_message(
+                message.chat.id,
+                "✍️ Reply with your regex pattern:",
+                reply_markup=ForceReply(selective=False)
+            )
+        @bot.message_handler(commands=['showPattern'], func=lambda m: m.from_user.id == ADMIN_USER_ID)
+        async def list_patterns(message: Message):
+            if not self.patterns:
+                return await self.bot.send_message(message.chat.id, "⚠️ No patterns saved.")
+            lines = ["📌 *Saved Patterns:*", ""]
+            for i, pat in enumerate(self.patterns, 1):
+                snippet = pat.pattern.replace("\n", "\\n")
+                lines.append(f"`{i}. {snippet[:80]}{'...' if len(snippet) > 80 else ''}`")
+            await self.bot.send_message(message.chat.id, "\n".join(lines), parse_mode="Markdown")
+
+
+        @bot.message_handler(func=lambda message: message.reply_to_message and message.reply_to_message.text.startswith('✍️ Reply with your regex pattern:' and message.from_user.id == ADMIN_USER_ID), content_types=['text'])
+        async def handle_message(message: Message):
+            text = message.text or ""
+            raw = text.strip('"')
+            try:
+                new_pat = re.compile(raw, re.VERBOSE | re.DOTALL)
+                self.patterns.append(new_pat)
+                return await self.bot.send_message(
+                    message.chat.id,
+                    f"✅ Pattern added! Now {len(self.patterns)} patterns available."
+                )
+            except re.error as e:
+                return await self.bot.send_message(
+                    message.chat.id,
+                    f"❌ Regex compile error: {e}"
+                )
+
+
+
 
         @bot.callback_query_handler(func=lambda call: call.data in self.cb_list or call.data.startswith(self.CB_SWITCH_ACCOUNT) or call.data.startswith(self.CB_CHECK_NUM + ":") or call.data.startswith(self.CB_LOGOUT + ":"))
         async def handle_callbacks(call: CallbackQuery):
@@ -1241,6 +1279,7 @@ class ForwardManager:
                     await client.disconnect()
 
                 return
+
 
 
     async def _update_list(self, chat_id, text, lst, label, add=True):       
