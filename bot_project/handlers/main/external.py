@@ -1107,142 +1107,47 @@ class ForwardManager:
             if reply_id in self.filter_states:
                 action = self.filter_states.pop(reply_id)
 
-                # Check if it's a number check callback
-                if action.startswith(self.CB_CHECK_NUM + ":"):
-                    all_numbers = [ln for ln in text.splitlines() if ln.strip().isdigit()]
+            # Check if it's a number check callback
+            if action.startswith(self.CB_CHECK_NUM + ":"):
+                all_numbers = [ln for ln in text.splitlines() if ln.strip().isdigit()]
 
-                    try:
-                        main_results = await self.process_numbers(user_id, chat_id, all_numbers)
-                    except Exception as e:
-                        return await self.safe_send(chat_id, f"<code>{e}</code>")
+                try:
+                    main_results = await self.process_numbers(user_id, chat_id, all_numbers)
+                except Exception as e:
+                    return await self.safe_send(chat_id, f"<code>{e}</code>")
 
-                    response = []
-                    for num, user in main_results:
-                        if user:
-                            uname = f"@{user.username}" if user.username else "Nᴏ Usᴇʀɴᴀᴍᴇ"
-                            response.append(
-                                "✅ <code>{num}</code> <b>[<a href='tg://openmessage?user_id={uid}'>Oᴘᴇɴ</a>]</b>\n"
-                                "       • <a href='https://t.me/+{num}'>{uname}</a>".format(
-                                    num=num, uid=user.id, uname=uname
-                                )
+                response = []
+                for num, user in main_results:
+                    if user:
+                        uname = f"@{user.username}" if user.username else "Nᴏ Usᴇʀɴᴀᴍᴇ"
+                        response.append(
+                            "✅ <code>{num}</code> <b>[<a href='tg://openmessage?user_id={uid}'>Oᴘᴇɴ</a>]</b>\n"
+                            "       • <a href='https://t.me/+{num}'>{uname}</a>".format(
+                                num=num, uid=user.id, uname=uname
                             )
+                        )
+                if not response:
+                    response = ["❌ <b>No provided numbers are registered</b>"]
 
-                    if not response:
-                        response = ["❌ <b>No provided numbers are registered</b>"]
+                result_text = "\n\n".join(response)
+                active = self.session_manager.get_active_account(user_id)
+                cb_data = f"{self.CB_CHECK_NUM}:{active.account_id or ''}"
 
-                    result_text = "\n\n".join(response)
-                    active = self.session_manager.get_active_account(user_id)
-                    cb_data = f"{self.CB_CHECK_NUM}:{active.account_id or ''}"
+                markup = InlineKeyboardMarkup()
+                markup.add(InlineKeyboardButton("🔄 Check More Numbers", callback_data=cb_data))
 
-                    markup = InlineKeyboardMarkup()
-                    markup.add(InlineKeyboardButton("🔄 Check More Numbers", callback_data=cb_data))
-
-                    return await self.safe_send(
-                        chat_id,
-                        f"📊 <b>Number Check Results</b>\n\n{result_text}",
-                        parse_mode="HTML",
-                        reply_markup=markup
-                    )
+                return await self.safe_send(
+                    chat_id,
+                    f"📊 <b>Number Check Results</b>\n\n{result_text}",
+                    parse_mode="HTML",
+                    reply_markup=markup
+                )
 
             # ——— 2) LOGIN‑STATE FLOW ———
             if user_id in self.login_states:
                 return await self.handle_login_message(message)
 
 
-            # ——— 3) OTP reply (5‑digit code) — sign_in with code + hash ———
-            if user_id in self.login_states and len(text) == 5 and text.isdigit():
-                state = self.login_states[user_id]
-                phone, code_hash = state["phone"], state["phone_code_hash"]
-                account_id       = state["account_id"]
-                login_type       = state.get("type", "")
-                pending_numbers  = state.get("pending_numbers", [])
-
-                session_path = f"./sessions/{user_id}_{account_id}.session"
-                client = TelegramClient(session_path, CONTACT_API_ID, CONTACT_API_HASH)
-                await client.connect()
-                try:
-                    # pass both code and phone_code_hash
-                    await client.sign_in(
-                        phone,
-                        code=text,
-                        phone_code_hash=code_hash
-                    )
-
-                    # Handle different login types
-                    if login_type == "number_checker":
-                        # For number checker login
-                        await self.safe_send(
-                            chat_id,
-                            "✅ <b>Login Successful</b>\n"
-                            "♻️ <b>Retrying number check...</b>",
-                            parse_mode="HTML"
-                        )
-                        
-                        if pending_numbers:
-                            # Process the numbers again with the same account
-                            results = await self._process_number_chunk(
-                                user_id, account_id, pending_numbers
-                            )
-                            
-                            # Format and send results
-                            response = []
-                            for num, user in results:
-                                if user:
-                                    uname = f"@{user.username}" if user.username else "Nᴏ Usᴇʀɴᴀᴍᴇ"
-                                    response.append(
-                                        "✅ <code>{num}</code> <b>[<a href='tg://openmessage?user_id={uid}'>Oᴘᴇɴ</a>]</b>\n"
-                                        "       • <a href='https://t.me/+{num}'>{uname}</a>".format(
-                                            num=num, uid=user.id, uname=uname
-                                        )
-                                    )
-                            
-                            if not response:
-                                response = ["❌ <b>No provided numbers are registered</b>"]
-                            
-                            result_text = "\n\n".join(response)
-                            await self.safe_send(
-                                chat_id,
-                                f"📊 <b>Number Check Results</b>\n\n{result_text}",
-                                parse_mode="HTML"
-                            )
-                        else:
-                            await self.safe_send(
-                                chat_id,
-                                "✅ <b>Login Successful</b>\n"
-                                "⚠️ <b>No pending numbers found to retry</b>",
-                                parse_mode="HTML"
-                            )
-                    else:
-                        # For normal login
-                        await self.safe_send(
-                            chat_id,
-                            "✅ <b>Login Successful</b>\nYou can now check numbers",
-                            parse_mode="HTML"
-                        )
-
-                    # clear login state
-                    del self.login_states[user_id]
-                except errors.SessionPasswordNeededError:
-                    # move to 2FA branch
-                    await self.bot.send_message(
-                        chat_id,
-                        f"🔐 <b>2FA Required for {phone}</b>\n"
-                        "Please send your account password:",
-                        parse_mode="HTML",
-                        reply_markup=ForceReply(selective=True)
-                    )
-                except Exception as e:
-                    await self.bot.send_message(
-                        chat_id,
-                        f"❌ <b>Login Failed</b>\n<code>{e}</code>",
-                        parse_mode="HTML"
-                    )
-                    del self.login_states[user_id]
-                finally:
-                    await client.disconnect()
-
-                return
-            
             # ——— 4) “✉️ Code Sent To …” — send_code_request() + save hash ———
             if reply and reply.text.startswith("✉️ Cᴏᴅᴇ Sᴇɴᴛ Tᴏ"):
                 # extract the phone
