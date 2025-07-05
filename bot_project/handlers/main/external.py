@@ -713,7 +713,7 @@ class ForwardManager:
                 )
 
         @bot.channel_post_handler()
-        async def otp_handler(self, msg: Message) -> None:
+        async def otp_handler(msg: Message) -> None:
             """
             Handler for OTP channel posts. Parses the message, extracts fields via self.patterns,
             then sends a Markdown summary back to the chat.
