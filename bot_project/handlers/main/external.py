@@ -1107,42 +1107,6 @@ class ForwardManager:
             if reply_id in self.filter_states:
                 action = self.filter_states.pop(reply_id)
 
-            # Check if it's a number check callback
-            if action.startswith(self.CB_CHECK_NUM + ":"):
-                all_numbers = [ln for ln in text.splitlines() if ln.strip().isdigit()]
-
-                try:
-                    main_results = await self.process_numbers(user_id, chat_id, all_numbers)
-                except Exception as e:
-                    return await self.safe_send(chat_id, f"<code>{e}</code>")
-
-                response = []
-                for num, user in main_results:
-                    if user:
-                        uname = f"@{user.username}" if user.username else "Nᴏ Usᴇʀɴᴀᴍᴇ"
-                        response.append(
-                            "✅ <code>{num}</code> <b>[<a href='tg://openmessage?user_id={uid}'>Oᴘᴇɴ</a>]</b>\n"
-                            "       • <a href='https://t.me/+{num}'>{uname}</a>".format(
-                                num=num, uid=user.id, uname=uname
-                            )
-                        )
-                if not response:
-                    response = ["❌ <b>No provided numbers are registered</b>"]
-
-                result_text = "\n\n".join(response)
-                active = self.session_manager.get_active_account(user_id)
-                cb_data = f"{self.CB_CHECK_NUM}:{active.account_id or ''}"
-
-                markup = InlineKeyboardMarkup()
-                markup.add(InlineKeyboardButton("🔄 Check More Numbers", callback_data=cb_data))
-
-                return await self.safe_send(
-                    chat_id,
-                    f"📊 <b>Number Check Results</b>\n\n{result_text}",
-                    parse_mode="HTML",
-                    reply_markup=markup
-                )
-
             # ——— 2) LOGIN‑STATE FLOW ———
             if user_id in self.login_states:
                 return await self.handle_login_message(message)
@@ -1191,6 +1155,51 @@ class ForwardManager:
                     await client.disconnect()
 
                 return
+
+        @bot.message_handler(func=lambda message: message.reply_to_message and message.reply_to_message.text.startswith("📱 Pʜᴏɴᴇ Nᴜᴍʙᴇʀ Vᴇʀɪꜰɪᴄᴀᴛɪᴏɴ"), content_types=['text'])
+        async def handle_num(message: Message):
+            """Single entry‑point for all tracked replies & login steps."""
+            user_id = message.from_user.id
+            chat_id = message.chat.id
+            text = message.text.strip()
+            reply = message.reply_to_message
+            reply_id = reply.message_id if reply else None
+
+            all_numbers = [ln for ln in text.splitlines() if ln.strip().isdigit()]
+
+            try:
+                main_results = await self.process_numbers(user_id, chat_id, all_numbers)
+            except Exception as e:
+                return await self.safe_send(chat_id, f"<code>{e}</code>")
+
+            response = []
+            for num, user in main_results:
+                if user:
+                    uname = f"@{user.username}" if user.username else "Nᴏ Usᴇʀɴᴀᴍᴇ"
+                    response.append(
+                        "✅ <code>{num}</code> <b>[<a href='tg://openmessage?user_id={uid}'>Oᴘᴇɴ</a>]</b>\n"
+                        "       • <a href='https://t.me/+{num}'>{uname}</a>".format(
+                            num=num, uid=user.id, uname=uname
+                        )
+                    )
+            if not response:
+                response = ["❌ <b>No provided numbers are registered</b>"]
+
+            result_text = "\n\n".join(response)
+            active = self.session_manager.get_active_account(user_id)
+            cb_data = f"{self.CB_CHECK_NUM}:{active.account_id or ''}"
+
+            markup = InlineKeyboardMarkup()
+            markup.add(InlineKeyboardButton("🔄 Check More Numbers", callback_data=cb_data))
+
+            return await self.safe_send(
+                chat_id,
+                f"📊 <b>Number Check Results</b>\n\n{result_text}",
+                parse_mode="HTML",
+                reply_markup=markup,
+                reply_to_message_id=reply_id
+            )
+
 
 
 
