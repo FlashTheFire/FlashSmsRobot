@@ -567,7 +567,7 @@ class UserServerManagement:
             print(f"4 Error processing show servers: {e}")
             error_message = "<blockquote><b>👨🏻‍💻Nᴏ Sᴇʀᴠᴇʀs Aᴠᴀɪʟᴀʙʟᴇ.</b>..</blockquote>"
             await self.bot.send_message(user_id, error_message, parse_mode='html')
-
+    
     async def _handle_app_id_inline(
         self,
         inline_query,
@@ -579,7 +579,8 @@ class UserServerManagement:
         try:
             # detect admin vs. user
             is_admin = "#AᴅᴍɪɴAᴘᴘIᴅ:" in inline_query.query
-            page_size = 50
+            # Use limit as page size if provided, otherwise default to 50
+            page_size = int(limit) if limit is not None else 50
             offset = int(inline_query.offset or 0)
 
             # build a cache key unique to this query + params
@@ -592,8 +593,8 @@ class UserServerManagement:
                 + f":sort={sort_by or ''}"
             )
 
-            # ─── 1) Try cache
-            cached = await cache_manager.get(cache_key, CachePrefix.SEARCH)
+            # 1) Try cache
+            cached = await self.cache_manager.get(cache_key, CachePrefix.SEARCH)
             if cached:
                 items = cached.get("items", [])
                 total_count = int(cached.get("total", 0))
@@ -627,7 +628,7 @@ class UserServerManagement:
                 )
                 return
 
-            # ─── 2) No cache: parse query
+            # 2) No cache: parse query
             if not is_admin:
                 parts = inline_query.query.split('#AᴘᴘIᴅ:')[1].split()
             else:
@@ -639,8 +640,8 @@ class UserServerManagement:
             country_data = await self.get_country_data()
 
             # build name/code maps
-            country_names: Dict[str, str] = {}
-            country_codes: Dict[str, str] = {}
+            country_names = {}
+            country_codes = {}
             for cid, info in country_data.items():
                 code = info.get("country_code")
                 name = info.get("country_name")
@@ -668,7 +669,7 @@ class UserServerManagement:
                 return [] if inline_query.id == "tool" else None
 
             # aggregate by country_id
-            country_stats: Dict[str, Any] = {}
+            country_stats = {}
             for srv_id, srv_info in data["servers"].items():
                 try:
                     num = srv_id.rsplit("_", 1)[-1] if "_" in srv_id else srv_id
@@ -679,10 +680,10 @@ class UserServerManagement:
                         if entry is None:
                             cname = country_names.get(cid, "Unknown")
                             country_stats[cid] = [
-                                price,                    # min price
-                                srv_info["total_stock"],  # total stock
-                                {num},                    # servers set
-                                cname                     # country name
+                                price,
+                                srv_info["total_stock"],
+                                {num},
+                                cname
                             ]
                         else:
                             entry[0] = min(entry[0], price)
@@ -704,12 +705,13 @@ class UserServerManagement:
             else:
                 f_cids = list(country_stats.keys())
 
-            # sort and page
+            # sort & page
             f_cids.sort(key=lambda cid: (country_stats[cid][0], country_stats[cid][3]))
             raw_items = []
             results = []
 
-            for cid in f_cids[offset:offset + page_size]:
+            # use updated page_size
+            for cid in f_cids[offset: offset + page_size]:
                 min_price, total_stock, srv_nums, cname = country_stats[cid]
                 servers_sorted = sorted(srv_nums, key=int)
                 disp = (
@@ -724,10 +726,9 @@ class UserServerManagement:
                     f"• Tᴏᴛᴀʟ Sᴛᴏᴄᴋ » {await format_number_to_text(total_stock)}"
                 ).translate(await small_caps())
 
-                if not is_admin:
-                    imc = f"/Buy_{app_id}_{cid}"
-                else:
-                    imc = f"#Sᴇʀᴠɪᴄᴇ|{app_id}|{cid}"
+                imc = (
+                    f"/Buy_{app_id}_{cid}" if not is_admin else f"#Sᴇʀᴠɪᴄᴇ|{app_id}|{cid}"
+                )
 
                 if inline_query.id == "tool":
                     results.append({
@@ -744,7 +745,7 @@ class UserServerManagement:
                         "description": desc,
                         "thumb": country_data[cid]["flag_url"],
                         "input_cmd": imc,
-                        "switch": None  # or set as needed
+                        "switch": None
                     }
                     raw_items.append(item)
                     art = InlineQueryResultArticle(
@@ -761,8 +762,8 @@ class UserServerManagement:
             total_count = len(f_cids)
             next_offset = str(offset + page_size) if total_count > offset + page_size else ""
 
-            # ─── 3) Cache final results
-            await cache_manager.set(
+            # 3) Cache final results
+            await self.cache_manager.set(
                 cache_key,
                 {"items": raw_items, "total": total_count, "ts": time.time()},
                 CachePrefix.SEARCH
@@ -780,7 +781,10 @@ class UserServerManagement:
                 )
 
         except Exception as e:
-            await self.bot.answer_inline_query(inline_query.id, [])
+            # on error, return empty list
+            if hasattr(self.bot, 'answer_inline_query'):
+                await self.bot.answer_inline_query(inline_query.id, [])
+            return
 
     async def get_country_data(self, country_id: str=None) -> dict:
         """Get country data from Redis."""
