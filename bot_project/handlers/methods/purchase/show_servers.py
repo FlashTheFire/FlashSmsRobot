@@ -592,6 +592,8 @@ class UserServerManagement:
                 + f":price={app_price or ''}"
                 + f":limit={limit or ''}"
                 + f":sort={sort_by or ''}"
+                + f":offset={offset or ''}"
+                + f":is_admin={is_admin or ''}"
             )
 
             # 1) Try cache
