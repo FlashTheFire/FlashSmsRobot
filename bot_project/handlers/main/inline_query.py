@@ -26,7 +26,7 @@ from telebot.types import (
     InlineQueryResultArticle,
     CallbackQuery,
 )
-from utils.functions import small_caps
+from utils.functions import small_caps, format_number_to_text
 from utils.config import SERVICE_INDEX, COMMISSION
 from handlers.manager.operation import get_async_logger
 from handlers.security import InputValidator
@@ -174,54 +174,7 @@ class UserSearchManagement:
             return "substring"
         return "other"
 
-    async def format_number_to_text(self, num: float) -> str:
-        """
-        Converts a number into a formatted text string using rounding.
-    
-        Rules:
-          - If num < 100: return "Fᴇᴡ"
-          - If 100 ≤ num < 1000: round the number and return with " Nᴜᴍʙᴇʀ" or " Nᴜᴍʙᴇʀ's"
-          - If 1000 ≤ num < 100000: divide by 1000 and round to one decimal place, then append
-              " Tʜᴏᴜsᴀɴᴅ" (if value is 1) or " Tʜᴏsᴀɴᴅ's" (if greater than 1)
-          - If 100000 ≤ num < 10000000: divide by 100000, round to one decimal, and append " Lᴀᴋʜ" or " Lᴀᴋʜ's"
-          - Otherwise (num ≥ 10000000): divide by 10000000, round to one decimal, and append " Cʀᴏʀᴇ" or " Cʀᴏʀᴇ's"
-        """
-        if num < 100:
-            return "Fᴇᴡ Nᴜᴍʙᴇʀs"
-        elif num < 1000:
-            value = round(num)
-            if value == 1:
-                return f"{value} Nᴜᴍʙᴇʀ"
-            else:
-                return f"{value} Nᴜᴍʙᴇʀs"
-        elif num < 100000:
-            # Thousands range
-            value = round(num / 1000, 1)
-            # If rounding yields a whole number, convert to int
-            if value.is_integer():
-                value = int(value)
-            if int(value) == 1:
-                return f"{value} Tʜᴏsᴀɴᴅ"
-            else:
-                return f"{value} Tʜᴏsᴀɴᴅs"
-        elif num < 10000000:
-            # Lakhs range
-            value = round(num / 100000, 1)
-            if value.is_integer():
-                value = int(value)
-            if int(value) == 1:
-                return f"{value} Lᴀᴋʜ"
-            else:
-                return f"{value} Lᴀᴋʜs"
-        else:
-            # Crores range
-            value = round(num / 10000000, 1)
-            if value.is_integer():
-                value = int(value)
-            if int(value) == 1:
-                return f"{value} Cʀᴏʀᴇ"
-            else:
-                return f"{value} Cʀᴏʀᴇs"
+
 
     async def build_simple_advanced_query(self, user_input: str) -> str:
         """
@@ -562,11 +515,10 @@ class UserSearchManagement:
                     display = f"[{','.join(flags)}{',...' if has_more else ''}]"
 
                     desc = (
-                        f"❯ Starting Price: {lowp:.2f} points\n"
-                        f"• Available in: {display}\n"
-                        f"• Stock: {await self.format_number_to_text(stock)}"
-                    )
-
+                        f"❯ Tʜᴇ Sᴛᴀʀᴛɪɴɢ Pʀɪᴄᴇ Is Oɴʟʏ {str(f'{lowp:.2f}').translate(await small_caps())} Pᴏɪɴᴛ's.\n"
+                        f"• Sᴇʀᴠᴇʀs » {display.translate(await small_caps())}\n"
+                        f"• Tᴏᴛᴀʟ Sᴛᴏᴄᴋ » {await format_number_to_text(stock)}"
+                    ).translate(await small_caps())
                     cmd = f"#Sᴇʀᴠɪᴄᴇ|{app_id}" if is_admin else f"/Buy_{app_id}"
                     switch = "#Sᴇʀᴠɪᴄᴇ " if is_admin else ""
 
@@ -881,7 +833,7 @@ class UserSearchManagement:
         try:
             caps_map = await small_caps()  # small_caps must be defined elsewhere.
             return (
-                f"<u><b>{app_name.title().translate(caps_map)}</b></u> <b>[</b><i>{await self.format_number_to_text(total_stock)}</i><b>]</b>\n "
+                f"<u><b>{app_name.title().translate(caps_map)}</b></u> <b>[</b><i>{await format_number_to_text(total_stock)}</i><b>]</b>\n "
                 f"   <code>❯</code> <i>Sᴛᴀʀᴛɪɴɢ Pʀɪᴄᴇ</i> <b>»</b> "
                 f"<code>💎</code> <code>{f'{lowest_price:.2f}'.translate(caps_map)}</code> \n"
                 f"    <b>•</b> <i>Cʟɪᴄᴋ Tᴏ Sᴇᴇ</i> <b>»</b> <i>/Buy_{app_id}</i>"

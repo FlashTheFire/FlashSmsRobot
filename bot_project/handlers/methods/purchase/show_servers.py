@@ -1,7 +1,7 @@
 from telebot.async_telebot import AsyncTeleBot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, Message, InlineQuery, InlineQueryResultArticle, InputTextMessageContent, InlineQueryResultArticle
 from redis.commands.search.query import Query
-from utils.functions import setup_logger, small_caps, large_caps, country_flag_link
+from utils.functions import setup_logger, small_caps, large_caps, country_flag_link, format_number_to_text
 from utils.cache_manager import cache_manager, CachePrefix
 from utils.redis_manager import redis_manager, RedisManager
 from utils.config import APP_COUNT, SERVICE_INDEX, COMMISSION
@@ -126,7 +126,7 @@ class UserServerManagement:
     ) -> Optional[Dict[str, Any]]:
         try:
             # Construct cache key
-            cache_key = f"{app_id}:{country_id or ''}:{country_name or ''}:{is_inline}:{is_admin}:{app_count or ''}:{app_price or ''}:{limit or ''}:{sort_by or ''}"
+            cache_key = f"{app_id or ''}:{country_id or ''}:{country_name or ''}:{is_inline}:{is_admin}:{app_count or ''}:{app_price or ''}:{limit or ''}:{sort_by or ''}"
             cache_data = await cache_manager.get(cache_key, CachePrefix.COUNTRY)
             if cache_data:
                 return cache_data
@@ -249,7 +249,7 @@ class UserServerManagement:
 
         # 1) Build a cache key
         key_parts = [
-            f"app={app_id}",
+            f"app={app_id or ''}",
             f"cid={country_id or ''}",
             f"ccode={country_code or ''}",
             f"page={page}",
@@ -586,8 +586,8 @@ class UserServerManagement:
             cache_key = (
                 "inline_app:"
                 + inline_query.query
-                + f":count={app_count}"
-                + f":price={app_price}"
+                + f":count={app_count or ''}"
+                + f":price={app_price or ''}"
                 + f":limit={limit or ''}"
                 + f":sort={sort_by or ''}"
             )
@@ -719,9 +719,9 @@ class UserServerManagement:
 
                 price_pts = float(min_price) * float(COMMISSION)
                 desc = (
-                    f"❯ Tʜᴇ Sᴛᴀʀᴛɪɴɢ Pʀɪᴄᴇ Is Oɴʟʏ {price_pts:.2f} Pᴏɪɴᴛ's.\n"
-                    f"• Sᴇʀᴠᴇʀs » {disp}\n"
-                    f"• Tᴏᴛᴀʟ Sᴛᴏᴄᴋ » {total_stock}"
+                    f"❯ Tʜᴇ Sᴛᴀʀᴛɪɴɢ Pʀɪᴄᴇ Is Oɴʟʏ {str(f'{price_pts:.2f}').translate(await small_caps())} Pᴏɪɴᴛ's.\n"
+                    f"• Sᴇʀᴠᴇʀs » {disp.translate(await small_caps())}\n"
+                    f"• Tᴏᴛᴀʟ Sᴛᴏᴄᴋ » {await format_number_to_text(total_stock)}"
                 ).translate(await small_caps())
 
                 if not is_admin:

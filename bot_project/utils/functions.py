@@ -430,6 +430,54 @@ async def large_nums() -> dict:
         '𝟷𝟸𝟹𝟺𝟻𝟼𝟽𝟾𝟿𝟶',
         '1234567890'
     )
+async def format_number_to_text(num: float) -> str:
+    """Converts a number into a formatted text string using rounding.
+
+    Rules:
+    - If num < 100: return "Fᴇᴡ"
+    - If 100 ≤ num < 1000: round the number and return with " Nᴜᴍʙᴇʀ" or " Nᴜᴍʙᴇʀ's"
+    - If 1000 ≤ num < 100000: divide by 1000 and round to one decimal place, then append
+        " Tʜᴏᴜsᴀɴᴅ" (if value is 1) or " Tʜᴏsᴀɴᴅ's" (if greater than 1)
+    - If 100000 ≤ num < 10000000: divide by 100000, round to one decimal, and append " Lᴀᴋʜ" or " Lᴀᴋʜ's"
+    - Otherwise (num ≥ 10000000): divide by 10000000, round to one decimal, and append " Cʀᴏʀᴇ" or " Cʀᴏʀᴇ's"
+    """
+    if num < 100:
+        return "Fᴇᴡ Nᴜᴍʙᴇʀs"
+    elif num < 1000:
+        value = round(num)
+        if value == 1:
+            return f"{value} Nᴜᴍʙᴇʀ"
+        else:
+            return f"{value} Nᴜᴍʙᴇʀs"
+    elif num < 100000:
+        # Thousands range
+        value = round(num / 1000, 1)
+        # If rounding yields a whole number, convert to int
+        if value.is_integer():
+            value = int(value)
+        if int(value) == 1:
+            return f"{value} Tʜᴏsᴀɴᴅ"
+        else:
+            return f"{value} Tʜᴏsᴀɴᴅs"
+    elif num < 10000000:
+        # Lakhs range
+        value = round(num / 100000, 1)
+        if value.is_integer():
+            value = int(value)
+        if int(value) == 1:
+            return f"{value} Lᴀᴋʜ"
+        else:
+            return f"{value} Lᴀᴋʜs"
+    else:
+        # Crores range
+        value = round(num / 10000000, 1)
+        if value.is_integer():
+            value = int(value)
+        if int(value) == 1:
+            return f"{value} Cʀᴏʀᴇ"
+        else:
+            return f"{value} Cʀᴏʀᴇs"
+
 
 async def get_sms_text_by_code(order_id: str, sms: str, server_id: int) -> Optional[str]:
     """
