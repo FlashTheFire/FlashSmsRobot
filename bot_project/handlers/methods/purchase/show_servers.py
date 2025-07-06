@@ -568,6 +568,7 @@ class UserServerManagement:
             error_message = "<blockquote><b>👨🏻‍💻Nᴏ Sᴇʀᴠᴇʀs Aᴠᴀɪʟᴀʙʟᴇ.</b>..</blockquote>"
             await self.bot.send_message(user_id, error_message, parse_mode='html')
     
+    
     async def _handle_app_id_inline(
         self,
         inline_query,
@@ -594,7 +595,7 @@ class UserServerManagement:
             )
 
             # 1) Try cache
-            cached = await self.cache_manager.get(cache_key, CachePrefix.SEARCH)
+            cached = await cache_manager.get(cache_key, CachePrefix.SEARCH)
             if cached:
                 items = cached.get("items", [])
                 total_count = int(cached.get("total", 0))
@@ -763,7 +764,7 @@ class UserServerManagement:
             next_offset = str(offset + page_size) if total_count > offset + page_size else ""
 
             # 3) Cache final results
-            await self.cache_manager.set(
+            await cache_manager.set(
                 cache_key,
                 {"items": raw_items, "total": total_count, "ts": time.time()},
                 CachePrefix.SEARCH
