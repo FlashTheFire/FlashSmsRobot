@@ -36,7 +36,7 @@ from urllib.parse import quote
 
 # Local imports
 from utils.redis_keys import RedisKeys 
-from utils.functions import convert_rub_to_usd, get_api_info, AfterMin, small_caps, convert_usd_to_rub, convert_rub_to_usd
+from utils.functions import convert_rub_to_usd, get_api_info, AfterMin, small_caps, convert_rub_to_usd
 from handlers.manager.operation import FinancialManagement, UserManagement, OrderManagement
 from utils.cache_manager import cache_manager, CachePrefix
 from utils.config import SERVICE_INDEX

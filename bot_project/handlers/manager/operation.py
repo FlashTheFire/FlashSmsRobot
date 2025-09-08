@@ -69,6 +69,7 @@ SMS_BOWER_TAX = 1.27
 GRIZZLY_SMS_TAX = 1.25
 SMS_ACTIVATE_TAX = 1.14
 FIVE_SIM_TAX = 1.12
+SMS_HUB_TAX = 1.12
 
 # ---------------- Global Constants ----------------
 ORDER_INFO_INDEX = "order_index"
@@ -2646,7 +2647,7 @@ class SmsHubManagement:
                         if candidates
                         else min(server_items, key=lambda x: x[0])
                     )
-                    services[service] = {f"{convert_usd_to_rub(best_server[0]):.8f}": str(best_server[1])}
+                    services[service] = {f"{convert_usd_to_rub(best_server[0], sms_tax=SMS_HUB_TAX):.8f}": str(best_server[1])}
                 except Exception as e:
                     logging.error(f"Error selecting best server for country '{country_id}', service '{service}': {e}")
         return data
@@ -2733,9 +2734,9 @@ class GrizzlySmsManagement:
                                 .replace("gr_", "")
                                 .replace("_", "")
                                 .replace(" ", ""))
-                cost = round(float(details.get("cost", 0)) * float(GRIZZLY_SMS_TAX), 4)
+                cost = round(float(details.get("cost", 0)), 4) #* float(GRIZZLY_SMS_TAX), 4)
                 count = details.get("count", 0)
-                updated_services[service_name] = {f"{cost:.4f}": str(count)}
+                updated_services[service_name] = {f"{convert_usd_to_rub(cost, sms_tax=GRIZZLY_SMS_TAX):.8f}": str(count)}
             formatted[country_id] = updated_services
         return formatted
 class SmsBowerManagement:
@@ -2818,9 +2819,9 @@ class SmsBowerManagement:
         for country_id, services in data.items():
             updated_services = {}
             for service, details in services.items():
-                cost = round(float(details.get("cost", 0)) * float(SMS_BOWER_TAX), 4)
+                cost = round(float(details.get("cost", 0)), 4) #* float(SMS_BOWER_TAX), 4)
                 count = details.get("count", 0)
-                updated_services[service] = {f"{cost:.4f}": str(count)}
+                updated_services[service] = {f"{convert_usd_to_rub(cost, sms_tax=SMS_BOWER_TAX):.8f}": str(count)}
             data[country_id] = updated_services
         return data
 class VakSmsManagement:
@@ -3089,5 +3090,5 @@ class SmsActivateManagement:
             for service, details in services.items():
                 cost = float(details.get("cost", 0))
                 count = details.get("count", 0)
-                services[service] = {f"{convert_usd_to_rub(cost):.8f}": str(count)}
+                services[service] = {f"{convert_usd_to_rub(cost, sms_tax=SMS_ACTIVATE_TAX):.8f}": str(count)}
         return data

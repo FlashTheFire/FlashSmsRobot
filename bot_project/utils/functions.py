@@ -211,16 +211,15 @@ async def format_currency(amount: Union[float, int], currency: str = "INR") -> s
         return f"${amount:,.2f}"
     else:
         return f"{amount:,.2f} {currency}"
-def convert_usd_to_rub(amount_usd, exchange_rate=100, tax_rate=COMMISSION):
+def convert_usd_to_rub(amount_usd, exchange_rate=100, sms_tax=1, tax_rate=COMMISSION):
     """Converts USD to RUB, applying the given exchange rate and tax rate."""
-    from handlers.manager.operation import SMS_ACTIVATE_TAX
-    return round(float(amount_usd) * exchange_rate * float(tax_rate) * float(SMS_ACTIVATE_TAX), 8)
+    return round(float(amount_usd) * float(exchange_rate) * float(sms_tax) * float(tax_rate), 8)
 
 
-def convert_rub_to_usd(amount_rub, exchange_rate=100, tax_rate=COMMISSION):
+def convert_rub_to_usd(amount_rub, exchange_rate=100, sms_tax=1, tax_rate=COMMISSION):
     """Converts RUB to USD, applying the given exchange rate and tax rate."""
     from handlers.manager.operation import SMS_ACTIVATE_TAX
-    return round(float(amount_rub) / exchange_rate, 8)
+    return round(float(amount_rub) / float(exchange_rate) / float(tax_rate), 8)
 
 
 
