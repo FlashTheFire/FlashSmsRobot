@@ -269,7 +269,13 @@ SYSTEM_PROMPT = (
 client = AsyncOpenAI(
     api_key=API_KEY,
     base_url=API_BASE_URL)
-encoding = tiktoken.encoding_for_model(MODEL)
+
+try:
+    encoding = tiktoken.encoding_for_model(MODEL)
+except KeyError:
+    # fallback for unknown model names
+    encoding = tiktoken.get_encoding("cl100k_base")
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] [%(name)s] %(message)s",
