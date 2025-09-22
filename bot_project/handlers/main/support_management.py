@@ -35,7 +35,7 @@ from utils.config import COMMISSION, ADMIN_ID
 
 # ========== CONFIGURATION ==========
 MODEL = "r1-1776" #"gpt-4.1-mini" #"gpt-3.5-turbo-0125" #"misnousreseamistralai/ministral-3b" #"nousreseamistralai/ministral-3b" # mistralai/mistral-7b-instruct
-API_BASE_URL = "https://api.perplexity.ai/chat/completions" #"https://api.chatanywhere.org/v1" #f"https://api.pawan.krd/{MODEL}/v1"
+API_BASE_URL = "https://api.chatanywhere.org/v1" #"https://api.perplexity.ai/chat/completions" # #f"https://api.pawan.krd/{MODEL}/v1"
 API_KEY = "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" #"sk-IkyCfTbU4TmPOyfLokASErmsa0M3GsV9zQll8khbzfRPja71" #"sk-E9xZN1IthoToIj4YzsmJWWCB9HW8svT1mVEQeDXspOH3x0mK" # #"sk-nsYJOvr9jXMlOrGkcDi8bHrnYYMkj0TuYEA10VDaCHMKNQrX" #
 MAX_HISTORY_TOKENS = 4096
 RESERVE_FOR_REPLY = 524
