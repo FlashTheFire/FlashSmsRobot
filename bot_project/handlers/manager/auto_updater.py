@@ -838,7 +838,7 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
     """
 
     # Run one-time update if requested
-    if bot:
+    if update:
         if not hasattr(auto_updater, 'initialized'):
             await auto_updater.initialize(bot=bot)
             redis_client = await redis_manager.get_client()
@@ -847,10 +847,10 @@ async def periodic_update(update: bool = False, bot: AsyncTeleBot = None):
             if len(keys) == 0:
                 await auto_updater.recover_data(url=URL)
                 logging.info("Ran one-time initial update")
-            await auto_updater.update_data()
+                await auto_updater.update_data()
 
-            auto_updater.initialized = True
-            logging.info("Ran one-time save cycle")
+                auto_updater.initialized = True
+                logging.info("Ran one-time save cycle")
 
 
     # Launch tasks in background

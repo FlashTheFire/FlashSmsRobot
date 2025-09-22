@@ -242,6 +242,8 @@ class UserWalletManagement:
             
             if user_image_path and os.path.exists(user_image_path):
                 await self._add_profile_image(landscape_img, user_image_path)
+            else:
+                print("User image not found or does not exist.")
 
             draw = ImageDraw.Draw(landscape_img)
             text = f"Balance: {balance:.0f}\nDeposit: {deposit:.0f}\nSpend: {spend:.0f}"
@@ -265,9 +267,13 @@ class UserWalletManagement:
         try:
             circular_img = await self._process_profile_image(profile_path)
             base_image.paste(circular_img, (275, 168), circular_img)
+            
+
+            base_image.paste(circular_img, (500, 500), circular_img)
         except Exception as e:
-            pass
-            #loggging.error(f"Profile image processing error: {e}")
+            import traceback
+            traceback.print_exc()
+            print(f"Profile image processing error: {e}")
 
     async def _process_profile_image(self, image_path: str) -> Image.Image:
         """Process user profile image into circular mask asynchronously"""
@@ -280,6 +286,7 @@ class UserWalletManagement:
             draw.ellipse((0, 0, size, size), fill=255)
             circular_img = Image.new("RGBA", (size, size))
             circular_img.paste(user_img, (0, 0), mask)
+            print("Profile image processed successfully")
             return circular_img
         except Exception as e:
             #loggging.error(f"Profile image processing error: {e}")
