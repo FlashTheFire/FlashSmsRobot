@@ -3,11 +3,19 @@ import logging
 from asyncio import gather
 
 from telebot.async_telebot import AsyncTeleBot
-from telebot.types import InputMediaVideo, Message
-from utils.functions import create_keyboard, encode_base62  # assumed async
+from telebot.types import (
+    InlineQueryResultArticle,
+    InputTextMessageContent,
+)
+from datetime import datetime
+import time
+import html
+from telebot.types import InputMediaVideo, Message, InlineQuery
+from utils.functions import create_keyboard, encode_base62, time_ago  # assumed async
 from utils.redis_manager import redis_manager
 from handlers.manager.operation import UserManagement, OrderManagement
 from utils.config import LOADING_GIF
+
 
 
 class ReferManagement:
@@ -238,8 +246,126 @@ class ReferManagement:
                 self.handle_referral_link_callback,
                 func=lambda call: call.data == "USER:REFFERAL:LINK"
             )
+
         except Exception as e:
             logging.exception("Error registering handlers: %s", e)
+
+    async def handle_referrals_inline(self, inline_query: InlineQuery):
+        """
+        Inline results for referrals.
+        Trigger: "#Yᴏᴜʀ-Rᴇꜰᴇʀʀᴀʟ"
+        Shows summary + list of referred users from zset:
+            key = user_data:{referrer_id}:profile:reffer
+            member = referred_user_id, score = epoch seconds
+        """
+        try:
+            
+            referrer_id = str(inline_query.from_user.id)
+            offset = int(inline_query.offset or 0)
+            start = offset
+            end = offset + 10 - 1
+
+            zkey = f"user_data:{referrer_id}:profile:reffer"
+
+            # fetch referrals newest first
+            raw = await redis_manager.redis_client.zrevrange(zkey, start, end, withscores=True)
+            # total count
+            total_referrals = int(await redis_manager.redis_client.zcard(zkey) or 0)
+
+            inline_results = []
+
+            # Summary top article (demo total_earned calculation — replace as needed)
+            demo_per_referral = 5.0  # demo points per referral
+            total_earned_demo = total_referrals * demo_per_referral
+            summary_text = (
+                f"📊 <b>Your Referral Summary</b>\n\n"
+                f"🔢 Total referrals » <b>{total_referrals}</b>\n"
+                f"💎 Total earned (demo) » <b>{total_earned_demo:.2f} Points</b>\n\n"
+                f"ℹ️ This is demo data — replace `demo_per_referral` with real logic."
+            )
+            inline_results.append(
+                InlineQueryResultArticle(
+                    id="ref_summary",
+                    title="🧾 Your Referrals",
+                    description=f"Total: {total_referrals}  •  Earned (demo): {total_earned_demo:.2f} pts",
+                    input_message_content=InputTextMessageContent(
+                        message_text=summary_text,
+                        parse_mode="HTML",
+                    )
+                )
+            )
+
+            # For each referred user, build an article
+            for idx, (member, score) in enumerate(raw, start=1 + offset):
+                # decode bytes if necessary
+                if isinstance(member, (bytes, bytearray)):
+                    member_id = member.decode()
+                else:
+                    member_id = str(member)
+
+                # score from zset is int epoch seconds (or may be float depending on how you stored it)
+                ts = float(score)
+
+                # try to get user profile (small hgetall)
+                uname = None
+                try:
+                    profile_key = f"user_data:{member_id}:profile:main"
+                    pdata = await redis_manager.redis_client.hgetall(profile_key)
+                    if pdata:
+                        # redis-py may return dict of bytes
+                        if isinstance(pdata, dict):
+                            # try common fields
+                            fn = pdata.get("first_name") or pdata.get(b"first_name") or b""
+                            un = pdata.get("username") or pdata.get(b"username") or b""
+                            # decode
+                            fn = fn.decode() if isinstance(fn, (bytes, bytearray)) else str(fn)
+                            un = un.decode() if isinstance(un, (bytes, bytearray)) else str(un)
+                            uname = fn or (('@' + un) if un and un != "N/A" else None)
+                except Exception:
+                    uname = None
+
+                display_name = html.escape(uname) if uname else f"User {member_id}"
+                time_str = time_ago(ts)
+                iso_ts = datetime.fromtimestamp(ts).isoformat()
+
+                message_text = (
+                    f"👤 <b>Referred User</b>\n"
+                    f"🔹 <b>ID:</b> <code>{member_id}</code>\n"
+                    f"🔹 <b>Name:</b> {display_name}\n"
+                    f"⏱️ <b>Referred:</b> <code>{time_str}</code> (<code>{iso_ts}</code>)\n"
+                )
+
+                inline_results.append(
+                    InlineQueryResultArticle(
+                        id=f"ref_{member_id}",
+                        title=f"{display_name} — {time_str}",
+                        description=f"Referred {time_str} — ID {member_id}",
+                            input_message_content=InputTextMessageContent(
+                            message_text=message_text,
+                            parse_mode="HTML",
+                        )
+                    )
+                )
+
+            # pagination: next_offset if more entries remain
+            next_offset = ""
+            if offset + len(raw) < total_referrals:
+                next_offset = str(offset + len(raw))
+
+            await self.bot.answer_inline_query(
+                inline_query.id,
+                results=inline_results,
+                cache_time=0,
+                next_offset=next_offset
+            )
+    
+        except Exception as e:
+            # best-effort logging
+            try:
+                print(f"handle_referrals_inline error: {e}")
+            except Exception:
+                print(f"handle_referrals_inline error: {e}")
+            return
 
     async def handle_referral_callback(self, call):
         try:

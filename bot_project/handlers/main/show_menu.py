@@ -197,7 +197,11 @@ class UserStartManager:
                     # decode_base62 should return an int user_id (awaitable in your original snippet)
                     decoded = await decode_base62(ref_code)
                     if decoded is not None:
-                        return str(decoded)
+                        user_key = f"user_data:{str(decoded)}:profile:main"
+                        exists = await redis_manager.redis_client.exists(user_key)
+                        if exists:
+                            return str(decoded)
+                        return None
         except Exception as e:
             print(f"Referral extraction failed: {e}")
         return None
@@ -268,7 +272,6 @@ class UserStartManager:
                 if referred_by:
                     try:
                         await self._record_referral(user_id, referred_by)
-                        await bot.reply_to(message, f"Referral recording successful for {user_id}.")
                     except Exception as e:
                         await async_logger.error(f"Referral recording error (non-fatal): {e}")
 

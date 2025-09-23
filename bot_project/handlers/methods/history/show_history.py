@@ -27,7 +27,7 @@ from handlers.manager.operation import (
     UserManagement, FinancialManagement, user_mgr
 )
 from handlers.security import RateLimiter
-from utils.functions import small_caps, encode_order_id, decode_barcode_id, date_to_unix, large_caps, subscript_small_caps
+from utils.functions import small_caps, encode_order_id, decode_barcode_id, date_to_unix, large_caps, subscript_small_caps, time_ago
 from utils.config import LOADING_GIF
 from redis.commands.search.query import Query
 from functools import partial
@@ -36,39 +36,6 @@ from handlers.security import RateLimiter, InputValidator, TransactionGuard
 
 logger = logging.getLogger(__name__)
 
-
-
-def time_ago(timestamp: float) -> str:
-    """Calculate relative time ago from timestamp."""
-    now = datetime.now().timestamp()
-    diff = now - float(timestamp)
-
-    if diff < 60:
-        return "Jᴜsᴛ Nᴏᴡ"
-    elif diff < 3600:
-        minutes = int(diff // 60)
-        seconds = int(diff % 60)
-        return f"{minutes}ᴍ {seconds}s" if seconds else f"{minutes}ᴍ Aɢᴏ"
-    elif diff < 86400:
-        hours = int(diff // 3600)
-        minutes = int((diff % 3600) // 60)
-        return f"{hours}ʜ {minutes}ᴍ" if minutes else f"{hours}ʜ Aɢᴏ"
-    elif diff < 604800:
-        days = int(diff // 86400)
-        hours = int((diff % 86400) // 3600)
-        return f"{days}ᴅ {hours}ʜ" if hours else f"{days}ᴅ Aɢᴏ"
-    elif diff < 2592000:
-        weeks = int(diff // 604800)
-        days = int((diff % 604800) // 86400)
-        return f"{weeks}ᴡ {days}ᴅ" if days else f"{weeks}ᴡ Aɢᴏ"
-    elif diff < 31536000:
-        months = int(diff // 2592000)
-        weeks = int((diff % 2592000) // 604800)
-        return f"{months}ᴍᴏ {weeks}ᴡ" if weeks else f"{months}ᴍᴏ Aɢᴏ"
-    else:
-        years = int(diff // 31536000)
-        months = int((diff % 31536000) // 2592000)
-        return f"{years}ʏ {months}ᴍᴏ" if months else f"{years}ʏ Aɢᴏ"
 def get_circled_number(n: int) -> str:
     """Return circled number (Unicode) for integers 1–31."""
     circled_map = {

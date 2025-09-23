@@ -567,6 +567,41 @@ async def handle_redis_exceptions(func):
             return {'response': False, 'error': str(e)}
     return wrapper
 
+
+
+def time_ago(timestamp: float) -> str:
+    """Calculate relative time ago from timestamp."""
+    now = datetime.now().timestamp()
+    diff = now - float(timestamp)
+
+    if diff < 60:
+        return "Jᴜsᴛ Nᴏᴡ"
+    elif diff < 3600:
+        minutes = int(diff // 60)
+        seconds = int(diff % 60)
+        return f"{minutes}ᴍ {seconds}s" if seconds else f"{minutes}ᴍ Aɢᴏ"
+    elif diff < 86400:
+        hours = int(diff // 3600)
+        minutes = int((diff % 3600) // 60)
+        return f"{hours}ʜ {minutes}ᴍ" if minutes else f"{hours}ʜ Aɢᴏ"
+    elif diff < 604800:
+        days = int(diff // 86400)
+        hours = int((diff % 86400) // 3600)
+        return f"{days}ᴅ {hours}ʜ" if hours else f"{days}ᴅ Aɢᴏ"
+    elif diff < 2592000:
+        weeks = int(diff // 604800)
+        days = int((diff % 604800) // 86400)
+        return f"{weeks}ᴡ {days}ᴅ" if days else f"{weeks}ᴡ Aɢᴏ"
+    elif diff < 31536000:
+        months = int(diff // 2592000)
+        weeks = int((diff % 2592000) // 604800)
+        return f"{months}ᴍᴏ {weeks}ᴡ" if weeks else f"{months}ᴍᴏ Aɢᴏ"
+    else:
+        years = int(diff // 31536000)
+        months = int((diff % 31536000) // 2592000)
+        return f"{years}ʏ {months}ᴍᴏ" if months else f"{years}ʏ Aɢᴏ"
+
+
 async def encode_base62(num: int) -> str:
     """Asynchronously performs Base62 encoding using NumPy."""
     def _encode():
