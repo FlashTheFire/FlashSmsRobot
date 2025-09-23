@@ -246,6 +246,10 @@ class ReferManagement:
                 self.handle_referral_link_callback,
                 func=lambda call: call.data == "USER:REFFERAL:LINK"
             )
+            bot.register_inline_handler(
+                self.handle_referrals_inline,
+                func=lambda inline_query: inline_query.query == "#Yᴏᴜʀ-Rᴇꜰᴇʀʀᴀʟ"
+            )
 
         except Exception as e:
             logging.exception("Error registering handlers: %s", e)
