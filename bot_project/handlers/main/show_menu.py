@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 
 from utils.redis_manager import redis_manager
 from utils.config import START_PAGE, ADMIN_ID, ENV_FILE
-from utils.functions import create_keyboard, serialize_data
+from utils.functions import create_keyboard, serialize_data, decode_base62
 from handlers.manager.operation import FinancialManagement, UserManagement, FinancialSummaryAggregator, get_async_logger
 from handlers.security import InputValidator, TransactionGuard, RateLimiter
 
@@ -151,16 +151,56 @@ class UserStartManager:
             await async_logger.error(f"Failed to send/edit message: {e}")
             return False
 
-    async def _create_new_user_data(self, message: Message, first_name: str, username: str) -> Dict[str, Any]:
+
+    async def _create_new_user_data(
+        self, message: Message, first_name: str, username: str, referred_by: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Base user data for new users; includes referred_by (user_id string or None)."""
         return {
             "first_name": first_name,
             "username": username,
             "user_id": str(message.from_user.id),
             "language_code": message.from_user.language_code,
             **self.DEFAULT_VALUES,
+            "referred_by": referred_by,
             "created_at": datetime.utcnow().isoformat(),
             "last_updated": time.time()
         }
+
+
+    async def _record_referral(self, new_user_id: str, referrer_id: str) -> None:
+        """
+        Minimal point-wise referral record:
+         - ZADD points:{referrer_id} score=timestamp member=new_user_id
+        Best-effort; logs errors and does not block user creation.
+        """
+        try:
+            await redis_manager.redis_client.zadd(f"user_data:{referrer_id}:profile:reffer", {new_user_id: int(time.time())})
+        except Exception as e:
+            print(f"_record_referral error: {e}")
+
+
+    async def _extract_referrer(self, message: Message) -> Optional[str]:
+        """
+        Extract referrer user_id from /start payload.
+        Accepts base62-like payloads (alphanumeric) and decodes with decode_base62.
+        Returns str(user_id) or None.
+        """
+        try:
+            if not message.text:
+                return None
+            parts = message.text.strip().split(maxsplit=1)
+            if len(parts) == 2 and parts[0] == "/start":
+                ref_code = parts[1].strip()
+                # Validate base62 referral code
+                if re.fullmatch(r"[0-9A-Za-z]+", ref_code):
+                    # decode_base62 should return an int user_id (awaitable in your original snippet)
+                    decoded = await decode_base62(ref_code)
+                    if decoded is not None:
+                        return str(decoded)
+        except Exception as e:
+            print(f"Referral extraction failed: {e}")
+        return None
 
     async def handle_start_display(self, bot: AsyncTeleBot, message: Message,
                                    user_data: Dict[str, Any], request_type: str = "start") -> None:
@@ -203,9 +243,16 @@ class UserStartManager:
             data = await self.aggregator.get_user(user_id)
 
             if not data["response"]:
-                user_data = await self._create_new_user_data(message, first_name, username)
+                # New user flow with ref extraction
+                referred_by = await self._extract_referrer(message)
+                if referred_by == user_id:
+                    referred_by = None  # prevent self-referral
+
+                user_data = await self._create_new_user_data(
+                    message, first_name, username, referred_by=referred_by
+                )
+
                 validation_result = self.input_validator.validate_user_data(user_data)
-                
                 if not validation_result['valid']:
                     await async_logger.error(f"Invalid user data: {validation_result.get('error')}")
                     await bot.reply_to(message, "Failed to create account. Please try again later.")
@@ -217,15 +264,24 @@ class UserStartManager:
                     await bot.reply_to(message, "Failed to create account. Please try again later.")
                     return
 
+                # Record referral using only ZADD points:{referrer_id}
+                if referred_by:
+                    try:
+                        await self._record_referral(user_id, referred_by)
+                        await bot.reply_to(message, f"Referral recording successful for {user_id}.")
+                    except Exception as e:
+                        await async_logger.error(f"Referral recording error (non-fatal): {e}")
+
                 await bot.reply_to(message, f"Welcome, {first_name}! Your account has been created.")
 
             else:
+                # existing user update
                 user_data = {
                     'first_name': str(first_name)[:50],
                     'username': str(username)[:50],
                     'last_updated': time.time()
                 }
-           
+
                 update_result = await self.user_manager.update_user_data(user_id, user_data)
                 if not update_result["response"]:
                     await async_logger.error(f"Failed to update user: {update_result.get('error')}")

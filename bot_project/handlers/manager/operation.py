@@ -1120,34 +1120,6 @@ class UserManagement:
             await self.logger.error(f"Redis error while creating indexes: {e}")
             raise
 
-    @handle_redis_exceptions
-    async def update_user_data(self, user_id: str, user_data: dict) -> dict:
-        """Update user data with enhanced validation and security checks."""
-        async with AsyncOperationContext(operation_lock_manager, OperationType.PROFILE_UPDATE, user_id):
-            await self._init_logger()
-            redis_client = await self.ensure_connection()
-            
-            try:
-                # Get existing user data
-                existing_data = await self.get_user_data(user_id)
-                if not existing_data.get('response'):
-                    return {'response': False, 'error': 'User not found'}
-
-                # Update only allowed fields
-                allowed_fields = {'username', 'email', 'settings', 'preferences'}
-                update_data = {k: v for k, v in user_data.items() if k in allowed_fields}
-                
-                if not update_data:
-                    return {'response': False, 'error': 'No valid fields to update'}
-
-                # Update the user data
-                key = f"{USER_INFO_PREFIX}{user_id}"
-                await redis_client.hset(key, mapping=update_data)
-                
-                return {'response': True, 'result': 'User data updated successfully'}
-            except Exception as e:
-                await self.logger.error(f"Error updating user data: {e}")
-                return {'response': False, 'error': str(e)}
 
     @handle_redis_exceptions
     async def _atomic_balance_update(self, user_id: str, amount: float, transaction_type: str) -> dict:

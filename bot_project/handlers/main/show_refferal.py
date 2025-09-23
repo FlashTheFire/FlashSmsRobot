@@ -4,7 +4,7 @@ from asyncio import gather
 
 from telebot.async_telebot import AsyncTeleBot
 from telebot.types import InputMediaVideo, Message
-from utils.functions import create_keyboard  # assumed async
+from utils.functions import create_keyboard, encode_base62  # assumed async
 from utils.redis_manager import redis_manager
 from handlers.manager.operation import UserManagement, OrderManagement
 from utils.config import LOADING_GIF
@@ -109,7 +109,7 @@ class ReferManagement:
                     ))
         me = await bot.get_me()
         bot_username = me.username
-        referral_link = f"https://t.me/{bot_username}?start={user_id}"
+        referral_link = f"https://t.me/{bot_username}?start={str(await encode_base62(int(user_id)))}"
         top_services = (
             "🎯 Tᴏᴘ-Rᴀᴛᴇᴅ Sᴇʀᴠɪᴄᴇs:\n"
             "    •  Tᴇʟᴇɢʀᴀᴍ     • Wʜᴀᴛsᴀᴘᴘ [✆]\n" 
