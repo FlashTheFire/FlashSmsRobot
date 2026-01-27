@@ -1,0 +1,50 @@
+version: '3.8'
+services:
+  redis:
+    image: redis/redis-stack-server:latest
+    container_name: flashsms-redis
+    command: ["redis-server","/usr/local/etc/redis/redis.conf"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD","redis-cli","ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    container_name: flashsms-redisinsight
+    ports:
+      - "127.0.0.1:5540:5540"
+    environment:
+      - RIPORT=5540
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: flashsms-bot
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:8443:8443"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+    driver: local
+networks:
+  default:
+    driver: bridge
