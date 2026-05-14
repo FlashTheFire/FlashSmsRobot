@@ -18,7 +18,7 @@ from handlers.security import TransactionGuard
 from handlers.methods.purchase.order_status import purchase_status
 from utils.functions import get_api_info, AfterMin, get_sms_text_by_code, small_caps, encode_base62, decode_base62, encode_order_id, decode_barcode_id
 from handlers.methods.purchase.order_status import purchase_status
-from utils.config import UPDATE_INTERVAL, BASE_TIMEOUT, EXTENDED_TIMEOUT, CHECK_INTERVAL, BATCH_SIZE
+from utils.config import UPDATE_INTERVAL, BASE_TIMEOUT, EXTENDED_TIMEOUT, CHECK_INTERVAL, BATCH_SIZE, CHANNEL_ID
 from handlers.manager.operation import user_mgr as user_manager
 from handlers.main.show_wallet import wallet_manager
 from utils.redis_manager import RedisManager, redis_manager
@@ -130,8 +130,8 @@ class UserOrderTrackerManagement:
                 ),
                 self._send_sms_notification(order_id, api_status['code'], json.loads(order_info.get('sms_list', '[]'))),
                 wallet_manager.process_wallet_update(order_info['user_id']),
-                user_manager.send_order_report(self.bot, "edit_message_text", order_id, order_info['user_id'], '-1002203139746', details),
-                user_manager.user_metrics_report(self.bot, 'edit_message_text', order_info['user_id'], '-1002203139746')
+                user_manager.send_order_report(self.bot, "edit_message_text", order_id, order_info['user_id'], CHANNEL_ID, details),
+                user_manager.user_metrics_report(self.bot, 'edit_message_text', order_info['user_id'], CHANNEL_ID)
             ]
             order_data = await self.order_manager.get_order_data(order_id)
             order_info = order_data['result']
@@ -416,9 +416,9 @@ class UserOrderTrackerManagement:
             }
             await asyncio.gather(
                 self._update_order_ui(order_info, is_timeout=None),
-                user_manager.user_metrics_report(self.bot, 'edit_message_text', order_info['user_id'], '-1002203139746'),
+                user_manager.user_metrics_report(self.bot, 'edit_message_text', order_info['user_id'], CHANNEL_ID),
                 wallet_manager.process_wallet_update(order_info['user_id']),
-                user_manager.send_order_report(self.bot, "edit_message_text", order_id, order_info['user_id'], '-1002203139746', details)
+                user_manager.send_order_report(self.bot, "edit_message_text", order_id, order_info['user_id'], CHANNEL_ID, details)
             )
 
             await self._log('info', f"Order {order_id} completed: {reason}")
@@ -482,8 +482,8 @@ class UserOrderTrackerManagement:
             await asyncio.gather(
                 self.order_manager.cancel_order(order_id, order_info['user_id'], 'TIMEOUT'),
                 self._update_order_ui(order_info, is_timeout=True),
-                user_manager.send_order_report(self.bot, "edit_message_text", order_id, order_info['user_id'], '-1002203139746', details),
-                user_manager.user_metrics_report(self.bot, 'edit_message_text', order_info['user_id'], '-1002203139746'),
+                user_manager.send_order_report(self.bot, "edit_message_text", order_id, order_info['user_id'], CHANNEL_ID, details),
+                user_manager.user_metrics_report(self.bot, 'edit_message_text', order_info['user_id'], CHANNEL_ID),
                 wallet_manager.process_wallet_update(order_info['user_id'])
                 
             )

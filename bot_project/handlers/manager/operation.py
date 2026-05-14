@@ -88,6 +88,35 @@ cloudinary.config(
     api_secret="t5YvGkbk7ez71mzMS-3ZZoBFlFQ"
 )
 
+# Module-level logger for utility functions that do not carry self.logger
+logger = logging.getLogger(__name__)
+
+# --------------- Redis Lua Scripts ---------------
+# Atomically validates and applies a balance update in a single round-trip.
+# KEYS[1] = user hash key, ARGV[1] = amount (string), ARGV[2] = 'credit'|'debit'
+# Returns: [ok (0|1), previous_balance (string), new_balance (string)]
+_BALANCE_UPDATE_LUA = """
+local key = KEYS[1]
+local amount = tonumber(ARGV[1])
+local tx_type = ARGV[2]
+-- Guard: reject zero or negative amounts before touching any state.
+if not amount or amount <= 0 then
+    return {0, "invalid_amount", "0"}
+end
+local current = tonumber(redis.call('HGET', key, 'balance')) or 0
+if tx_type == 'debit' then
+    if current < amount then
+        return {0, tostring(current), tostring(current)}
+    end
+    local new_bal = current - amount
+    redis.call('HSET', key, 'balance', tostring(new_bal))
+    return {1, tostring(current), tostring(new_bal)}
+end
+local new_bal = current + amount
+redis.call('HSET', key, 'balance', tostring(new_bal))
+return {1, tostring(current), tostring(new_bal)}
+"""
+
 # ---------------- Asynchronous Logging ----------------
 class AsyncHandler(logging.Handler):
     def emit(self, record):
@@ -129,12 +158,12 @@ def handle_redis_exceptions(func):
 
 # ---------------- Data Serialization Utilities ----------------
 async def serialize_data(data: Any) -> str:
-    return await asyncio.get_event_loop().run_in_executor(None, json.dumps, data)
+    return await asyncio.get_running_loop().run_in_executor(None, json.dumps, data)
 async def deserialize_data(data: Optional[str]) -> Optional[Dict]:
     if not data:
         return None
     try:
-        return await asyncio.get_event_loop().run_in_executor(None, json.loads, data)
+        return await asyncio.get_running_loop().run_in_executor(None, json.loads, data)
     except json.JSONDecodeError:
         logger = await get_async_logger()
         await logger.error("Error deserializing data")
@@ -544,7 +573,7 @@ class OrderManagement:
             return output
 
         except Exception as e:
-            print(f"[aggregate_orders] {e}")
+            logger.error("aggregate_orders: %s", e, exc_info=True)
             return {
                 "total_amount": 0.0,
                 "count": 0,
@@ -569,7 +598,7 @@ class OrderManagement:
         Cancel: same, but reset that field
         """
         numbers_key = f"free_numbers:{country_id}:{server_id}:{app_id}:{operator}"
-        print(numbers_key)
+        logger.debug("manage_number_order key: %s", numbers_key)
         # helper to decode a single hash-field:
         async def get_data(num: str) -> Dict[str, Any]:
             raw = await redis_client.hget(numbers_key, num)
@@ -593,21 +622,21 @@ class OrderManagement:
                 if isinstance(num, bytes):
                     num = num.decode()
 
-                print(f"[manage_number_order] Attempting to reserve {num}")
+                logger.debug("manage_number_order: attempting to reserve %s", num)
                 data = await get_data(num)
-                print(f"[manage_number_order] Data for {num}: {data}")
+                logger.debug("manage_number_order: data for %s: %s", num, data)
                 # skip if already used
                 if data.get("sms_received"):
-                    print(f"[manage_number_order] {num} already has SMS")
+                    logger.debug("manage_number_order: %s already has SMS, skipping", num)
                     continue
-                print(f"[manage_number_order] user_id: {user_id}")
+                logger.debug("manage_number_order: checking user_id=%s against %s", user_id, num)
                 if int(user_id) in data.get("user_ids", []):
-                    print(f"[manage_number_order] {num} already has user {user_id}")
+                    logger.debug("manage_number_order: %s already reserved by user %s, skipping", num, user_id)
                     continue
 
                 # now reserve this `num`
                 new_order = order_id or f"{ORDER_PREFIX}{num}"
-                print(f"[manage_number_order] Reserved {num} to {new_order}")
+                logger.info("manage_number_order: reserved %s → %s", num, new_order)
                 data.update({
                     "order_id":    new_order,
                     "sms_received": True,
@@ -1129,30 +1158,33 @@ class UserManagement:
             redis_client = await self.ensure_connection()
             
             try:
-                # Get current balance
-                current_balance = float(await redis_client.hget(f"{USER_INFO_PREFIX}{user_id}", "balance") or 0)
-                
-                # Validate transaction
-                if transaction_type == 'debit' and current_balance < amount:
+                # Python-side guard: reject before any Redis I/O.
+                if not isinstance(amount, (int, float)) or amount <= 0:
+                    return {'response': False, 'error': 'invalid_amount: must be a positive number'}
+                # Single Lua round-trip: atomic read-validate-write with no TOCTOU window.
+                result = await redis_client.eval(
+                    _BALANCE_UPDATE_LUA,
+                    1,
+                    f"{USER_INFO_PREFIX}{user_id}",
+                    str(amount),
+                    transaction_type,
+                )
+                ok, prev_bal, new_balance = int(result[0]), float(result[1]), float(result[2])
+
+                if not ok:
                     return {'response': False, 'error': 'Insufficient balance'}
-                
-                # Calculate new balance
-                new_balance = current_balance + amount if transaction_type == 'credit' else current_balance - amount
-                
-                # Update balance atomically
-                await redis_client.hset(f"{USER_INFO_PREFIX}{user_id}", "balance", str(new_balance))
-                
-                # Log transaction
+
+                # Log transaction (non-atomic; acceptable for audit trail)
                 transaction_data = {
                     'user_id': user_id,
                     'amount': amount,
                     'type': transaction_type,
-                    'previous_balance': current_balance,
+                    'previous_balance': prev_bal,
                     'new_balance': new_balance,
                     'timestamp': datetime.now().isoformat()
                 }
                 await redis_client.rpush(f"transaction_history:{user_id}", json.dumps(transaction_data))
-                
+
                 return {'response': True, 'result': {'new_balance': new_balance}}
             except Exception as e:
                 await self.logger.error(f"Error in atomic balance update: {e}")
@@ -1604,11 +1636,11 @@ class DepositManagement:
     
             if forum_id:
                 if not forum_topic:
-                    message_id = await user_mgr.user_metrics_report(bot, 'edit_message_text', user_id, '-1002203139746')
+                    message_id = await user_mgr.user_metrics_report(bot, 'edit_message_text', user_id, CHANNEL_ID)
                 elif forum_topic:
                     from handlers.main.show_wallet import wallet_manager
                     message_id, _ = await asyncio.gather(
-                        user_mgr.user_metrics_report(bot, 'sendMessage', user_id, '-1002203139746', forum_id),
+                        user_mgr.user_metrics_report(bot, 'sendMessage', user_id, CHANNEL_ID, forum_id),
                         wallet_manager.process_wallet_update(user_id),
                     )
                     message_id = await self.redis_manager.redis_client.hset(profile_key, "forum_message_id", str(message_id))
@@ -1634,7 +1666,7 @@ class DepositManagement:
     
                 try:
                     msg = await bot.send_message(
-                        chat_id='-1002203139746',
+                        chat_id=CHANNEL_ID,
                         text=admin_text,
                         reply_markup=admin_keyboard,
                         message_thread_id=int(forum_id),
@@ -1657,7 +1689,7 @@ class DepositManagement:
     
                 try:
                     await bot.send_message(
-                        chat_id='-1002203139746',
+                        chat_id=CHANNEL_ID,
                         text=text,
                         reply_markup=admin_keyboard,
                         parse_mode='HTML'

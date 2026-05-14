@@ -8,7 +8,7 @@ from typing import Dict, Optional, Tuple, List, Any, Union
 from utils.redis_manager import redis_manager, RedisManager
 from redis.exceptions import RedisError
 from termcolor import colored
-from utils.config import COMMISSION
+from utils.config import COMMISSION, CHANNEL_ID
 from typing import Optional, Dict, Any
 from utils.cache_manager import cache_manager, CacheManager, CachePrefix
 import logging
@@ -127,7 +127,7 @@ class CombinedAPI:
             self.redis_client = redis_client
         if rate_limiter is not None:
             self.rate_limiter = rate_limiter
-        self.bot: Optional[AsyncTeleBot] = None
+        self.bot: Optional[AsyncTeleBot] = bot
         self.service_index = os.getenv("SERVICE_INDEX", "service_index")
         self.order_index = os.getenv("ORDER_INDEX", "order_index")
         self.H_API_KEYS = "secure_data:user_data:api_keys"
@@ -172,7 +172,13 @@ class CombinedAPI:
         total_orders = await count(uid, "PENDING|PROCESSING|CANCELLED|COMPLETED")
         total_pending = await count(uid, "PENDING", '@order_amount')
 
-        rating = round((2 * (total_success) / total_orders) * 10, 1) if total_orders > 0 else 0.0
+        # Capped-boosted rating: doubles the linear score so ≥50% success → 10.0,
+        # while min() ensures the value never exceeds the 0–10 scale.
+        # Alternative (smoother curve): round(((total_success / total_orders) ** 0.5) * 10, 1)
+        rating = (
+            min(round((2 * total_success / total_orders) * 10, 1), 10.0)
+            if total_orders > 0 else 0.0
+        )
 
         return {
             "total_orders_success": total_success,
@@ -520,9 +526,9 @@ class CombinedAPI:
             return None
     
 
-    async def get_user_data(self, user_id: int) -> Optional[float]:
+    async def get_user_data(self, user_id: int) -> Optional[Dict[str, Any]]:
         """
-        Return the user's balance if `user_id` exists in H_USER_BALANCES.
+        Return the user's balance and metrics if `user_id` exists in H_USER_BALANCES.
         No Python loop is used—just a direct HGET on the reverse‐lookup hash.
         """
         try:
@@ -587,7 +593,13 @@ class CombinedAPI:
                     status=400
                 )
             return web.Response(text="NO_KEY", status=200)
-        elif not await CombinedAPI().is_valid_api_key(api_key):
+            
+        api = request.app.get('api')
+        if api is None:
+            api = CombinedAPI()
+            request.app['api'] = api
+            
+        if not await api.is_valid_api_key(api_key):
             if source == 'header':
                 return web.json_response(
                     {
@@ -637,18 +649,21 @@ class CombinedAPI:
             return web.Response(text="NO_KEYS", status=200)
         # Fetch raw user data
         user_id = await self.get_user_id_by_api_key(api_key)
-        u = await self.get_user_data(user_id)
-        s = await self.enrich_user(user_id)
+        if user_id is None:
+            return web.Response(text="NO_KEYS", status=200)
+            
+        u = await self.get_user_data(user_id) or {}
+        s = await self.enrich_user(user_id) or {}
 
         final_json = {
-            "userId": u["user_id"],
-            "userName": u["user_name"],
-            "currentBalance": u["current_balance"] or 0,
-            "totalDeposits": u["total_deposits"] or 0,
-            "spentBalance": u["spend_balance"] or 0,
-            "currencyCode": u["target_currency"] or "USD",
-            "freezedBalance": s["total_pending"] or 0,
-            "userRating": s["rating_out_of_10"] or 0
+            "userId": u.get("user_id", 0),
+            "userName": u.get("user_name", ""),
+            "currentBalance": u.get("current_balance", 0) or 0,
+            "totalDeposits": u.get("total_deposits", 0) or 0,
+            "spentBalance": u.get("spend_balance", 0) or 0,
+            "currencyCode": u.get("target_currency", "USD") or "USD",
+            "freezedBalance": s.get("total_pending", 0) or 0,
+            "userRating": s.get("rating_out_of_10", 0) or 0
         }
 
         return web.json_response(final_json)
@@ -977,7 +992,7 @@ class CombinedAPI:
         print(json.dumps(result, indent=4))
         if not result:
             return {"status": False, "message": "BAD_ID"}
-        status = str(result['order_status'])
+        status = str(result.get('order_status', 'UNKNOWN'))
 
 
         if status == "CANCELLED":
@@ -992,11 +1007,12 @@ class CombinedAPI:
                 return {"status": True, "message": "STATUS_WAIT_CODE"}
 
         elif status == "COMPLETED":
-            return {"status": True, "message": F"STATUS_OK:{result.get('last_sms')}"}
+            return {"status": True, "message": f"STATUS_OK:{result.get('last_sms')}"}
             
         elif status == "PROCESSING":
             return {"status": True, "message": f"STATUS_WAIT_RETRY:{result.get('last_sms')}"}
-        return status
+        
+        return {"status": False, "message": "UNKNOWN_STATUS", "raw_status": status}
     async def handle_set_status(self, status_id: int, order_id: int) -> None:
         order_key = f"order_data:info:{order_id}"
         print(f"handle_set_status: order_id={order_id}, status_id={status_id}") 
@@ -1059,8 +1075,8 @@ class CombinedAPI:
 
                 await asyncio.gather(
                     order_mgr.cancel_order(order_id, result['user_id'], 'CANCELLED'),
-                    user_mgr.send_order_report(self.bot, "edit_message_text", order_id, result['user_id'], '-1002203139746', details),
-                    user_mgr.user_metrics_report(self.bot, 'edit_message_text', result['user_id'], '-1002203139746'),
+                    user_mgr.send_order_report(self.bot, "edit_message_text", order_id, result['user_id'], CHANNEL_ID, details),
+                    user_mgr.user_metrics_report(self.bot, 'edit_message_text', result['user_id'], CHANNEL_ID),
                 )
                 return {"status": True, "message": "STATUS_CANCEL"}
             else:
@@ -1072,6 +1088,7 @@ class CombinedAPI:
                 sms_list = json.loads(result.get('sms_list', '[]'))
                 if not len(sms_list):
                     return {"status": False, "message": "BAD_STATUS"}
+                return {"status": True, "message": "SMS_AVAILABLE"}
             elif status == "COMPLETED":
                 if float(result.get("recorded_at", 0)) > time.time() - 20 * 60:
                     await redis_client.hset(order_key, "order_status", "PROCESSING")
@@ -1080,6 +1097,7 @@ class CombinedAPI:
                     return {"status": True, "message": "STATUS_TIMEOUT"}
             elif status == "PROCESSING":
                 return {"status": True, "message": "STATUS_WAIT_RETRY"}
+            return {"status": False, "message": "UNKNOWN_STATUS"}
 
         elif work == "COMPLETE_ACTIVATION":
             if status == "PENDING":
@@ -1089,6 +1107,7 @@ class CombinedAPI:
                 return {"status": True, "message": "COMPLETED"}
             elif status == "PROCESSING":
                 return {"status": True, "message": "COMPLETED"}         
+            return {"status": False, "message": "UNKNOWN_STATUS"}
         
         elif work == "SMS_SENT":
             if status == "PENDING":
@@ -1096,6 +1115,7 @@ class CombinedAPI:
                 if not len(sms_list):
                     await redis_client.hset(order_key, "order_status", "PROCESSING")
                     return {"status": False, "message": "ACCESS_RETRY_GET"}
+                return {"status": True, "message": "SMS_AVAILABLE"}
             elif status == "COMPLETED":
                 if float(result.get("recorded_at", 0)) > time.time() - 20 * 60:
                     await redis_client.hset(order_key, "order_status", "PROCESSING")
@@ -1104,6 +1124,7 @@ class CombinedAPI:
                     return {"status": True, "message": "STATUS_TIMEOUT"}
             elif status == "PROCESSING":
                 return {"status": True, "message": "STATUS_WAIT_RETRY"}
+            return {"status": False, "message": "UNKNOWN_STATUS"}
 
     # ─────────────────────────────────────────────────────────────────────────
     # V1 Legacy SMS API (/stubs/handler_api.php)

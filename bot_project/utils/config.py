@@ -37,11 +37,11 @@ APP_IMAGE_LIST = {
 }
 # Payment Gateway Configuration
 PAYMENT_GATEWAY_API = os.getenv("PAYMENT_GATEWAY_API", "https://api.payment-gateway.com/v1")
-PAYMENT_GATEWAY_API_KEY = os.getenv("PAYMENT_GATEWAY_API_KEY", "")
+PAYMENT_GATEWAY_API_KEY = get_required_env("PAYMENT_GATEWAY_API_KEY")
 
 PAYMENT_GATEWAY = {
-    'endpoint': 'https://api.paymentgateway.com/v1/charges',
-    'status_endpoint': 'https://api.paymentgateway.com/v1/status',
+    'endpoint': f'{PAYMENT_GATEWAY_API}/charges',
+    'status_endpoint': f'{PAYMENT_GATEWAY_API}/status',
     'headers': {'Authorization': f'Bearer {PAYMENT_GATEWAY_API_KEY}'}
 }
 # COMMISSION: stored as a multiplier — 1.25 means a 25% markup on base price.
@@ -65,8 +65,15 @@ ENV_FILE = os.getenv("ENV_FILE", ".env")
 
 CHANNEL_ID = get_required_env("CHANNEL_ID")
 BOT_TOKEN = get_required_env("BOT_TOKEN")
-ADMIN_ID = get_required_env("ADMIN_ID")
+ADMIN_ID = int(get_required_env("ADMIN_ID"))
+ADMIN_PHONE = os.getenv("ADMIN_PHONE", "919798961352")
 WEBHOOK_HOST = os.getenv("WEBHOOK_HOST")
+
+# API Credentials
+FORWARD_API_ID = int(os.getenv("FORWARD_API_ID", "26383754"))
+FORWARD_API_HASH = os.getenv("FORWARD_API_HASH", "f743596f09f383e7bbcc62ce62367f06")
+CONTACT_API_ID = int(os.getenv("CONTACT_API_ID", "20729573"))
+CONTACT_API_HASH = os.getenv("CONTACT_API_HASH", "6bc09cbaa7d0471944875c202fec8b5b")
 
 # Optional configurations with sensible defaults
 START_PAGE = os.getenv("START_PAGE", "default_start_page")

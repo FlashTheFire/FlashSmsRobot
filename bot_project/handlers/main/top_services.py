@@ -4,8 +4,9 @@ from handlers.security import RateLimiter
 from utils.redis_manager import redis_manager
 from handlers.manager.operation import UserManagement
 from utils.functions import small_caps
-from utils.config import ADMIN_ID, APP_IMAGE_LIST
+from utils.config import ADMIN_ID, APP_IMAGE_LIST, CHANNEL_ID
 import asyncio
+import time
 import os
 import random
 from PIL import Image, ImageDraw, ImageFont
@@ -24,7 +25,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-##logger = logging.getlogger('TopServiceManager')
+logger = logging.getLogger('TopServiceManager')
 
 class TopServiceManager:
     """Manager class for handling Top Service leaderboard functionality."""
@@ -40,7 +41,7 @@ class TopServiceManager:
         self._update_task = None
         self.LEADERBOARD_KEY = "image_data:leaderboard-file_id"
         self.UPDATE_INTERVAL = 60   # 10 minutes in seconds
-        self.ADMIN_CHAT_ID = -1002203139746  # Replace with your admin channel/group ID
+        self.ADMIN_CHAT_ID = CHANNEL_ID  # Replace with your admin channel/group ID
         #logger.info("TopServiceManager initialized")
     
     @staticmethod
@@ -59,7 +60,7 @@ class TopServiceManager:
             service_data = await self.redis_client.json().get('main_data:details:service_data')
             
             if not service_data:
-                logging.info("No service data found in Redis")
+                logger.info("No service data found in Redis")
                 return []
                 
             services = []
@@ -76,7 +77,7 @@ class TopServiceManager:
                     services.append((service_name, purchased, logo_url, country_url, service_code, server_id, country_id, app_id))
                     #logger.debug(f"Processed service {service_id}: {service_name}")
                 except (ValueError, TypeError) as e:
-                    print(f"Error processing service {service_id}: {e}")
+                    logger.warning("Error processing service %s: %s", service_id, e)
                     continue
             
             sorted_services = sorted(services, key=lambda x: x[1], reverse=True)
@@ -96,14 +97,14 @@ class TopServiceManager:
                         data = await response.read()
                         return Image.open(BytesIO(data))
                     else:
-                        print(f"Failed to download image from {url}. Status: {response.status}")
+                        logger.warning("Failed to download image from %s – HTTP %s", url, response.status)
                         return None
 
         except asyncio.TimeoutError:
-            print(f"Timeout downloading image from {url}")
+            logger.warning("Timeout downloading image from %s", url)
             return None
         except Exception as e:
-            print(f"Error downloading image from {url}: {e}")
+            logger.warning("Error downloading image from %s: %s", url, e)
             return None
     async def get_service_icon(self, logo_url: str) -> Image.Image:
         """Get service icon from URL or return default icon."""
@@ -113,7 +114,7 @@ class TopServiceManager:
                 if img:
                     #logger.debug(f"Successfully loaded image from {logo_url}")
                     return img
-                print(f"Failed to load image from {logo_url}, using default")
+                logger.warning("Failed to load image from %s, using default", logo_url)
             
             if not os.path.exists(self.default_logo):
                 #logger.error(f"Default logo not found at {self.default_logo}")
@@ -122,7 +123,7 @@ class TopServiceManager:
                 
             return Image.open(self.default_logo)
         except Exception as e:
-            print(f"Error in get_service_icon: {e}\n{traceback.format_exc()}")
+            logger.error("Error in get_service_icon: %s", e, exc_info=True)
             return Image.new('RGB', (60, 60), color='gray')
 
     async def _create_enhanced_leaderboard(self, leaderboard_data: list, output_file: str) -> None:
@@ -275,7 +276,7 @@ class TopServiceManager:
                         parse_mode='html'
                     )
             except Exception as e:
-                print(f"Error sending message: {e}")
+                logger.warning("Error sending transaction-lock message: %s", e)
             return False
         return True
 
@@ -307,17 +308,16 @@ class TopServiceManager:
                                 )
                                 return
                         except Exception as e:
-                            print(f"Error using cached data: {e}")
-                            pass
+                            logger.warning("Error using cached leaderboard data: %s", e)
                 except Exception as e:
-                    print(f"Error processing buy command: {e}")
+                    logger.error("Error processing top-service callback: %s", e, exc_info=True)
                     await self.bot.send_message(chat_id, "🚫 Eʀʀᴏʀ Gᴇɴᴇʀᴀᴛɪɴɢ Rᴇǫᴜᴇsᴛ.")
                     return
                 finally:
                     await guard.release_lock(transaction_key)
 
         except Exception as e:
-            print(f"Error in _handle_callback: {e}\n{traceback.format_exc()}")
+            logger.error("Unhandled error in _handle_callback: %s", e, exc_info=True)
             try:
                 await bot.answer_callback_query(call.id, "An error occurred")
             except:
@@ -340,13 +340,13 @@ class TopServiceManager:
                             reply_markup=keyboard
                     )
                 except Exception as e:
-                    print(f"Error processing buy command: {e}")
+                    logger.error("Error processing paginate callback: %s", e, exc_info=True)
                     await self.bot.send_message(chat_id, "🚫 Eʀʀᴏʀ Gᴇɴᴇʀᴀᴛɪɴɢ Rᴇǫᴜᴇsᴛ.")
                     return
                 finally:
                     await guard.release_lock(transaction_key)
         except Exception as e:
-            print(f"Error in _handle_callback_page: {e}\n{traceback.format_exc()}")
+            logger.error("Unhandled error in _handle_callback_page: %s", e, exc_info=True)
             try:
                 await bot.answer_callback_query(call.id, "An error occurred")
             except:
@@ -414,7 +414,7 @@ class TopServiceManager:
                     # Store file info in Redis with serialized keyboard and file_id
                     cache_data = {
                         "file_path": output_file,
-                        "timestamp": int(asyncio.get_event_loop().time()),
+                        "timestamp": int(time.time()),  # wall-clock; survives restarts
                         "keyboard_data": await self._serialize_keyboard(keyboard),
                         "file_id": new_file_id if new_file_id else None,
                         "leaderboard_data": leaderboard_data
@@ -427,9 +427,10 @@ class TopServiceManager:
                         pass
                 await asyncio.sleep(self.UPDATE_INTERVAL)
             except asyncio.CancelledError:
-                logging.warning("Leaderboard update task cancelled.")
+                logger.warning("Leaderboard update task cancelled.")
+                raise  # allow task cancellation to propagate
             except Exception as e:
-                print(f"Error in automatic leaderboard update: {e}\n{traceback.format_exc()}")
+                logger.error("Error in automatic leaderboard update: %s", e, exc_info=True)
                 await asyncio.sleep(60)
     async def _update_file_id_with_fallback(self, output_file: str) -> Optional[str]:
         """Update file_id using admin channel."""
@@ -452,14 +453,14 @@ class TopServiceManager:
                             message_id=result.message_id
                         )
                     except Exception as e:
-                        print(f"Could not delete update message: {e}")
+                        logger.warning("Could not delete leaderboard update message: %s", e)
                         pass
                     
                     return new_file_id
                 return None
                 
         except Exception as e:
-            print(f"Error updating file_id: {e}\n{traceback.format_exc()}")
+            logger.error("Error updating leaderboard file_id: %s", e, exc_info=True)
             return None
 
     async def _get_cached_leaderboard(self, must_return: bool = False) -> Optional[Dict]:
@@ -469,7 +470,7 @@ class TopServiceManager:
             if not cache_data:
                 return None
                 
-            current_time = int(asyncio.get_event_loop().time())
+            current_time = int(time.time())  # wall-clock; consistent with stored timestamp
             cached_time = cache_data.get("timestamp", 0)
             
             if must_return:
@@ -491,7 +492,7 @@ class TopServiceManager:
                 }
             return None
         except Exception as e:
-            print(f"Error getting cached leaderboard: {e}")
+            logger.error("Error getting cached leaderboard: %s", e, exc_info=True)
             return None
 
     async def _load_and_resize_image(self, image_path: str, size: tuple) -> Image.Image:
@@ -590,36 +591,53 @@ class TopServiceManager:
                 #logger.error("TopServiceManager not initialized")
                 return False
 
-            service_data = await self.redis_client.json().get('main_data:details:service_data')
-            if not service_data:
-                service_data = {}
+            service_key = 'main_data:details:service_data'
+            entry_key = f"{app_id}:{country_id}:{server_id}"
+            entry_path = f'$["{entry_key}"]'
+            purchased_path = f'$["{entry_key}"].purchased'
 
-            country_data = await self.redis_client.json().get('main_data:details:country_data') or {}
-            flag_url = country_data.get(str(country_id), {}).get('flag_url') or 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Icon-round-Question_mark.jpg/800px-Icon-round-Question_mark.jpg'
-            if f"{app_id}:{country_id}:{server_id}" in service_data:
-                # Update existing service purchase count
-                service_data[f"{app_id}:{country_id}:{server_id}"]["purchased"] = service_data[f"{app_id}:{country_id}:{server_id}"].get("purchased", 0) + 1
-                #logger.info(f"Updated purchase count for service {app_id}")
-            else:
-                # Create new service entry
-                service_data[f"{app_id}:{country_id}:{server_id}"] = {
+            # --- Atomic increment (fast path for existing entries) ---
+            # numincrby is a single Redis command; no read-modify-write TOCTOU.
+            incr_result = await self.redis_client.json().numincrby(
+                service_key, purchased_path, 1
+            )
+
+            if not incr_result or incr_result[0] is None:
+                # Entry does not yet exist – build and insert it.
+                country_data = await self.redis_client.json().get('main_data:details:country_data') or {}
+                flag_url = (
+                    country_data.get(str(country_id), {}).get('flag_url')
+                    or 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/'
+                       'Icon-round-Question_mark.jpg/800px-Icon-round-Question_mark.jpg'
+                )
+                bg_url = f"https://smsactivate.s3.eu-central-1.amazonaws.com/assets/ico/{service_code}0.webp"
+                if str(app_id) in APP_IMAGE_LIST:
+                    bg_url = APP_IMAGE_LIST[str(app_id)]
+
+                new_entry = {
                     "service_name": service_name,
                     "service_code": service_code,
                     "server_id": server_id,
                     "app_id": app_id,
                     "country_id": country_id,
-                    "logo_url": f"https://smsactivate.s3.eu-central-1.amazonaws.com/assets/ico/{service_code}0.webp",
+                    "logo_url": bg_url,
                     "country_url": flag_url,
-                    "purchased": 1
+                    "purchased": 1,
                 }
-                
-                bg_url = f"https://smsactivate.s3.eu-central-1.amazonaws.com/assets/ico/{service_code}0.webp"
-                if str(app_id) in APP_IMAGE_LIST:
-                    bg_url = APP_IMAGE_LIST[str(app_id)]
-                service_data[f"{app_id}:{country_id}:{server_id}"]["logo_url"] = bg_url
-                #logger.info(f"Created new service entry for {app_id}")
-
-            await self.redis_client.json().set('main_data:details:service_data', '$', service_data)
+                # NX=True: only write if path is absent – prevents overwriting a
+                # concurrent insert that may have arrived between our numincrby
+                # returning None and this set.
+                set_ok = await self.redis_client.json().set(
+                    service_key, entry_path, new_entry, nx=True
+                )
+                if set_ok is None:
+                    # A concurrent request already created the entry; increment instead.
+                    await self.redis_client.json().numincrby(
+                        service_key, purchased_path, 1
+                    )
+                logger.info("Created new service entry for %s", entry_key)
+            else:
+                logger.debug("Incremented purchase count for %s to %s", entry_key, incr_result[0])
             return True
 
         except Exception as e:

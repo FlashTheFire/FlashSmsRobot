@@ -8,7 +8,7 @@ from telebot.types import InputMediaPhoto, InputMediaVideo, Message, CallbackQue
 from utils.functions import create_keyboard, convert_points, get_tg_profile_photo
 from utils.redis_manager import redis_manager, RedisManager
 from handlers.manager.operation import FinancialManagement, UserManagement, OrderManagement, FinancialSummaryAggregator
-from utils.config import LOADING_GIF
+from utils.config import LOADING_GIF, CHANNEL_ID
 from telebot.async_telebot import AsyncTeleBot
 from typing import Optional, Dict, Any
 import json
@@ -164,7 +164,7 @@ class UserWalletManagement:
                     call=None,
                     user_data=user_data,
                     image_path=image_path,
-                    chat_id=-1002203139746,
+                    chat_id=CHANNEL_ID,
                     message_id=350,
                     keyboard=None,
                     caption=str(time.time()),

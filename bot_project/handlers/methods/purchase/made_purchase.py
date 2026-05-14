@@ -22,7 +22,7 @@ import asyncio
 import requests
 import uuid
 from termcolor import colored
-from utils.config import COMMISSION, APP_IMAGE_LIST
+from utils.config import COMMISSION, APP_IMAGE_LIST, CHANNEL_ID
 from requests import RequestException
 import os
 import sys
@@ -568,7 +568,7 @@ class UserPurchaseManagement:
 
                             # send the alert
                             await self.bot.send_message(
-                                chat_id='-1002751030633',
+                                chat_id=CHANNEL_ID,
                                 text=(
                                     "<blockquote>💸 Iɴsᴜғғɪᴄɪᴇɴᴛ Bᴀʟᴀɴᴄᴇ...</blockquote>\n\n"
                                     f"- Sᴇʀᴠᴇʀ Nᴀᴍᴇ : <code>{server_name}</code>"
@@ -792,12 +792,12 @@ class UserPurchaseManagement:
         data['msg_id'] = data['message_id'].message_id
         tasks = [
             self._process_and_save_image(data, data['service']),
-            self.user_manager.send_order_report(self.bot, "send_message", order_id, data['user_id'], '-1002203139746', data, is_api),
+            self.user_manager.send_order_report(self.bot, "send_message", order_id, data['user_id'], CHANNEL_ID, data, is_api),
             self.add_service_to_leaderboard(data['app_id'], data['country_id'], data['server_id'], data['app_name'], data['service'])
         ]
         if not is_api:
             tasks.append(self._delayed_message_edit(data, keyboard))
-            tasks.append(self.user_manager.user_metrics_report(self.bot, 'edit_message_text', data['user_id'], '-1002203139746'))
+            tasks.append(self.user_manager.user_metrics_report(self.bot, 'edit_message_text', data['user_id'], CHANNEL_ID))
         await asyncio.gather(*tasks)
         return order_id
 

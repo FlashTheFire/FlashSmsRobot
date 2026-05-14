@@ -52,6 +52,7 @@ from termcolor import colored
 
 # Setup logging
 import asyncio
+import aiofiles
 import logging
 import os
 from cachetools import TTLCache
@@ -64,6 +65,14 @@ from telethon import TelegramClient, functions, types, errors, events
 from telebot.async_telebot import AsyncTeleBot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, ForceReply, Message
 from utils.functions import small_caps, large_nums, AfterMin
+from utils.config import (
+    CHANNEL_ID,
+    ADMIN_ID as ADMIN_USER_ID,
+    FORWARD_API_ID,
+    FORWARD_API_HASH,
+    CONTACT_API_ID,
+    CONTACT_API_HASH
+)
 from handlers.methods.purchase.made_purchase import purchase_manager
 from termcolor import colored
 from redis.asyncio import Redis
@@ -75,23 +84,16 @@ logging.basicConfig(level=logging.INFO, format=tlogging_format, handlers=[loggin
 logger = logging.getLogger(__name__)
 
 # Constants
-ADMIN_USER_ID = 1889471360
 SESSIONS_DIR = "sessions"
 os.makedirs(SESSIONS_DIR, exist_ok=True)
 MAX_PARALLEL_CLIENTS = 5
 BATCH_SIZE = 19
 MAX_NUMBERS_PER_CLIENT = 100
-DESTINATION_CHAT_ID = -1002898000668  # Fixed destination channel ID
+DESTINATION_CHAT_ID = CHANNEL_ID  # Dynamic destination channel ID from config
 MAX_ATTEMPTS     = 5
 RETRY_DELAY      = 2   # seconds
 
-
-
-# API Credentials
-FORWARD_API_ID = 26383754
-FORWARD_API_HASH = "f743596f09f383e7bbcc62ce62367f06"
-CONTACT_API_ID = 20729573
-CONTACT_API_HASH = "6bc09cbaa7d0471944875c202fec8b5b"
+# API Credentials from config are now used
 
 import json
 from pathlib import Path
@@ -163,6 +165,7 @@ class SessionManager:
     """Manages user session locks and accounts using JSON storage"""
     def __init__(self, storage_file: str = "user_accounts.json"):
         self.locks: Dict[int, asyncio.Lock] = {}
+        self._save_lock = asyncio.Lock()    # serialises concurrent _save_accounts coroutines
         self.storage_file = Path(storage_file)
         self._ensure_storage_file()
         self._load_accounts()
@@ -191,8 +194,14 @@ class SessionManager:
             self.user_accounts = {}
             self.active_accounts = {}
 
-    def _save_accounts(self) -> None:
-        """Save accounts to JSON file"""
+    async def _save_accounts(self) -> None:
+        """Save accounts to JSON file atomically.
+
+        Builds the payload outside the lock so in-memory serialisation does not
+        block other coroutines.  aiofiles offloads the write to a thread pool;
+        the temp-file + rename pattern is atomic at the OS level, preventing
+        partial reads by other processes.
+        """
         data = {
             str(user_id): {
                 account_id: account.to_dict()
@@ -204,7 +213,26 @@ class SessionManager:
             str(user_id): account_id
             for user_id, account_id in self.active_accounts.items()
         }
-        self.storage_file.write_text(json.dumps(data, indent=2))
+        payload = json.dumps(data, indent=2)
+        async with self._save_lock:
+            tmp_file = self.storage_file.with_suffix('.tmp')
+            try:
+                async with aiofiles.open(tmp_file, 'w') as f:
+                    await f.write(payload)
+                tmp_file.replace(self.storage_file)  # atomic rename (syscall-level)
+            except Exception as exc:
+                logging.error(
+                    "Failed to save accounts to %s: %s",
+                    self.storage_file, exc, exc_info=True,
+                )
+                raise
+            finally:
+                # Remove stale .tmp only if the rename did not happen
+                if tmp_file.exists():
+                    try:
+                        tmp_file.unlink()
+                    except OSError:
+                        pass
 
     def get_lock(self, user_id: int) -> asyncio.Lock:
         """Get or create a lock for the user"""
@@ -212,12 +240,12 @@ class SessionManager:
             self.locks[user_id] = asyncio.Lock()
         return self.locks[user_id]
     
-    def add_account(self, account: UserAccount) -> None:
+    async def add_account(self, account: UserAccount) -> None:
         """Add a new user account"""
         if account.user_id not in self.user_accounts:
             self.user_accounts[account.user_id] = {}
         self.user_accounts[account.user_id][account.account_id] = account
-        self._save_accounts()
+        await self._save_accounts()
         
     def get_account(self, user_id: int, account_id: str) -> Optional[UserAccount]:
         """Get a specific account for a user"""
@@ -236,10 +264,10 @@ class SessionManager:
                 return account
         return None
 
-    def set_active_account(self, user_id: int, account_id: str) -> None:
+    async def set_active_account(self, user_id: int, account_id: str) -> None:
         """Set the active account for a user"""
         self.active_accounts[user_id] = account_id
-        self._save_accounts()
+        await self._save_accounts()
         
     def get_active_account(self, user_id: int) -> Optional[UserAccount]:
         """Get the active account for a user"""
@@ -248,13 +276,13 @@ class SessionManager:
             return self.get_account(user_id, account_id)
         return None
     
-    def remove_account(self, user_id: int, account_id: str) -> None:
+    async def remove_account(self, user_id: int, account_id: str) -> None:
         """Remove an account for a user"""
         if user_id in self.user_accounts and account_id in self.user_accounts[user_id]:
             del self.user_accounts[user_id][account_id]
             if user_id in self.active_accounts and self.active_accounts[user_id] == account_id:
                 del self.active_accounts[user_id]
-            self._save_accounts()
+            await self._save_accounts()
 
 
 class ForwardManager:
@@ -501,9 +529,9 @@ class ForwardManager:
                 app_name = await self.redis_client.hget(service_key, 'app_name')
                 country_name = await self.redis_client.hget(service_key, 'country_name')
                 if app_name:
-                    await self._update_list("1889471360", app_name, self.app_list, "App", True)
+                    await self._update_list(str(ADMIN_USER_ID), app_name, self.app_list, "App", True)
                 if country_name:
-                    await self._update_list("1889471360", country_name, self.country_list, "Country", True)
+                    await self._update_list(str(ADMIN_USER_ID), country_name, self.country_list, "Country", True)
         self.enabled = True
 
     async def get_account_details(self, user_id: int, account_id: str) -> str:
@@ -1017,7 +1045,7 @@ class ForwardManager:
                 account_id = data.removeprefix(self.CB_SWITCH_ACCOUNT + ":")
                 user_id = call.from_user.id
                 #print(f"Switching to account {account_id} for user {user_id}")
-                self.session_manager.set_active_account(user_id, account_id)
+                await self.session_manager.set_active_account(user_id, account_id)
                 await self.safe_callback_query(call.id, f"✅ Active: {account_id}")
             elif data == self.CB_BACK:
                 await self.safe_callback_query(call.id)
@@ -1473,7 +1501,7 @@ class ForwardManager:
                 self.logger.warning(f"Could not remove session file: {e}")
 
         # 3) Clean up in-memory account state
-        self.session_manager.remove_account(user_id, account_id)
+        await self.session_manager.remove_account(user_id, account_id)
         if force or user_id in self.login_states:
             self.login_states.pop(user_id, None)
 
@@ -1504,8 +1532,8 @@ class ForwardManager:
         account_id   = state_data['account_id']
         session_path = self._contact_session_file(user_id, account_id)
         account      = UserAccount(user_id, account_id, phone, session_path)
-        self.session_manager.add_account(account)
-        self.session_manager.set_active_account(user_id, account_id)
+        await self.session_manager.add_account(account)
+        await self.session_manager.set_active_account(user_id, account_id)
 
         # --- 3) try to connect + request code ---
         last_exc = None

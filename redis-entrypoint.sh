@@ -12,11 +12,15 @@ if [ -z "$REDIS_PASSWORD" ]; then
     exit 1
 fi
 
+# Secure the destination file permissions before writing so the password isn't exposed
+touch "$CONF_DST"
+chmod 600 "$CONF_DST"
+
 # Use pure awk literal replacement (index/substr) so special characters in the password (like & or \) are not misinterpreted by gsub
 awk '
 BEGIN { target = "${REDIS_PASSWORD}"; pw = ENVIRON["REDIS_PASSWORD"] }
 {
-    while ((idx = index($0, target)) != 0) {
+    if ((idx = index($0, target)) != 0) {
         $0 = substr($0, 1, idx - 1) pw substr($0, idx + length(target))
     }
     print

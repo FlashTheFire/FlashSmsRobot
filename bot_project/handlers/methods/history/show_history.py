@@ -28,7 +28,7 @@ from handlers.manager.operation import (
 )
 from handlers.security import RateLimiter
 from utils.functions import small_caps, encode_order_id, decode_barcode_id, date_to_unix, large_caps, subscript_small_caps, time_ago
-from utils.config import LOADING_GIF
+from utils.config import LOADING_GIF, CHANNEL_ID
 from redis.commands.search.query import Query
 from functools import partial
 from utils.redis_keys import RedisKeys
@@ -770,7 +770,7 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
             await bot.answer_callback_query(call.id, "📊 Rᴇғʀᴇsʜɪɴɢ Mᴇᴛʀɪᴄs...")
             
             metrics_result = await history_manager.user_mgr.user_metrics_report(
-                bot, "edit_message_text", user_id, "-1002203139746"
+                bot, "edit_message_text", user_id, CHANNEL_ID
             )
             
             if metrics_result is not None:

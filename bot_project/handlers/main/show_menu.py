@@ -15,14 +15,11 @@ from handlers.manager.auto_updater import AutoUpdater, auto_updater
 from dotenv import load_dotenv
 
 from utils.redis_manager import redis_manager
-from utils.config import START_PAGE, ADMIN_ID, ENV_FILE
-from utils.functions import create_keyboard, serialize_data, decode_base62
-from handlers.manager.operation import FinancialManagement, UserManagement, FinancialSummaryAggregator, get_async_logger
-from handlers.security import InputValidator, TransactionGuard, RateLimiter
-
-# Replace these with your actual bot token, numeric channel id, and invite link.
-CHANNEL_ID = -1001886867129  # Numeric channel or supergroup id
-INVITE_LINK = "https://t.me/+HXYCt94N-OM0MjU1"
+from utils.config import START_PAGE, ADMIN_ID, ENV_FILE, CHANNEL_ID as CONFIG_CHANNEL_ID
+#INVITE_LINK = "https://t.me/+HXYCt94N-OM0MjU1"
+# Use CHANNEL_ID from config
+CHANNEL_ID = CONFIG_CHANNEL_ID
+INVITE_LINK = os.getenv("INVITE_LINK", "https://t.me/+HXYCt94N-OM0MjU1")
 
 # Set up logging for better traceability.
 logging.basicConfig(level=logging.INFO)
@@ -432,10 +429,16 @@ class UserStartManager:
         }
         pseudo_message = Message.de_json(pseudo_message_data)
         # Call the normal start command handling using the pseudo-message
-        await asyncio.gather(
-            self.handle_start_command(pseudo_message),
-            self._delete_all_messages(user_id=user.id)
-        )
+        try:
+            await asyncio.gather(
+                self.handle_start_command(pseudo_message),
+                self._delete_all_messages(user_id=user.id)
+            )
+        except Exception as e:
+            if "Forbidden: bot can't initiate conversation with a user" in str(e):
+                logger.info(f"User {user.id} joined but hasn't started the bot yet. DB record created if new.")
+            else:
+                logger.error(f"Error handling join request for user {user.id}: {e}")
 
 
     async def start_command_with_membership(self, message: Message) -> None:

@@ -1,5 +1,6 @@
 from telebot.asyncio_storage.redis_storage import redis
 from utils.functions import get_api_info, fetch_url_str, small_caps, decode_barcode_id, encode_order_id
+from utils.config import CHANNEL_ID
 from utils.redis_manager import redis_manager
 from handlers.manager.operation import OrderManagement, UserManagement
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, Message
@@ -358,8 +359,8 @@ class UserPurchaseStatusManagement:
         # Run the follow-up tasks concurrently.
         from handlers.main.show_wallet import wallet_manager
         tasks = [
-            self.user_manager.send_order_report(self.bot, "edit_message_text", order_id, order_user_id, '-1002203139746', details),
-            self.user_manager.user_metrics_report(self.bot, 'edit_message_text', order_user_id, '-1002203139746'),
+            self.user_manager.send_order_report(self.bot, "edit_message_text", order_id, order_user_id, CHANNEL_ID, details),
+            self.user_manager.user_metrics_report(self.bot, 'edit_message_text', order_user_id, CHANNEL_ID),
             wallet_manager.process_wallet_update(order_user_id)
         ]
         await asyncio.gather(*tasks)
