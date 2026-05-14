@@ -1,0 +1,50 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv
+venv/
+env/
+
+# Secrets — never bake into image
+.env
+*.env
+*.key
+*.pem
+*.crt
+
+# Logs
+logs/
+*.log
+application.log
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Redis data (handled by named volume)
+data/
+dump.rdb
+appendonly.aof

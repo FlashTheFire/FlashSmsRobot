@@ -46,7 +46,7 @@ class RedisManager:
                     host=REDIS_HOST,
                     port=REDIS_PORT,
                     db=REDIS_DB,
-                    # password=REDIS_PASSWORD,  # uncomment if you need auth
+                    password=REDIS_PASSWORD or None,  # None = no auth
                     decode_responses=True,
                     max_connections=self.POOL_SIZE,
                     socket_timeout=self.SOCKET_TIMEOUT,

@@ -59,7 +59,7 @@ class TopServiceManager:
             service_data = await self.redis_client.json().get('main_data:details:service_data')
             
             if not service_data:
-                print("No service data found in Redis")
+                logging.info("No service data found in Redis")
                 return []
                 
             services = []

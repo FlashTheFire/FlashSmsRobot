@@ -1,0 +1,64 @@
+services:
+  # ─── Redis Stack (RediSearch + RedisJSON + RedisBloom + RedisTimeSeries) ───
+  redis:
+    image: redis/redis-stack-server:latest
+    container_name: flashsms-redis
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  # ─── RedisInsight GUI (optional but useful) ────────────────────────────────
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: flashsms-redisinsight
+    ports:
+      - "127.0.0.1:5540:5540"
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ─── Telegram Bot ──────────────────────────────────────────────────────────
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: flashsms-bot
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:8443:8443"
+    volumes:
+      # Hot-reload: mount source so watchmedo picks up changes
+      - ./bot_project:/app/bot_project
+      - ./requirements.txt:/app/requirements.txt
+      # Persist application log
+      - ./logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    # Override CMD to stream logs clearly
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  default:
+    name: flashsms-network

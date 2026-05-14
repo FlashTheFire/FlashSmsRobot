@@ -40,14 +40,17 @@ PAYMENT_GATEWAY = {
     'status_endpoint': 'https://api.paymentgateway.com/v1/status',
     'headers': {'Authorization': 'Bearer YOUR_API_KEY'}
 }
-# utils/config.py
-import os
-
 # Payment Gateway Configuration
 PAYMENT_GATEWAY_API = os.getenv("PAYMENT_GATEWAY_API", "https://api.payment-gateway.com/v1")
-PAYMENT_GATEWAY_API_KEY = os.getenv("PAYMENT_GATEWAY_API_KEY", "your_api_key_here")
-INR_RATE = 1.0  # 1 INR = 1 Point
-COMMISSION = os.getenv("COMMISSION", 1.25)  # 25% commission
+PAYMENT_GATEWAY_API_KEY = os.getenv("PAYMENT_GATEWAY_API_KEY", "")
+# COMMISSION: stored as a multiplier — 1.25 means a 25% markup on base price.
+# Override via COMMISSION env var (e.g. COMMISSION=1.10 for 10% markup).
+_commission_raw = os.getenv("COMMISSION", "1.25")
+try:
+    COMMISSION = float(_commission_raw)
+except ValueError:
+    print(f"Error: COMMISSION env var '{_commission_raw}' is not a valid float; defaulting to 1.25")
+    COMMISSION = 1.25
 
 BASE_TIMEOUT = os.getenv("BASE_TIMEOUT", 10)  # minutes
 EXTENDED_TIMEOUT = os.getenv("EXTENDED_TIMEOUT", 20)  # minutes

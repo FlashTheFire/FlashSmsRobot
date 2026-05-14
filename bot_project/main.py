@@ -8,7 +8,6 @@ from typing import Optional, Tuple
 
 from aiohttp import web
 import ssl
-from aiohttp import web
 from telebot.async_telebot import AsyncTeleBot
 from telebot.types import Update, InputMediaPhoto, Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from utils.cache_manager import cache_manager
@@ -33,8 +32,9 @@ from api.sms_api import init_app
 
 
 class TelegramBot:
-    CERT_PATH = r"C:\Users\LOQ\OneDrive\Desktop\Coding-Flash\flash_sms\server.crt"
-    KEY_PATH  = r"C:\Users\LOQ\OneDrive\Desktop\Coding-Flash\flash_sms\server.key"
+    # SSL paths read from env — only needed in webhook/HTTPS mode
+    CERT_PATH = os.getenv("SSL_CERT_PATH", "/app/certs/server.crt")
+    KEY_PATH  = os.getenv("SSL_KEY_PATH",  "/app/certs/server.key")
 
     def __init__(self):
         self.bot: Optional[AsyncTeleBot] = None
@@ -368,25 +368,29 @@ async def main():
     
     # Create tasks for both the bot and the periodic updater
     async with bot.initialize_services():
+        runner = None
         try:
+            # Always clear any stale webhook before starting
+            await bot.bot.delete_webhook()
+
             if bot.use_webhook:
-                #await bot.setup_webhook()
-                await bot.bot.delete_webhook()
+                # Webhook mode: run aiohttp server, keep process alive
                 runner = await bot.start_server()
+                # Register handlers first, then start the update loop
+                await bot.register_handlers()
+                update_task = asyncio.create_task(periodic_update(update=True, bot=bot.bot))
+                await asyncio.gather(update_task)
+                await asyncio.Event().wait()  # keep running until Ctrl+C
             else:
-                # Delete webhook before starting polling mode
-                await bot.bot.delete_webhook()
-            update_task = asyncio.create_task(periodic_update(update=bot.use_webhook, bot=bot.bot))
-            handler_task = asyncio.create_task(bot.register_handlers())
-            polling_task = asyncio.create_task(bot.bot.polling(non_stop=True, timeout=60))
-            
-            await asyncio.gather(handler_task, polling_task, update_task)
-            if bot.use_webhook:
-                await asyncio.Event().wait()  # keep running
+                # Polling mode: register handlers first, then poll concurrently
+                await bot.register_handlers()
+                update_task  = asyncio.create_task(periodic_update(update=True, bot=bot.bot))
+                polling_task = asyncio.create_task(bot.bot.polling(non_stop=True, timeout=60))
+                await asyncio.gather(polling_task, update_task)
         except Exception as e:
             print(f"Startup error: {e}")
         finally:
-            if bot.use_webhook:
+            if bot.use_webhook and runner is not None:
                 await runner.cleanup()
                 print("Server shutdown complete.")
 
