@@ -326,7 +326,7 @@ class TelegramBot:
             (show_support, "show_support"),
             (admin_panel, "admin_panel"),
             (inline_query, "inline_query"),
-            #(message_handler, "message_handler"),
+            (message_handler, "message_handler"),
         ]
 
         success = True

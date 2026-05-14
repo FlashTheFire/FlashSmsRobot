@@ -7,9 +7,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-bot = AsyncTeleBot(BOT_TOKEN)
-
-async def send_reply(chat_id, text, reply_to_message, reply_markup=None, parse_mode="HTML"):
+async def send_reply(bot: AsyncTeleBot, chat_id, text, reply_to_message, reply_markup=None, parse_mode="HTML"):
     """Send a reply message."""
     try:
         return await bot.send_message(
@@ -23,7 +21,7 @@ async def send_reply(chat_id, text, reply_to_message, reply_markup=None, parse_m
         logger.error(f"Error sending reply: {e}")
         return None
 
-async def edit_keyboard(chat_id, message_id, reply_markup):
+async def edit_keyboard(bot: AsyncTeleBot, chat_id, message_id, reply_markup):
     """Edit message keyboard."""
     try:
         return await bot.edit_message_reply_markup(
@@ -35,7 +33,7 @@ async def edit_keyboard(chat_id, message_id, reply_markup):
         logger.error(f"Error editing keyboard: {e}")
         return None
 
-async def edit_message(chat_id, text, message_id, reply_markup=None, parse_mode="HTML"):
+async def edit_message(bot: AsyncTeleBot, chat_id, text, message_id, reply_markup=None, parse_mode="HTML"):
     """Edit message text."""
     try:
         return await bot.edit_message_text(
@@ -49,7 +47,7 @@ async def edit_message(chat_id, text, message_id, reply_markup=None, parse_mode=
         logger.error(f"Error editing message: {e}")
         return None
 
-async def handle_message(message: Message):
+async def handle_message(message: Message, bot: AsyncTeleBot):
     """Handle incoming text messages."""
     try:
         text = message.text
@@ -60,6 +58,7 @@ async def handle_message(message: Message):
         if all(char in "𝄃𝄂𝄀𝄁" for char in text):
             decoded_text = await decode_barcode_id(text)
             await send_reply(
+                bot=bot,
                 chat_id=chat_id,
                 text=f"Decoded message: {decoded_text}",
                 reply_to_message=message.message_id
@@ -68,6 +67,7 @@ async def handle_message(message: Message):
             try:
                 encoded_text = await encode_order_id(int(text))
                 await send_reply(
+                    bot=bot,
                     chat_id=chat_id,
                     text=f"Encoded message: {encoded_text}",
                     reply_to_message=message.message_id
@@ -75,6 +75,7 @@ async def handle_message(message: Message):
             except ValueError:
                 pass
                 #await send_reply(
+                #    bot=bot,
                 #    chat_id=chat_id,
                 #    text="Please enter a valid integer.",
                 #    reply_to_message=message.message_id
@@ -83,7 +84,7 @@ async def handle_message(message: Message):
         pass
         #logger.error(f"Error handling message: {e}")
 
-async def handle_files(message: Message):
+async def handle_files(message: Message, bot: AsyncTeleBot):
     """Handle incoming files and media."""
     try:
         # Handle photos
@@ -122,6 +123,7 @@ async def handle_files(message: Message):
             file_type = "Sticker"
 
         await send_reply(
+            bot=bot,
             chat_id=message.chat.id,
             text=f"{file_type} received!\nFile ID: <code>{file_id}</code>",
             reply_to_message=message.message_id
