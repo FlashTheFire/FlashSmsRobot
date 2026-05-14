@@ -12,7 +12,7 @@ def get_required_env(key: str) -> str:
     return value
 
 # Required configurations
-DEPOSIT_TIMEOUT = 10  # 15 minutes expiration time
+DEPOSIT_TIMEOUT = 15  # 15 minutes expiration time
 INR_RATE = 1.0        # 1 INR = 1 Point (💎)
 MIN_DEPOSIT = '1⩇'      # 1 Point (💎) minimum deposit amount
 # config.py
@@ -35,43 +35,43 @@ DEPOSIT_CONFIG = {
 APP_IMAGE_LIST = {
     '2203': 'https://i.ibb.co/Wvh4R4yX/image-removebg-preview.png',
 }
-PAYMENT_GATEWAY = {
-    'endpoint': 'https://api.paymentgateway.com/v1/charges',
-    'status_endpoint': 'https://api.paymentgateway.com/v1/status',
-    'headers': {'Authorization': 'Bearer YOUR_API_KEY'}
-}
 # Payment Gateway Configuration
 PAYMENT_GATEWAY_API = os.getenv("PAYMENT_GATEWAY_API", "https://api.payment-gateway.com/v1")
 PAYMENT_GATEWAY_API_KEY = os.getenv("PAYMENT_GATEWAY_API_KEY", "")
+
+PAYMENT_GATEWAY = {
+    'endpoint': 'https://api.paymentgateway.com/v1/charges',
+    'status_endpoint': 'https://api.paymentgateway.com/v1/status',
+    'headers': {'Authorization': f'Bearer {PAYMENT_GATEWAY_API_KEY}'}
+}
 # COMMISSION: stored as a multiplier — 1.25 means a 25% markup on base price.
 # Override via COMMISSION env var (e.g. COMMISSION=1.10 for 10% markup).
 _commission_raw = os.getenv("COMMISSION", "1.25")
 try:
     COMMISSION = float(_commission_raw)
-    if not (1.0 <= COMMISSION <= 3.0):
-        print(f"Error: COMMISSION value {COMMISSION} is out of valid range [1.0, 3.0]; defaulting to 1.25")
-        COMMISSION = 1.25
 except ValueError:
-    print(f"Error: COMMISSION env var '{_commission_raw}' is not a valid float; defaulting to 1.25")
-    COMMISSION = 1.25
+    raise ValueError(f"COMMISSION env var '{_commission_raw}' is not a valid float")
 
-BASE_TIMEOUT = os.getenv("BASE_TIMEOUT", 10)  # minutes
-EXTENDED_TIMEOUT = os.getenv("EXTENDED_TIMEOUT", 20)  # minutes
-CHECK_INTERVAL = os.getenv("CHECK_INTERVAL", 5)  # seconds
-UPDATE_INTERVAL = os.getenv("UPDATE_INTERVAL", 60)  # seconds
-BATCH_SIZE = os.getenv("BATCH_SIZE", 100)
+if not (0.01 <= COMMISSION <= 100.0):
+    raise ValueError(f"COMMISSION value {COMMISSION} is out of valid range [0.01, 100.0]")
+
+BASE_TIMEOUT = int(os.getenv("BASE_TIMEOUT", 10))  # minutes
+EXTENDED_TIMEOUT = int(os.getenv("EXTENDED_TIMEOUT", 20))  # minutes
+CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", 5))  # seconds
+UPDATE_INTERVAL = int(os.getenv("UPDATE_INTERVAL", 60))  # seconds
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", 100))
 ENV_FILE = os.getenv("ENV_FILE", ".env")
 
 
 CHANNEL_ID = get_required_env("CHANNEL_ID")
 BOT_TOKEN = get_required_env("BOT_TOKEN")
-ADMIN_ID = os.getenv("ADMIN_ID", "5716978793")
+ADMIN_ID = get_required_env("ADMIN_ID")
 WEBHOOK_HOST = os.getenv("WEBHOOK_HOST")
 
 # Optional configurations with sensible defaults
 START_PAGE = os.getenv("START_PAGE", "default_start_page")
 DEPOSIT_PAGE = os.getenv("DEPOSIT_PAGE", "default_deposit_page")
-REFFERAL_PAGE = os.getenv("REFFERAL_PAGE", "default_referral_page")
+REFERRAL_PAGE = os.getenv("REFERRAL_PAGE", "default_referral_page")
 LOADING_GIF = os.getenv("LOADING_GIF", "default_loading.gif")
 WALLET_PAGE = os.getenv("WALLET_PAGE", "default_wallet_page")
 DEPOSIT_INR_QR_CODE = os.getenv("DEPOSIT_INR_QR_CODE", "https://i.postimg.cc/1thT9t0C/image.png")

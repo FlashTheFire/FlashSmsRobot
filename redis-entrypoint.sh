@@ -12,7 +12,14 @@ if [ -z "$REDIS_PASSWORD" ]; then
     exit 1
 fi
 
-# Use awk for portable substitution — no escaping issues with special chars
-awk -v pw="$REDIS_PASSWORD" '{gsub(/\${REDIS_PASSWORD}/, pw)}1' "$CONF_SRC" > "$CONF_DST"
+# Use pure awk literal replacement (index/substr) so special characters in the password (like & or \) are not misinterpreted by gsub
+awk '
+BEGIN { target = "${REDIS_PASSWORD}"; pw = ENVIRON["REDIS_PASSWORD"] }
+{
+    while ((idx = index($0, target)) != 0) {
+        $0 = substr($0, 1, idx - 1) pw substr($0, idx + length(target))
+    }
+    print
+}' "$CONF_SRC" > "$CONF_DST"
 
 exec redis-server "$CONF_DST"
