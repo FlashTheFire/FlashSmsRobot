@@ -3,15 +3,21 @@ services:
   redis:
     image: redis/redis-stack-server:latest
     container_name: flashsms-redis
-    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     ports:
       - "127.0.0.1:6379:6379"
+    # Inject REDIS_PASSWORD into redis.conf at startup via mounted entrypoint script
+    entrypoint: ["/entrypoint/redis-entrypoint.sh"]
     volumes:
       - redis-data:/data
       - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - ./redis-entrypoint.sh:/entrypoint/redis-entrypoint.sh:ro
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    env_file:
+      - .env
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10

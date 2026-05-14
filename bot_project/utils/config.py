@@ -48,6 +48,9 @@ PAYMENT_GATEWAY_API_KEY = os.getenv("PAYMENT_GATEWAY_API_KEY", "")
 _commission_raw = os.getenv("COMMISSION", "1.25")
 try:
     COMMISSION = float(_commission_raw)
+    if not (0.01 <= COMMISSION <= 100.0):
+        print(f"Error: COMMISSION value {COMMISSION} is out of valid range [0.01, 100]; defaulting to 1.25")
+        COMMISSION = 1.25
 except ValueError:
     print(f"Error: COMMISSION env var '{_commission_raw}' is not a valid float; defaulting to 1.25")
     COMMISSION = 1.25

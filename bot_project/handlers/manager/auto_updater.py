@@ -58,6 +58,9 @@ class DataTransformer:
         self.app_mapping = {}
         self.country_map = []
         self.SCAN_COUNT = 1_000
+        # Fallback-done flags — ensure CountryFlagUpdater is only called once per instance
+        self._country_fallback_done: bool = False
+        self._app_fallback_done: bool = False
 
     async def initialize(self):
         """Initialize Redis client and load mappings."""
@@ -70,13 +73,17 @@ class DataTransformer:
             data = await self.redis_client.json().get('main_data:details:country_data')
             if not data:
                 logging.warning("No country data found in Redis, attempting to load from file...")
-                try:
-                    from handlers.manager.operation import CountryFlagUpdater
-                    updater = CountryFlagUpdater(self.redis_client)
-                    await updater.load_mappings(is_country_return=False, is_app_return=False)
-                    data = await self.redis_client.json().get('main_data:details:country_data')
-                except Exception as fallback_err:
-                    logging.error(f"[AutoUpdate.load_country_data] CountryFlagUpdater fallback failed: {fallback_err}")
+                if not self._country_fallback_done:
+                    self._country_fallback_done = True
+                    try:
+                        updater = _ops.CountryFlagUpdater(self.redis_client)
+                        await updater.load_mappings(is_country_return=False, is_app_return=False)
+                        data = await self.redis_client.json().get('main_data:details:country_data')
+                    except Exception as fallback_err:
+                        logging.error(f"[AutoUpdate.load_country_data] CountryFlagUpdater fallback failed: {fallback_err}")
+                        data = None
+                else:
+                    logging.warning("[AutoUpdate.load_country_data] Skipping repeated fallback (already attempted).")
                     data = None
                 
             if not data:
@@ -101,13 +108,17 @@ class DataTransformer:
             data = await self.redis_client.json().get('main_data:service:app_data')
             if not data:
                 logging.warning("No app code mapping found in Redis, attempting to load from file...")
-                try:
-                    from handlers.manager.operation import CountryFlagUpdater
-                    updater = CountryFlagUpdater(self.redis_client)
-                    await updater.load_mappings(is_country_return=False, is_app_return=False)
-                    data = await self.redis_client.json().get('main_data:service:app_data')
-                except Exception as fallback_err:
-                    logging.error(f"[AutoUpdate.load_app_code_mapping] CountryFlagUpdater fallback failed: {fallback_err}")
+                if not self._app_fallback_done:
+                    self._app_fallback_done = True
+                    try:
+                        updater = _ops.CountryFlagUpdater(self.redis_client)
+                        await updater.load_mappings(is_country_return=False, is_app_return=False)
+                        data = await self.redis_client.json().get('main_data:service:app_data')
+                    except Exception as fallback_err:
+                        logging.error(f"[AutoUpdate.load_app_code_mapping] CountryFlagUpdater fallback failed: {fallback_err}")
+                        data = None
+                else:
+                    logging.warning("[AutoUpdate.load_app_code_mapping] Skipping repeated fallback (already attempted).")
                     data = None
                 
             if not data:
