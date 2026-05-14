@@ -379,8 +379,8 @@ async def main():
                 # Register handlers first, then start the update loop
                 await bot.register_handlers()
                 update_task = asyncio.create_task(periodic_update(update=True, bot=bot.bot))
-                # Keep process alive while periodic_update runs in the background
-                await asyncio.gather(update_task, asyncio.Event().wait())
+                # Keep process alive by awaiting the infinite update loop; propagates crashes
+                await update_task
             else:
                 # Polling mode: register handlers first, then poll concurrently
                 await bot.register_handlers()
