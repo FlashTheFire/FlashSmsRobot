@@ -70,7 +70,7 @@ class DataTransformer:
     async def load_country_data(self) -> None:
         """Load country data from Redis and store it as a dictionary."""
         try:
-            data = await self.redis_client.json().get('main_data:details:country_data')
+            data = await self.redis_client.json().get('main_data:details:country_data') # type: ignore
             if not data:
                 logging.warning("No country data found in Redis, attempting to load from file...")
                 if not self._country_fallback_done:
@@ -78,7 +78,7 @@ class DataTransformer:
                     try:
                         updater = _ops.CountryFlagUpdater(self.redis_client)
                         await updater.load_mappings(is_country_return=False, is_app_return=False)
-                        data = await self.redis_client.json().get('main_data:details:country_data')
+                        data = await self.redis_client.json().get('main_data:details:country_data') # type: ignore
                     except Exception as fallback_err:
                         logging.error(f"[AutoUpdate.load_country_data] CountryFlagUpdater fallback failed: {fallback_err}")
                         data = None
@@ -105,7 +105,7 @@ class DataTransformer:
     async def load_app_code_mapping(self) -> None:
         """Load app code mapping from Redis (Super Fast)"""
         try:
-            data = await self.redis_client.json().get('main_data:service:app_data')
+            data = await self.redis_client.json().get('main_data:service:app_data') # type: ignore
             if not data:
                 logging.warning("No app code mapping found in Redis, attempting to load from file...")
                 if not self._app_fallback_done:
@@ -113,7 +113,7 @@ class DataTransformer:
                     try:
                         updater = _ops.CountryFlagUpdater(self.redis_client)
                         await updater.load_mappings(is_country_return=False, is_app_return=False)
-                        data = await self.redis_client.json().get('main_data:service:app_data')
+                        data = await self.redis_client.json().get('main_data:service:app_data') # type: ignore
                     except Exception as fallback_err:
                         logging.error(f"[AutoUpdate.load_app_code_mapping] CountryFlagUpdater fallback failed: {fallback_err}")
                         data = None
@@ -294,11 +294,11 @@ class AutoUpdater:
 
     async def save_price_mapping(self, redis_client: redis.Redis) -> None:
         """Save the price-country mapping to Redis."""
-        await redis_client.json().set(REDIS_KEY_PRICE_MAP, '$', self.price_country_mapping)
+        await redis_client.json().set(REDIS_KEY_PRICE_MAP, '$', self.price_country_mapping) # type: ignore
 
     async def load_price_mapping(self, redis_client: redis.Redis) -> None:
         """Load the price-country mapping from Redis."""
-        stored_mapping = await redis_client.json().get(REDIS_KEY_PRICE_MAP)
+        stored_mapping = await redis_client.json().get(REDIS_KEY_PRICE_MAP) # type: ignore
         if stored_mapping:
             self.price_country_mapping = stored_mapping
 
