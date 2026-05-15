@@ -276,8 +276,11 @@ class TelegramBot:
                     sig = inspect.signature(handler.init_managers)
                     kwargs = {}
                     if 'user_manager' in sig.parameters: kwargs['user_manager'] = self.user_manager
+                    if 'user_mgr' in sig.parameters: kwargs['user_mgr'] = self.user_manager
                     if 'order_manager' in sig.parameters: kwargs['order_manager'] = self.order_manager
+                    if 'order_mgr' in sig.parameters: kwargs['order_mgr'] = self.order_manager
                     if 'deposit_manager' in sig.parameters: kwargs['deposit_manager'] = self.deposit_manager
+                    if 'deposit_mgr' in sig.parameters: kwargs['deposit_mgr'] = self.deposit_manager
                     if 'bot' in sig.parameters: kwargs['bot'] = self.bot
                     
                     await handler.init_managers(**kwargs)

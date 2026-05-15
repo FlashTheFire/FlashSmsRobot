@@ -56,11 +56,16 @@ class TopServiceManager:
     async def fetch_service_data(self) -> List[Tuple[str, int, str, str]]:
         """Fetch service data from Redis and sort by purchase count."""
         try:
-            #logger.info("Fetching service data from Redis")
-            service_data = await self.redis_client.json().get('main_data:details:service_data')
+            service_key = 'main_data:details:service_data'
+            # Initialize key if it doesn't exist
+            if not await self.redis_client.exists(service_key):
+                await self.redis_client.json().set(service_key, '$', {})
+                #logger.info(f"Initialized empty {service_key}")
+
+            service_data = await self.redis_client.json().get(service_key)
             
             if not service_data:
-                logger.info("No service data found in Redis")
+                # logger.debug("No service data found in Redis (leaderboard is empty)")
                 return []
                 
             services = []
