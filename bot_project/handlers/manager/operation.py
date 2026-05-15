@@ -58,7 +58,8 @@ from utils.config import (
     SERVICE_INDEX, SERVICE_PREFIX,
     INLINE_CACHE_PREFIX, CACHE_DURATION,
     CACHE_RESULTS_PER_PAGE, CACHE_EXPIRY,
-    APP_COUNT, BOT_TOKEN, CHANNEL_ID
+    APP_COUNT, BOT_TOKEN, CHANNEL_ID,
+    CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
 )
 from utils.functions import small_caps, decode_barcode_id, encode_order_id, AdvancedLogger, convert_usd_to_rub, convert_rub_to_usd
 from utils.redis_manager import RedisManager, redis_manager
@@ -83,9 +84,9 @@ user_key_profile = "user_data:{user_id}:profile:main"
 ORDER_PREFIX = "987654321"
 # Configure Cloudinary
 cloudinary.config(
-    cloud_name="djfsvvzto",
-    api_key="291392939686751",
-    api_secret="t5YvGkbk7ez71mzMS-3ZZoBFlFQ"
+    cloud_name=CLOUDINARY_CLOUD_NAME,
+    api_key=CLOUDINARY_API_KEY,
+    api_secret=CLOUDINARY_API_SECRET
 )
 
 # Module-level logger for utility functions that do not carry self.logger
@@ -563,9 +564,9 @@ class OrderManagement:
                     if raw_key:
                         order_number = await self.extract_order_number(raw_key)
                         order_rows.append([
-                            ("amount", float(row_dict.get("order_amount", 0))),
-                            ("timestamp", float(row_dict.get("recorded_at", 0))),
-                            ("order_number", order_number)
+                            float(row_dict.get("order_amount", 0)),
+                            float(row_dict.get("recorded_at", 0)),
+                            order_number
                         ])
 
                 output["order_ids"] = order_rows

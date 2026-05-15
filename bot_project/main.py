@@ -16,7 +16,7 @@ from utils.config import BOT_TOKEN, CHANNEL_ID, START_PAGE
 from utils.redis_manager import redis_manager
 from handlers.manager.operation import (
     FinancialManagement, UserManagement, OrderManagement, DepositManagement,
-    get_async_logger
+    get_async_logger, user_mgr, order_mgr, deposit_mgr, financial_mgr
 )
 from handlers.security import InputValidator, TransactionGuard
 from handlers.methods.purchase import made_purchase, show_country, show_servers, order_status
@@ -122,106 +122,49 @@ class TelegramBot:
         # Step 1: Init aiohttp app with Redis and API
         app = await init_app(self.bot)
 
-        # Step 2: Add Telegram webhook route
-        #app.router.add_post(self.webhook_path, self.handle_webhook, allow_head=False)
-
-        # Step 3: (optional) hello GET route
+        # Step 2: Add optional hello GET route for health checks
         async def hello(request):
-            return web.Response(text="Hello from combined server")
+            return web.Response(text="Hello from FlashSmsRobot combined server")
         app.router.add_get("/", hello, allow_head=False)
 
-        # Step 4: Setup Telegram webhook (optional)
-        #if self.use_webhook:
-        #    await self.setup_webhook()
-
-        # Step 5: Run aiohttp server on current loop
+        # Step 3: Run aiohttp server
         runner = web.AppRunner(app)
         await runner.setup()
-        site = web.TCPSite(runner, host="0.0.0.0", port=8443)
+
+        # Determine if we should use SSL
+        ssl_ctx = None
+        if os.path.exists(self.CERT_PATH) and os.path.exists(self.KEY_PATH):
+            try:
+                ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+                ssl_ctx.load_cert_chain(certfile=self.CERT_PATH, keyfile=self.KEY_PATH)
+                logger = await get_async_logger()
+                await logger.info("SSL certificates found. Starting HTTPS server.")
+            except Exception as e:
+                logger = await get_async_logger()
+                await logger.error(f"Failed to load SSL certificates: {e}.")
+                ssl_ctx = None
+
+        # Webhook mode requires HTTPS — abort rather than silently serve HTTP
+        if self.use_webhook and ssl_ctx is None:
+            logger = await get_async_logger()
+            await logger.error(
+                "Webhook mode is enabled but SSL context could not be loaded "
+                f"(CERT_PATH={self.CERT_PATH}, KEY_PATH={self.KEY_PATH}). "
+                "Aborting startup."
+            )
+            raise RuntimeError(
+                "Webhook mode requires valid SSL certificates. "
+                "Set USE_WEBHOOK=false or provide valid SSL_CERT_PATH / SSL_KEY_PATH."
+            )
+
+        site = web.TCPSite(runner, host="0.0.0.0", port=8443, ssl_context=ssl_ctx)
         await site.start()
+        
         logger = await get_async_logger()
-        await logger.info("✅ Combined server started on port 8443")
-        return runner  # return this so you can later call await runner.cleanup()
+        protocol = "HTTPS" if ssl_ctx else "HTTP"
+        await logger.info(f"✅ Combined {protocol} server started on port 8443")
+        return runner
 
-    '''async def start_server(self):
-        # ─── 1) Main app on HTTPS ────────────────────────────────────────────
-        app = await init_app(self.bot)
-
-        # Optional “hello” route
-        app.router.add_get("/", self.hello, allow_head=False)
-
-        # Prepare SSL context
-        ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        ssl_ctx.load_cert_chain(
-            certfile=self.CERT_PATH,
-            keyfile=self.KEY_PATH
-        )
-
-        # AppRunner for your real API
-        runner = web.AppRunner(app)
-        await runner.setup()
-
-        # Serve HTTPS on 8443
-        https_site = web.TCPSite(
-            runner,
-            host="0.0.0.0",
-            port=8443,
-            ssl_context=ssl_ctx
-        )
-        await https_site.start()
-
-
-        # ─── 2) Redirect app on HTTP ─────────────────────────────────────────
-        redirect_app = web.Application()
-        # catch-all route: redirect everything to HTTPS
-        redirect_app.router.add_route("*", "/{tail:.*}", self.redirect_to_https)
-
-        redirect_runner = web.AppRunner(redirect_app)
-        await redirect_runner.setup()
-
-        # Serve HTTP on 8080
-        redirect_site = web.TCPSite(
-            redirect_runner,
-            host="0.0.0.0",
-            port=8080
-        )
-        await redirect_site.start()
-
-
-        # ─── 3) Logging & Return ──────────────────────────────────────────────
-        logger = await get_async_logger()
-        await logger.info("✅ HTTP → HTTPS redirect running on :8080 → :8443; API on HTTPS :8443")
-
-        # Return both runners so you can later clean them up if needed
-        return runner'''
-    '''async def start_server(self):
-        # ─── 1) Build app ───────────────────────────────────────────────────
-        app = await init_app(self.bot)
-        app.router.add_get("/", self.hello, allow_head=False)
-
-        # ─── 2) SSL context ─────────────────────────────────────────────────
-        ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        ssl_ctx.load_cert_chain(
-            certfile=self.CERT_PATH,
-            keyfile=self.KEY_PATH
-        )
-
-        # ─── 3) Run only HTTPS ──────────────────────────────────────────────
-        runner = web.AppRunner(app)
-        await runner.setup()
-
-        https_site = web.TCPSite(
-            runner,
-            host="0.0.0.0",
-            port=8443,
-            ssl_context=ssl_ctx
-        )
-        await https_site.start()
-
-        # ─── 4) Log & return ────────────────────────────────────────────────
-        logger = await get_async_logger()
-        await logger.info("✅ Serving HTTPS on port 8443 only")
-        return runner'''
     
     async def hello(self, request):
         return web.Response(text="Hello from combined server")
@@ -235,11 +178,11 @@ class TelegramBot:
 
 
     async def initialize_managers(self) -> bool:
-        """Initialize all required managers."""
+        """Initialize all required managers using global instances."""
         try:
-            self.user_manager = UserManagement(redis_manager, BOT_TOKEN, CHANNEL_ID)
-            self.order_manager = OrderManagement(redis_manager)
-            self.deposit_manager = DepositManagement(redis_manager)
+            self.user_manager = user_mgr
+            self.order_manager = order_mgr
+            self.deposit_manager = deposit_mgr
             
             # Initialize loggers for each manager
             await self.user_manager._init_logger()
@@ -265,12 +208,8 @@ class TelegramBot:
             self.bot.user_manager = self.user_manager
             self.bot.order_manager = self.order_manager
             self.bot.deposit_manager = self.deposit_manager
-            self.bot.aggregator = FinancialManagement(
-                self.deposit_manager, 
-                self.order_manager, 
-                self.user_manager
-            )
-            self.forward_manager = self.forward_manager
+            self.bot.aggregator = financial_mgr
+            self.forward_manager = forward_manager
 
             # Initialize trackers
             await self._initialize_trackers()
@@ -283,12 +222,12 @@ class TelegramBot:
     async def _initialize_trackers(self) -> None:
         """Initialize order and deposit trackers."""
         # Initialize and register order tracker
-        await order_tracker_init(self.order_manager, self.user_manager, self.bot)
+        await order_tracker_init(self.order_manager, self.bot)
         await order_tracker_register(self.bot)
         await order_tracker.start()
 
         # Initialize and register deposit tracker
-        await deposit_tracker_init(self.deposit_manager, self.user_manager, self.bot)
+        await deposit_tracker_init(self.deposit_manager, self.bot)
         await deposit_tracker_register(self.bot)
         await deposit_tracker.start()
 
@@ -369,28 +308,45 @@ async def main():
     # Create tasks for both the bot and the periodic updater
     async with bot.initialize_services():
         runner = None
+        update_task = None
+        polling_task = None
         try:
-            # Always clear any stale webhook before starting
-            await bot.bot.delete_webhook()
+            # Always run the combined API server on 8443 for v1 routes
+            runner = await bot.start_server()
+
+            # Register handlers
+            await bot.register_handlers()
+
+            # Start periodic update
+            from handlers.manager.auto_updater import periodic_update
+            update_task = asyncio.create_task(periodic_update(update=True, bot=bot.bot))
 
             if bot.use_webhook:
-                # Webhook mode: run aiohttp server, keep process alive
-                runner = await bot.start_server()
-                # Register handlers first, then start the update loop
-                await bot.register_handlers()
-                update_task = asyncio.create_task(periodic_update(update=True, bot=bot.bot))
-                # Keep process alive by awaiting the infinite update loop; propagates crashes
+                # Webhook mode: setup webhook and wait for periodic update
+                await bot.setup_webhook()
                 await update_task
             else:
-                # Polling mode: register handlers first, then poll concurrently
-                await bot.register_handlers()
-                update_task  = asyncio.create_task(periodic_update(update=True, bot=bot.bot))
+                # Polling mode: clear webhook and run polling concurrently
+                await bot.bot.delete_webhook()
                 polling_task = asyncio.create_task(bot.bot.polling(non_stop=True, timeout=60))
                 await asyncio.gather(polling_task, update_task)
         except Exception as e:
-            print(f"Startup error: {e}")
+            logger = await get_async_logger()
+            await logger.error(f"Startup error: {e}")
         finally:
-            if bot.use_webhook and runner is not None:
+            # Cancel any still-running background tasks before tearing down the server
+            for _task in (update_task, polling_task):
+                if _task is not None and not _task.done():
+                    _task.cancel()
+                    try:
+                        await _task
+                    except (asyncio.CancelledError, Exception) as _ce:
+                        try:
+                            _logger = await get_async_logger()
+                            await _logger.info(f"Background task cancelled during shutdown: {_ce}")
+                        except Exception:
+                            pass
+            if runner is not None:
                 await runner.cleanup()
                 print("Server shutdown complete.")
 

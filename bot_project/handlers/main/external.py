@@ -19,6 +19,8 @@ async def large_nums() -> dict:
 async def AfterMin(minutes: int) -> str:
     """Asynchronously calculates a time string after a given number of minutes."""
     def _calc():
+        from datetime import datetime, timedelta
+        import pytz
         utc_now = datetime.utcnow()
         ist = pytz.timezone('Asia/Kolkata')
         ist_now = utc_now.replace(tzinfo=pytz.utc).astimezone(ist)
@@ -1488,7 +1490,7 @@ class ForwardManager:
                 # Telegram-side logout
                 await client.log_out()
                 # Ensure we close the connection
-                await client.disconnect(terminate=True)
+                await client.disconnect()
                 self.logger.info(f"Telethon client logged out for user {user_id}, account {account_id}")
             except Exception as e:
                 self.logger.warning(f"Error during Telegram-side logout: {e}")

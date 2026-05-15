@@ -1,10 +1,10 @@
 from typing import Tuple, Dict, Optional, Any, List
 from datetime import datetime
 import aiohttp
-#import logging
 import re
 import json
 import time
+import logging
 import phonenumbers
 from decimal import Decimal, ROUND_DOWN
 
@@ -42,17 +42,14 @@ from utils.cache_manager import cache_manager, CachePrefix
 from utils.config import SERVICE_INDEX
 from handlers.security import RateLimiter, InputValidator, TransactionGuard
 from utils.redis_manager import RedisManager, redis_manager
-from utils.config import BASE_TIMEOUT
+from utils.config import BASE_TIMEOUT, ADMIN_ID, IMGBB_API_KEY
 from handlers.main.top_services import top_service_manager, TopServiceManager
 from functools import partial
-from utils.config import ADMIN_ID
-
-IMGBB_API_KEY = "530530e324408b15858555c78a657a96"  # Replace with your actual API key if needed
 
 
+logger = logging.getLogger(__name__)
 
-
-#logger = logging.getLogger(__name__)
+# UserPurchaseManagement class definition starts here
 
 class UserPurchaseManagement:
     def __init__(self) -> None:
@@ -75,7 +72,7 @@ class UserPurchaseManagement:
         """Initialize required components for purchase handling asynchronously"""
         try:
             if not all([order_mgr, user_mgr, bot]):
-                #logger.error("Missing required components for initialization")
+                logger.error("Missing required components for initialization")
                 return False
 
             self.order_manager = order_mgr
@@ -97,11 +94,9 @@ class UserPurchaseManagement:
 
             asyncio.create_task(self._listen_for_schedule_events())
 
-            #logging.infoawait asyncio.to_thread(, '-' * 70)
-            #await asyncio.to_thread(logger.info, "|| Purchase managers initialized successfully")
             return True
         except Exception as e:
-            print(f"Initialization error: {e}")
+            logger.exception(f"Initialization error: {e}")
             return False
 
     async def fetch_app_data(
@@ -305,87 +300,18 @@ class UserPurchaseManagement:
             text="<b>⌛ Fᴇᴛᴄʜɪɴɢ Fʀᴏᴍ Sᴇʀᴠᴇʀ..</b>.", 
             parse_mode="HTML"
         )
-        phone_result = await self.fetch_phone_number(server_id, app_data['app_code'], country_id, price=price, operator=app_data['server_name'], app_name=app_data['app_name'], chat_id=chat_id, app_id=app_id)
-        #print(json.dumps(phone_result, indent=4))
+        phone_result = await self.fetch_phone_number(
+            server_id, app_data['app_code'], country_id, price=price, 
+            operator=app_data['server_name'], app_name=app_data['app_name'], 
+            chat_id=chat_id, app_id=app_id
+        )
+
         if not phone_result.get("status"):
-            # Release lock & notify error
-            if phone_result.get("message"):
-                try:
-                    try:
-                        await self.bot.answer_callback_query(
-                            call.id,
-                            phone_result.get('message', '❌ Uɴᴋɴᴏᴡɴ Eʀʀᴏʀ'),
-                            show_alert=False
-                        )
-                    except:
-                        pass
-                    # Offer inline buttons
-                    markup = InlineKeyboardMarkup()
-
-                    redis_key = f"schedule:service_data:{country_id}:{server_id}:{app_id}"
-        
-                    is_user_registered = await redis_manager.redis_client.zscore(redis_key, chat_id)
-
-                    callback_id = f"{user_id}:{country_id}:{server_id}:{app_id}"
-                    full_data = {
-                        "server_id": server_id,
-                        "app_code": app_data['app_code'],
-                        "country_id": country_id,
-                        "price": price,
-                        "operator": app_data['server_name'],
-                        "app_name": app_data['app_name'],
-                        "guard": None,
-                        "message_id": progress_msg.message_id,
-                        "chat_id": chat_id,
-                        "transaction_key": transaction_key,
-                        "app_data": app_data,
-                        "country_code": country_code,
-                        "country_name": country_name,
-                        "app_id": app_id,
-                        "call_data": call.data,
-                        "user_id": call.from_user.id,
-                        "first_name": call.from_user.first_name,
-                        "chat_type": call.message.chat.type if call.message else "private",
-                        "call_chat_id": call.message.chat.id if call.message else chat_id,
-                    }
-                    await redis_manager.redis_client.set(f"schedule:callback_data:{callback_id}", json.dumps(full_data))
-                    if is_user_registered is None:
-                        btn = InlineKeyboardButton(
-                            "🔔 Qᴜᴇᴜᴇ Bᴜʏ", callback_data=f"notify_on:{callback_id}"
-                        )
-                    else:
-                        btn = InlineKeyboardButton(
-                            "🔕 Lᴇᴀᴠᴇ Qᴜᴇᴜᴇ", callback_data=f"notify_off:{callback_id}"
-                        )
-                    search = InlineKeyboardButton(
-                        text="⌕ Cᴏᴜɴᴛʀɪᴇs",
-                        switch_inline_query_current_chat=f"#AᴘᴘIᴅ:{str(full_data['app_id']).translate(await small_caps())} "
-                    )
-                    markup.add(btn, search)
-                    await self.bot.edit_message_text(
-                        chat_id=chat_id,
-                        message_id=progress_msg.message_id,
-                        text=(
-                            "<b>📵 Nᴏ Nᴜᴍʙᴇʀꜱ Iɴ Sᴛᴏᴄᴋ Rɪɢʜᴛ Nᴏᴡ.</b>\n\n"
-                            "<blockquote expandable>"
-                            "<b>Wᴏᴜʟᴅ Yᴏᴜ Lɪᴋᴇ Mᴇ Tᴏ “</b><code>Nᴏᴛɪғʏ</code><b>”</b>\n"
-                            "<b>Yᴏᴜ Wʜᴇɴ Tʜᴇ Sᴇʀᴠɪᴄᴇ Bᴇᴄᴏᴍᴇꜱ Aᴠᴀɪʟᴀʙʟᴇ?</b>\n\n"
-                            f"<b>• Sᴇʀᴠɪᴄᴇ »</b> <code>{full_data['app_name'].translate(await small_caps())}</code>\n"
-                            f"<b>• Cᴏᴜɴᴛʀʏ »</b> <code>{full_data['country_name'].translate(await small_caps())}</code> "
-                            f"[<code>{full_data['country_code']}</code>]\n"
-                            f"<b>• Aᴍᴏᴜɴᴛ »</b> 💎 <code>{str(full_data['price']).translate(await small_caps())}</code> "
-                            f"[<code>{str(full_data['server_id']).translate(await small_caps())}</code>]"
-                            "</blockquote>"
-                        ),
-                        reply_markup=markup,
-                        parse_mode="HTML"
-                    )
-                    return False
-                except Exception as e:
-                    #print(f"Error sending notification: {e}")
-                    return False
-            else:
-                raise False
+            return await self._handle_no_numbers_available(
+                call, user_id, chat_id, app_data, price, country_id, 
+                country_code, country_name, app_id, server_id, 
+                progress_msg, transaction_key, phone_result
+            )
 
         try:
             await guard.release_lock(transaction_key)
@@ -394,6 +320,125 @@ class UserPurchaseManagement:
             pass
         await self._finalize_purchase(call, phone_result, app_data, price, country_id, country_code, country_name, phone_result['service'], progress_msg)
         return True
+
+    async def _handle_no_numbers_available(
+        self,
+        call,
+        user_id: str,
+        chat_id,
+        app_data: dict,
+        price: float,
+        country_id: str,
+        country_code: str,
+        country_name: str,
+        app_id: str,
+        server_id: int,
+        progress_msg,
+        transaction_key: str,
+        phone_result: dict,
+    ) -> bool:
+        """
+        Handle the case where no numbers are available for the requested service.
+        Releases the transaction lock, notifies the user, and updates the progress message.
+        Returns False to signal that no purchase was completed.
+        """
+        import logging as _logging
+        _log = _logging.getLogger(__name__)
+        _log.warning(
+            "No numbers available: app_id=%s server_id=%s country_id=%s user_id=%s reason=%s",
+            app_id, server_id, country_id, user_id,
+            phone_result.get("message", "unknown"),
+        )
+
+        # Release the lock so the user can retry immediately
+        try:
+            from handlers.security import TransactionGuard
+            from utils.redis_manager import redis_manager
+            guard = TransactionGuard(self.redis_client)
+            await guard.release_lock(transaction_key)
+        except Exception as e:
+            _log.error("Failed to release transaction lock %s: %s", transaction_key, e)
+
+        # Build a queue-buy keyboard so the user can register for notification
+        callback_id = f"{user_id}:{int(time.time())}"
+        import json as _json
+        queue_data = {
+            "user_id": user_id,
+            "chat_id": chat_id,
+            "app_id": app_id,
+            "app_name": app_data.get("app_name", ""),
+            "app_code": app_data.get("app_code", ""),
+            "server_id": server_id,
+            "server_name": app_data.get("server_name", ""),
+            "country_id": country_id,
+            "country_code": country_code,
+            "country_name": country_name,
+            "price": price,
+            "operator": app_data.get("server_name", ""),
+            "callback_id": callback_id,
+        }
+        await self.redis_client.set(
+            f"schedule:callback_data:{callback_id}",
+            _json.dumps(queue_data),
+            ex=86400,
+        )
+
+        markup = InlineKeyboardMarkup(
+            [[
+                InlineKeyboardButton(
+                    "🔔 Qᴜᴇᴜᴇ Bᴜʏ",
+                    callback_data=f"notify_on:{callback_id}",
+                ),
+                InlineKeyboardButton(
+                    text="⌕ Cᴏᴜɴᴛʀɪᴇs",
+                    switch_inline_query_current_chat=(
+                        f"#AᴘᴘIᴅ:{app_id} "
+                    ),
+                ),
+            ]]
+        )
+        out_of_stock_text = (
+            "<b>😔 Nᴏ Nᴜᴍʙᴇʀs Aᴠᴀɪʟᴀʙʟᴇ Rɪɢʜᴛ Nᴏᴡ.</b>\n\n"
+            "<blockquote expandable>"
+            f"<b>• Sᴇʀᴠɪᴄᴇ »</b> <code>{app_data.get('app_name', '')}</code>\n"
+            f"<b>• Cᴏᴜɴᴛʀʏ »</b> <code>{country_name}</code> [<code>{country_code}</code>]\n"
+            f"<b>• Aᴍᴏᴜɴᴛ »</b> 💎 <code>{price}</code> [<code>{server_id}</code>]"
+            "</blockquote>\n\n"
+            "<b>🔔 Tᴀᴘ <i>Queue Buy</i> ᴛᴏ ʙᴇ ɴᴏᴛɪFɪᴇᴅ ᴡʜᴇɴ ɴᴜᴍʙᴇʀs ᴀʀᴇ ʙᴀᴄᴋ ɪɴ ꜱᴛᴏᴄᴋ.</b>"
+        )
+
+        # Update the progress message with the out-of-stock notice
+        try:
+            await self.bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=progress_msg.message_id,
+                text=out_of_stock_text,
+                reply_markup=markup,
+                parse_mode="HTML",
+            )
+        except Exception as e:
+            _log.error("Failed to update progress message for out-of-stock: %s", e)
+            try:
+                await self.bot.send_message(
+                    int(user_id),
+                    out_of_stock_text,
+                    reply_markup=markup,
+                    parse_mode="HTML",
+                )
+            except Exception as e2:
+                _log.error("Failed to send out-of-stock message: %s", e2)
+
+        # Dismiss the callback spinner
+        try:
+            await self.bot.answer_callback_query(
+                call.id,
+                "😔 Nᴏ Nᴜᴍʙᴇʀs Aᴠᴀɪʟᴀʙʟᴇ. Qᴜᴇᴜᴇ Bᴜʏ ᴛᴏ ɢᴇᴛ ɴᴏᴛɪFɪᴇᴅ!",
+                show_alert=False,
+            )
+        except Exception:
+            pass
+
+        return False
 
     async def _handle_user_balance(
         self,
@@ -661,16 +706,17 @@ class UserPurchaseManagement:
         )
 
     async def _finalize_purchase(self, call, result: Dict, app_data: Dict, price: float,
-                               country_id: str, country_code: str, country_name: str, service: str, progress_msg: Message, is_new: bool = False, is_api: bool = False, app_id: str = None, server_id: str = None) -> None:
+                               country_id: str, country_code: str, country_name: str, service: str, progress_msg: Message, is_new: bool = False, is_api: bool = False, app_id: str = None, server_id: str = None) -> str:
         """Complete purchase transaction and update systems"""
-        purchase_data = await self._build_purchase_data(call, result, app_data, price, country_id, country_code, country_name, service, progress_msg, is_api, app_id, server_id)
+        purchase_data = await self._build_purchase_data(
+            call, result, app_data, price, country_id, country_code, country_name, 
+            service, progress_msg, is_api, app_id, server_id
+        )
         
         try:
-            order_id = await self._send_purchase_confirmation(call, purchase_data, is_new, is_api)
+            return await self._send_purchase_confirmation(call, purchase_data, is_new, is_api)
         except Exception as e:
-            #print(f"Finalization error: {e}")
             raise e
-        return order_id
         
     async def _build_purchase_data(self, call, result, app_data, price, country_id, country_code, country_name, service, progress_msg, is_api: bool = False, app_id: str = None, server_id: str = None) -> Dict:
         """Build unified purchase data structure asynchronously"""
@@ -743,42 +789,33 @@ class UserPurchaseManagement:
         
         return order_data
 
-    async def _send_purchase_confirmation(self, call, data: Dict, is_new: bool = False, is_api: bool = False) -> None:
-        """Send purchase confirmation to user"""
-        #print("_send_purchase_confirmation")
-        #print(data)
-        order_id = await self.order_manager.create_order_id(user_id=data['user_id'])
-        if not order_id.get('response'):
-            raise Exception("⚠️ Oʀᴅᴇʀ ID Cʀᴇᴀᴛɪᴏɴ Fᴀɪʟᴇᴅ")
-        if str(data['order_id']).startswith("987654321"):
-            order_id['result'] = data['order_id']
-        keyboard = InlineKeyboardMarkup().row(
-            InlineKeyboardButton("✘ Cᴀɴᴄᴇʟ", callback_data=f"status_cancel:{order_id['result']}:{data['user_id']}"),
-            InlineKeyboardButton("↻ Bᴜʏ Aɢᴀɪɴ", callback_data=call.data)
+    async def _get_purchase_keyboard(self, order_id: str, user_id: str, callback_data: str) -> InlineKeyboardMarkup:
+        """Generate the standard purchase confirmation keyboard"""
+        return InlineKeyboardMarkup().row(
+            InlineKeyboardButton("✘ Cᴀɴᴄᴇʟ", callback_data=f"status_cancel:{order_id}:{user_id}"),
+            InlineKeyboardButton("↻ Bᴜʏ Aɢᴀɪɴ", callback_data=callback_data)
         )
-        if not is_new:
-            await self.bot.edit_message_text(
-                chat_id=data['chat_id'],
-                message_id=data['message_id'].message_id,
-                text=await self._confirmation_message_content(data, minute=str(BASE_TIMEOUT)),
-                parse_mode="HTML",
-                reply_markup=keyboard
-            )
-        elif is_new and not is_api:
-            message = await self.bot.send_message(
-                chat_id=data['chat_id'],
-                text=await self._confirmation_message_content(data, minute=str(BASE_TIMEOUT)),
-                parse_mode="HTML",
-                #reply_to_message_id=data['message_id'].message_id,
-                reply_markup=keyboard
-            )
-            data['message_id'] = message
 
-
-
+    async def _send_purchase_confirmation(self, call, data: Dict, is_new: bool = False, is_api: bool = False) -> str:
+        """Send purchase confirmation to user and initiate background tasks"""
+        order_response = await self.order_manager.create_order_id(user_id=data['user_id'])
+        if not order_response.get('response'):
+            raise Exception("⚠️ Oʀᴅᴇʀ ID Cʀᴇᴀᴛɪᴏɴ Fᴀɪʟᴇᴅ")
         
-        # Combine tasks into a single coroutine
-        order_id = await self._create_order_record(order_id, data)
+        order_id = order_response['result']
+        if str(data['order_id']).startswith("987654321"):
+            order_id = data['order_id']
+        
+        keyboard = await self._get_purchase_keyboard(order_id, data['user_id'], call.data)
+        
+        # 1. Notify user about the purchase
+        await self._notify_user_of_purchase(data, keyboard, is_new, is_api)
+        
+        # 2. Record the order
+        data['order_id'] = order_id # Ensure we use the generated/corrected ID
+        await self._create_order_record({'result': order_id}, data)
+        
+        # 3. Handle specific app logic (e.g., Telegram link)
         if data['app_name'].lower() == "telegram" and not is_api:
             await self.bot.send_message(
                 chat_id=data['chat_id'],
@@ -786,20 +823,46 @@ class UserPurchaseManagement:
                 parse_mode="HTML"
             )
 
-
-        
-
+        # 4. Fire-and-forget background tasks
         data['msg_id'] = data['message_id'].message_id
+        asyncio.create_task(self._initiate_post_purchase_tasks(data, order_id, keyboard, is_api))
+        
+        return order_id
+
+    async def _notify_user_of_purchase(self, data: Dict, keyboard: InlineKeyboardMarkup, is_new: bool, is_api: bool) -> None:
+        """Edits or sends the purchase confirmation message"""
+        message_content = await self._confirmation_message_content(data, minute=str(BASE_TIMEOUT))
+        
+        if not is_new:
+            await self.bot.edit_message_text(
+                chat_id=data['chat_id'],
+                message_id=data['message_id'].message_id,
+                text=message_content,
+                parse_mode="HTML",
+                reply_markup=keyboard
+            )
+        elif is_new and not is_api:
+            message = await self.bot.send_message(
+                chat_id=data['chat_id'],
+                text=message_content,
+                parse_mode="HTML",
+                reply_markup=keyboard
+            )
+            data['message_id'] = message
+
+    async def _initiate_post_purchase_tasks(self, data: Dict, order_id: str, keyboard: InlineKeyboardMarkup, is_api: bool) -> None:
+        """Execute non-critical background tasks after purchase"""
         tasks = [
             self._process_and_save_image(data, data['service']),
             self.user_manager.send_order_report(self.bot, "send_message", order_id, data['user_id'], CHANNEL_ID, data, is_api),
             self.add_service_to_leaderboard(data['app_id'], data['country_id'], data['server_id'], data['app_name'], data['service'])
         ]
+        
         if not is_api:
             tasks.append(self._delayed_message_edit(data, keyboard))
             tasks.append(self.user_manager.user_metrics_report(self.bot, 'edit_message_text', data['user_id'], CHANNEL_ID))
-        await asyncio.gather(*tasks)
-        return order_id
+            
+        await asyncio.gather(*tasks, return_exceptions=True)
 
     async def add_service_to_leaderboard(self, app_id: str, country_id: str, server_id: str, service_name: str, service_code: str) -> None:
         """Add service to leaderboard asynchronously"""
@@ -817,7 +880,6 @@ class UserPurchaseManagement:
             )
         except Exception as e:
             pass
-            #logger.error(f"Failed to edit message after delay: {e}")
 
     async def _confirmation_message_content(self, data: Dict[str, Any], minute: str = '10') -> str:
         """Generate purchase confirmation message asynchronously"""
@@ -957,7 +1019,7 @@ class UserPurchaseManagement:
             for raw_key in keys:
                 key = raw_key.decode() if isinstance(raw_key, bytes) else raw_key
                 if key not in self._running_schedules:
-                    #print(colored(f"Bootstrapping existing schedule: {key}", 'magenta'))
+                    logger.debug(f"Bootstrapping existing schedule: {key}")
                     self._start_schedule_loop(key)
             if cursor == '0':
                 break
@@ -965,7 +1027,7 @@ class UserPurchaseManagement:
         # 3) Subscribe to keyspace pattern for real-time adds
         pubsub = self.redis_client.pubsub()
         await pubsub.psubscribe('__keyspace@0__:schedule:service_data:*')
-        #print(colored("Listening for schedule events...", "green"))
+        logger.info("Listening for schedule events...")
 
         async for message in pubsub.listen():
             if message['type'] != 'pmessage':
@@ -983,7 +1045,7 @@ class UserPurchaseManagement:
             # Extract the actual Redis key
             _, key = channel.split('__keyspace@0__:', 1)
 
-            #print(colored(f"New schedule event for key: {key}", "green"))
+            logger.debug(f"New schedule event for key: {key}")
             self._start_schedule_loop(key)
 
     def _start_schedule_loop(self, key: str):
@@ -1009,7 +1071,7 @@ class UserPurchaseManagement:
         """
         Periodically checks availability and notifies users, with batch balance check every 30 polls.
         """
-        #print(colored(f"Starting background check loop for {redis_key}", "green"))
+        logger.info(f"Starting background check loop for {redis_key}")
 
         # Retrieve full_data from the first member's schedule:callback_data
         uids = await self.redis_client.zrange(redis_key, 0, 0)
@@ -1018,7 +1080,7 @@ class UserPurchaseManagement:
         first_id = uids[0]
         full_data = json.loads(await self.redis_client.get(f"schedule:callback_data:{first_id}") or '{}')
         if not full_data:
-            #print(colored(f"No full_data found for {first_id}", "red"))
+            logger.error(f"No full_data found for {first_id}")
             return
         # Counter for batch balance checks
         check_count = 0
@@ -1037,8 +1099,7 @@ class UserPurchaseManagement:
                     try:
                         await self.bot.send_message(int(user_id), message_fn, reply_markup=keyboard, parse_mode="HTML")
                     except Exception as e:
-                        #print(colored(f"Failed notifying uid {user_id}: {e}", "red"))
-                        print(f"Failed notifying  uid {user_id}: {e}")
+                        logger.error(f"Failed notifying uid {user_id}: {e}")
                 try:
                     callback_id = user_full_data['callback_id']
                     markup = InlineKeyboardMarkup(
@@ -1075,12 +1136,12 @@ class UserPurchaseManagement:
                         parse_mode="HTML"
                     )
                 except Exception as e:
-                    print(f"Failed notifying user {user_id}: {e}")
+                    logger.error(f"Failed notifying user {user_id}: {e}")
                 await self.redis_client.zrem(redis_key, uid)
 
         while True:
             now = int(time.time())
-            #print(colored(f"Polling for {full_data['app_name']} (server {full_data['server_id']})…", "green"))
+            logger.debug(f"Polling for {full_data['app_name']} (server {full_data['server_id']})…")
 
             # Increment our counter and perform batch balance check every 30 iterations
             check_count += 1
@@ -1129,7 +1190,7 @@ class UserPurchaseManagement:
             # 2) Exit if none
             remaining = await self.redis_client.zrange(redis_key, 0, -1)
             if not remaining:
-                #print("No more waiting users; exiting loop.")
+                logger.info(f"No more waiting users for {redis_key}; exiting loop.")
                 return
 
             # 3) Check availability
@@ -1145,7 +1206,7 @@ class UserPurchaseManagement:
                     chat_id=int(first_id.split(':')[0]),
                     app_id=full_data['app_id']
                 )
-                #print(colored(f"Fetch result: {phone_result}", "cyan"))
+                logger.debug(f"Fetch result for {full_data['app_name']}: {phone_result}")
 
                 if phone_result.get('status'):
                     # 4) Process first able user
@@ -1224,10 +1285,10 @@ class UserPurchaseManagement:
                         )
                     return
             except (ValueError, TypeError) as e:
-                print(colored(f"Error during availability check: {e}", "red"))
+                logger.error(f"Error during availability check: {e}")
 
             # 6) Sleep
-            #print(colored(f"Sleeping for {full_data.get('poll_interval', 10)} seconds", "blue"))
+            logger.debug(f"Sleeping for {full_data.get('poll_interval', 10)} seconds")
             await asyncio.sleep(full_data.get('poll_interval', 10))
 
 
@@ -1266,7 +1327,7 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
         except ValueError:
             asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Iɴᴠᴀʟɪᴅ Rᴇǫᴜᴇsᴛ Fᴏʀᴍᴀᴛ", show_alert=True))
         except Exception as e:
-            print(f"Callback error: {e}")
+            logger.error(f"Callback error: {e}")
             asyncio.create_task(bot.answer_callback_query(call.id, "🚫 Sʏsᴛᴇᴍ Eʀʀᴏʀ Oᴄᴄᴜʀʀᴇᴅ", show_alert=True))
 
 
@@ -1281,22 +1342,6 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
         full_data = json.loads(raw_data)
         await bot.answer_callback_query(call.id, "✅ 𝗡ᴏᴛɪғɪᴄᴀᴛɪᴏɴꜱ Eɴᴀʙʟᴇᴅ – Yᴏᴜ’ʟʟ Bᴇ Aʟᴇʀᴛᴇᴅ Wʜᴇɴ Sᴛᴏᴄᴋ Aʀʀɪᴠᴇs!")
         try:
-            '''redis_key = f"schedule:service_data:{full_data['country_id']}:{full_data['server_id']}:{full_data['app_id']}"    
-            is_user_registered = await redis_manager.redis_client.zscore(redis_key, full_data['chat_id'])
-            markup = InlineKeyboardMarkup()
-            if is_user_registered is None:
-                btn = InlineKeyboardButton(
-                    "🔔 Qᴜᴇᴜᴇ Bᴜʏ", callback_data=f"notify_on:{callback_id}"
-                )
-            else:
-                btn = InlineKeyboardButton(
-                    "🔕 Lᴇᴀᴠᴇ Qᴜᴇᴜᴇ", callback_data=f"notify_off:{callback_id}"
-                )
-            search = InlineKeyboardButton(
-                text="⌕ Cᴏᴜɴᴛʀɪᴇs",
-                switch_inline_query_current_chat=f"#AᴘᴘIᴅ:{str(full_data['app_id']).translate(await small_caps())} "
-            )
-            markup.add(btn, search)'''
             markup = InlineKeyboardMarkup(
                 [
                     [
@@ -1332,7 +1377,7 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
             )
             await redis_manager.redis_client.set(f"schedule:callback_data:{callback_id}", json.dumps(full_data), ex=86400)
         except Exception as e:
-            print(f"Error editing message: {e}")
+            logger.error(f"Error editing message: {e}")
         full_data['callback_id'] = callback_id        
         await purchase_manager.schedule_number_check(**full_data)
 
@@ -1345,25 +1390,9 @@ async def register_handlers(bot: AsyncTeleBot) -> None:
             return
         full_data = json.loads(raw_data)
         redis_key = f"service_data:{full_data['country_id']}:{full_data['server_id']}:{full_data['app_id']}"
-        await  redis_manager.redis_client.zrem(f"schedule:{redis_key}", callback_id)
+        await redis_manager.redis_client.zrem(f"schedule:{redis_key}", callback_id)
         await bot.answer_callback_query(call.id, "🔕 𝗡ᴏᴛɪғɪᴄᴀᴛɪᴏɴꜱ Dɪsᴀʙʟᴇᴅ – Aʟᴇʀᴛs Sɪʟᴇɴᴄᴇᴅ. Yᴏᴜ'ʀᴇ Oғғ ᴛʜᴇ Gʀɪᴅ...")
         try:
-            '''redis_key = f"schedule:service_data:{full_data['country_id']}:{full_data['server_id']}:{full_data['app_id']}"    
-            is_user_registered = await redis_manager.redis_client.zscore(redis_key, full_data['chat_id'])
-            markup = InlineKeyboardMarkup()
-            if is_user_registered is None:
-                btn = InlineKeyboardButton(
-                    "🔔 Qᴜᴇᴜᴇ Bᴜʏ", callback_data=f"notify_on:{callback_id}"
-                )
-            else:
-                btn = InlineKeyboardButton(
-                    "🔕 Lᴇᴀᴠᴇ Qᴜᴇᴜᴇ", callback_data=f"notify_off:{callback_id}"
-                )
-            search = InlineKeyboardButton(
-                text="⌕ Cᴏᴜɴᴛʀɪᴇs",
-                switch_inline_query_current_chat=f"#AᴘᴘIᴅ:{str(full_data['app_id']).translate(await small_caps())} "
-            )
-            markup.add(btn, search)'''
             markup = InlineKeyboardMarkup(
                 [
                     [

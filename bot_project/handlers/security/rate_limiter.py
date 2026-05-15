@@ -63,7 +63,7 @@ class RateLimiter:
     async def remaining_limit(self, key: str, user_id: Optional[str] = None, max_requests: Optional[int] = None) -> Tuple[int, float]:
         """Get remaining number of requests allowed and time until reset for a key and user_id (if provided)."""
         try:
-            rate_key = f"{ratelimit}:{user_id}:{key}" if user_id else f"{ratelimit}:{key}"
+            rate_key = f"{CACHE_KEY}{ratelimit}:{user_id}:{key}" if user_id else f"{CACHE_KEY}{ratelimit}:{key}"
             current = await self.redis.get(rate_key)
             if not current:
                 return max_requests or self.MAX_REQUESTS, self.RATE_LIMIT_DURATION
@@ -91,7 +91,7 @@ class RateLimiter:
     async def reset_limit(self, key: str, user_id: Optional[str] = None):
         """Reset rate limit for a given key and user_id (if provided)."""
         try:
-            rate_key = f"{ratelimit}:{user_id}:{key}" if user_id else f"{ratelimit}:{key}"
+            rate_key = f"{CACHE_KEY}{ratelimit}:{user_id}:{key}" if user_id else f"{CACHE_KEY}{ratelimit}:{key}"
             await self.redis.delete(rate_key)
         except Exception as e:
             self.logger.error(f"Failed to reset rate limit: {e}")

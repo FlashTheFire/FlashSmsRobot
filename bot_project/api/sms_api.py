@@ -2,38 +2,30 @@
 import os
 import time
 import json
-import redis
 import logging
+import pathlib
+import asyncio
+import base64
 from typing import Dict, Optional, Tuple, List, Any, Union
+from functools import partial
+
+import aiofiles
+import redis
+import redis.asyncio as aioredis
+from aiohttp import web
+from telebot.async_telebot import AsyncTeleBot
+from termcolor import colored
+
 from utils.redis_manager import redis_manager, RedisManager
 from redis.exceptions import RedisError
-from termcolor import colored
-from utils.config import COMMISSION, CHANNEL_ID
-from typing import Optional, Dict, Any
+from utils.config import COMMISSION, CHANNEL_ID, LOADING_GIF
 from utils.cache_manager import cache_manager, CacheManager, CachePrefix
-import logging
-from aiohttp import web
-import redis.asyncio as aioredis  # Ensure redis-py >= 4.2 is installed
 from utils.functions import create_keyboard, convert_points, get_tg_profile_photo
-from utils.redis_manager import redis_manager, RedisManager
-from handlers.manager.operation import FinancialManagement, UserManagement, OrderManagement, financial_mgr, order_mgr
+from handlers.manager.operation import FinancialManagement, UserManagement, OrderManagement, financial_mgr, order_mgr, user_mgr
 from handlers.methods.purchase.made_purchase import purchase_manager
-from utils.config import LOADING_GIF
-from telebot.async_telebot import AsyncTeleBot
-from typing import Optional, Dict, Any
-import json
-import time
-import aiofiles
-from redis import Redis
-from redis.asyncio import Redis as AsyncRedis
-import asyncio
-from functools import partial
 from utils.redis_keys import RedisKeys
-from handlers.security import RateLimiter, InputValidator, TransactionGuard
+from handlers.security import InputValidator, TransactionGuard
 from handlers.methods.purchase.order_status import purchase_status
-from handlers.manager.operation import order_mgr, user_mgr
-import pathlib
-from aiohttp import web
 
 BASE_DIR     = pathlib.Path(__file__).parent
 FILES_DIR    = BASE_DIR.parent / "files"
@@ -70,14 +62,15 @@ logger.addHandler(_stream_handler)
 # ─────────────────────────────────────────────────────────────────────────────
 # Globals (set during init_app)
 # ─────────────────────────────────────────────────────────────────────────────
-redis_client: Optional[redis.Redis] = None
-rate_limiter: Optional["RateLimiter"] = None
+redis_client: Optional[aioredis.Redis] = None
+rate_limiter: Optional["APIRateLimiter"] = None
+api: Optional["CombinedAPI"] = None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Rate Limiter Definition
 # ─────────────────────────────────────────────────────────────────────────────
-class RateLimiter:
+class APIRateLimiter:
     """
     Simple sliding‐window rate limiter using Redis sorted sets.
 
@@ -85,7 +78,7 @@ class RateLimiter:
     `window` seconds. If the count exceeds `limit`, we return (True, 0, retry_after).
     Otherwise, we return (False, remaining_quota, 0).
     """
-    def __init__(self, redis_client: redis.Redis):
+    def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
 
     async def is_limited(
@@ -122,11 +115,9 @@ class RateLimiter:
 # ─────────────────────────────────────────────────────────────────────────────
 class CombinedAPI:
     VALID_STATUSES = {-1, 1, 3, 6, 8}
-    def __init__(self, redis_client: redis.Redis = None, rate_limiter: "RateLimiter" = None, bot: AsyncTeleBot = None):
-        if redis_client is not None:
-            self.redis_client = redis_client
-        if rate_limiter is not None:
-            self.rate_limiter = rate_limiter
+    def __init__(self, redis_client: aioredis.Redis = None, rate_limiter: "APIRateLimiter" = None, bot: AsyncTeleBot = None):
+        self.redis_client = redis_client or globals().get('redis_client')
+        self.rate_limiter = rate_limiter or globals().get('rate_limiter')
         self.bot: Optional[AsyncTeleBot] = bot
         self.service_index = os.getenv("SERVICE_INDEX", "service_index")
         self.order_index = os.getenv("ORDER_INDEX", "order_index")
@@ -534,9 +525,9 @@ class CombinedAPI:
         try:
             data = await self.user_aggregator.get_user(user_id)
             if not data or not data.get('response'):
-                #loggging.error("User data response indicated failure.")
+                logger.error("User data response indicated failure.")
                 return None
-            #loggging.debug(f"Raw user data: {data}")
+            logger.debug(f"Raw user data: {data}")
             user_profile = data.get("user_profile")
             current_balance = data["metrics"]["current_balance"]
             spend_balance = data["metrics"]["spend_balance"]
@@ -596,7 +587,11 @@ class CombinedAPI:
             
         api = request.app.get('api')
         if api is None:
-            api = CombinedAPI()
+            # Fallback to global if app['api'] is missing (should not happen if init_app was called)
+            api = globals().get('api')
+            if api is None:
+                logger.error("CombinedAPI instance not found in app['api'] or globals.")
+                return web.Response(text="INTERNAL_ERROR", status=500)
             request.app['api'] = api
             
         if not await api.is_valid_api_key(api_key):
@@ -862,19 +857,15 @@ class CombinedAPI:
         api_id: int
     ) -> Dict[str, Any]:
         # --- existing logging & app_data fetch ---
-        print("api_id: ", api_id)
-        print("service_id: ", service_id)
-        print("country_id: ", country_id)
-        print("server_id: ", server_id)
-        print("input_price: ", input_price)
-        print("ref_id: ", ref_id)
+        logger.debug("Purchase request params: api_id=%s, service_id=%s, country_id=%s, server_id=%s, input_price=%s, ref_id=%s", 
+                     api_id, service_id, country_id, server_id, input_price, ref_id)
 
         price = None if input_price is None else round(float(input_price) / float(COMMISSION), 2)
         app_data = await purchase_manager.fetch_app_data(service_id, country_id, server_id, price=price)
         if not app_data.get("status"):
             return {"status": False, "message": app_data.get("message")}
 
-        print("App Data: ", json.dumps(app_data, indent=4))
+        logger.debug("App Data: %s", json.dumps(app_data, indent=4))
         price = round(float(app_data["app_price"]) * float(COMMISSION), 2)
 
         # --- 1) User-balance lock & atomic balance check/decrement ---
@@ -908,7 +899,7 @@ class CombinedAPI:
                         chat_id=user_id,
                         app_id=service_id
                     )
-                    print(json.dumps(phone_result, indent=4))
+                    logger.debug("Phone Result: %s", json.dumps(phone_result, indent=4))
 
                     if not phone_result.get("status"):
                         return {"status": False, "message": phone_result.get("message", "NO_NUMBERS")}
@@ -976,20 +967,20 @@ class CombinedAPI:
                 'order_status': 'PENDING'
             }
             await order_mgr.update_order_fields(order_id, fields=fields)
-            print(f"Order {order_id} completed")
+            logger.info(f"Order {order_id} completed")
             
         except KeyError as e:
-            print(f"Missing key in order_info for {order_id}: {e}")
+            logger.error(f"Missing key in order_info for {order_id}: {e}")
         except json.JSONDecodeError as e:
-            print(f"Invalid order_history JSON for {order_id}: {e}")
+            logger.error(f"Invalid order_history JSON for {order_id}: {e}")
         except Exception as e:
-            print(f"Failed to complete order {order_id}: {e}")
+            logger.error(f"Failed to complete order {order_id}: {e}")
 
 
     async def handle_get_status(self, id: int, api_id: int = 1) -> Dict[str, Any]:
         order_key = f"order_data:info:{id}"
         result = await redis_client.hgetall(order_key)
-        print(json.dumps(result, indent=4))
+        logger.debug("Order status check for %s: %s", id, json.dumps(result, indent=4))
         if not result:
             return {"status": False, "message": "BAD_ID"}
         status = str(result.get('order_status', 'UNKNOWN'))
@@ -1015,9 +1006,9 @@ class CombinedAPI:
         return {"status": False, "message": "UNKNOWN_STATUS", "raw_status": status}
     async def handle_set_status(self, status_id: int, order_id: int) -> None:
         order_key = f"order_data:info:{order_id}"
-        print(f"handle_set_status: order_id={order_id}, status_id={status_id}") 
+        logger.debug(f"handle_set_status: order_id={order_id}, status_id={status_id}") 
         result = await redis_client.hgetall(order_key)
-        print(json.dumps(result, indent=4))
+        logger.debug("Order info for set_status: %s", json.dumps(result, indent=4))
         if not result:
             return {"status": False, "message": "BAD_ID"}
         status = str(result['order_status'])
@@ -1040,8 +1031,7 @@ class CombinedAPI:
         if work == "CANCEL_ORDER":
             if status == "PENDING" and not result.get("last_sms", None):
                 sms_list = json.loads(result.get('sms_list', '[]'))
-                print("SMS List: ", json.dumps(sms_list, indent=4))
-                print("SMS List Length: ", len(sms_list))
+                logger.debug("SMS List for order %s: %s", order_id, json.dumps(sms_list, indent=4))
                 if len(sms_list) != 0:
                     return {"status": False, "message": "BAD_ACTION"}
 
@@ -1050,7 +1040,7 @@ class CombinedAPI:
                     result['server_id'],
                     result['order_id']
                 )
-                print("API Result: ", json.dumps(api_result, indent=4))
+                logger.debug("Cancel API Result for order %s: %s", order_id, json.dumps(api_result, indent=4))
                 if not api_result.get('response', False):
                     return {"status": False, "message": "BAD_ACTION"}
                 number_parts = json.loads(result['order_number']) if isinstance(result.get('order_number'), str) else []
@@ -1285,13 +1275,10 @@ class CombinedAPI:
 
         # V2 purchase/ad-hoc endpoints
         app.router.add_get(f"{V2_PREFIX}/user/buy/activation/{{country}}/{{operator}}/{{product}}", self.handle_v2_buy_activation, allow_head=False)
-        #app.router.add_get(f"{V2_PREFIX}/user/buy/hosting/{{country}}/{{operator}}/{{product}}", self.handle_v2_buy_hosting, allow_head=False)
         app.router.add_get(f"{V2_PREFIX}/user/reuse/{{product}}/{{number}}", self.handle_v2_reuse, allow_head=False)
         app.router.add_get(f"{V2_PREFIX}/user/check/{{order_id}}", self.handle_v2_check, allow_head=False)
         app.router.add_get(f"{V2_PREFIX}/user/finish/{{order_id}}", self.handle_v2_finish, allow_head=False)
         app.router.add_get(f"{V2_PREFIX}/user/cancel/{{order_id}}", self.handle_v2_cancel, allow_head=False)
-        #app.router.add_get(f"{V2_PREFIX}/user/ban/{{order_id}}", self.handle_v2_ban, allow_head=False)
-        #app.router.add_get(f"{V2_PREFIX}/user/sms/inbox/{{order_id}}", self.handle_v2_sms_inbox, allow_head=False)
 
         # V1 legacy route (single handler for all actions)
         app.router.add_route("GET", V1_BASE_PATH, self.handle_v1_sms_api)
@@ -1320,20 +1307,23 @@ class CombinedAPI:
 # registers middleware, then routes, and returns `app`.
 # ─────────────────────────────────────────────────────────────────────────────
 async def init_app(bot: AsyncTeleBot) -> web.Application:
-    global redis_client, rate_limiter
+    global redis_client, rate_limiter, api
 
     # 1) Build the aiohttp Application
     app = web.Application()
 
     # 2) Initialize Redis ON THIS LOOP
+    if redis_manager.redis_client is None:
+        await redis_manager.connect()
     redis_client = redis_manager.redis_client
 
 
     # 3) Create RateLimiter using that same Redis client
-    rate_limiter = RateLimiter(redis_client)
+    rate_limiter = APIRateLimiter(redis_client)
 
     # 4) Register ALL routes (V1 + V2) onto `app`
     api = CombinedAPI(redis_client, rate_limiter, bot)
+    app['api'] = api
     await api.setup_routes(app)
 
     return app

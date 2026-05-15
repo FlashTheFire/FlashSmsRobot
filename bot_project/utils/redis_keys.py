@@ -87,6 +87,6 @@ class RedisKeys:
 
     @staticmethod
     def transaction_lock_key(user_id: int, action: str) -> str:
-        return f"lock:transaction:{user_id}:{action}"
+        return f"transaction:{user_id}:{action}"
 
 

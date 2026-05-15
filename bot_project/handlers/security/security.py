@@ -8,30 +8,7 @@ from functools import wraps
 from telebot.async_telebot import AsyncTeleBot
 from utils.redis_manager import redis_manager
 
-class TransactionGuard:
-    def __init__(self, redis_client):
-        self.redis_client = redis_client
-        self.lock_key = None
-
-    async def acquire_lock(self, key: str, timeout: int = 5) -> bool:
-        """Acquire lock with custom timeout"""
-        acquired = await self.redis_client.set(key, "1", ex=timeout, nx=True)
-        if acquired:
-            self.lock_key = key
-        return acquired
-
-    async def release_lock(self, key: str):
-        """Release lock if currently held"""
-        if self.lock_key == key:
-            await self.redis_client.delete(key)
-            self.lock_key = None
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc, tb):
-        if self.lock_key:
-            await self.release_lock(self.lock_key)
+from .transaction_guard import TransactionGuard
 
 class SecurityManager:
     def __init__(self, secret_key: str):
@@ -61,7 +38,7 @@ class SecurityManager:
 
         # Store token in Redis atomically under a lock
         async with TransactionGuard(self._redis.redis_client) as guard:
-            await guard.acquire_lock(f"lock:{key}", timeout=5)
+            await guard.acquire_lock(key, timeout=5)
             await self._redis.redis_client.setex(key, expires_in, token)
         return token
         
@@ -71,7 +48,7 @@ class SecurityManager:
             key = f"session:{payload['user_id']}:{payload['jti']}"
             # Read under guard to avoid race with blacklist
             async with TransactionGuard(self._redis.redis_client) as guard:
-                await guard.acquire_lock(f"lock:{key}", timeout=5)
+                await guard.acquire_lock(key, timeout=5)
                 stored = await self._redis.redis_client.get(key)
             if not stored:
                 return None
@@ -88,7 +65,7 @@ class SecurityManager:
             key = f"session:{payload['user_id']}:{payload['jti']}"
             # Delete under lock to avoid races
             async with TransactionGuard(self._redis.redis_client) as guard:
-                await guard.acquire_lock(f"lock:{key}", timeout=5)
+                await guard.acquire_lock(key, timeout=5)
                 await self._redis.redis_client.delete(key)
         except jwt.InvalidTokenError:
             pass

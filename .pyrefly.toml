@@ -1,0 +1,19 @@
+# Pyrefly configuration for FlashSmsRobot
+# Scopes analysis to the project root and suppresses false positives caused by
+# the host Windows Python not having Docker-installed packages.
+
+project_root = "."
+
+# Tell Pyrefly which source directories to analyse
+include = ["bot_project"]
+
+# Packages installed inside Docker that the host Python does not have.
+# Listing them here prevents "Cannot find module" false positives.
+ignore_missing_imports = true
+
+# Suppress the not-async false positives for redis-py JSON stubs.
+# The redis.asyncio JSON command module is correctly awaitable at runtime,
+# but Pyrefly infers the bare return type (list[JsonType] | None) instead
+# of the coroutine wrapper.
+[[error_codes]]
+disable = ["not-async"]

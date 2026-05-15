@@ -66,14 +66,14 @@ ENV_FILE = os.getenv("ENV_FILE", ".env")
 CHANNEL_ID = get_required_env("CHANNEL_ID")
 BOT_TOKEN = get_required_env("BOT_TOKEN")
 ADMIN_ID = int(get_required_env("ADMIN_ID"))
-ADMIN_PHONE = os.getenv("ADMIN_PHONE", "919798961352")
+ADMIN_PHONE = os.getenv("ADMIN_PHONE")
 WEBHOOK_HOST = os.getenv("WEBHOOK_HOST")
 
 # API Credentials
-FORWARD_API_ID = int(os.getenv("FORWARD_API_ID", "26383754"))
-FORWARD_API_HASH = os.getenv("FORWARD_API_HASH", "f743596f09f383e7bbcc62ce62367f06")
-CONTACT_API_ID = int(os.getenv("CONTACT_API_ID", "20729573"))
-CONTACT_API_HASH = os.getenv("CONTACT_API_HASH", "6bc09cbaa7d0471944875c202fec8b5b")
+FORWARD_API_ID = int(get_required_env("FORWARD_API_ID"))
+FORWARD_API_HASH = get_required_env("FORWARD_API_HASH")
+CONTACT_API_ID = int(get_required_env("CONTACT_API_ID"))
+CONTACT_API_HASH = get_required_env("CONTACT_API_HASH")
 
 # Optional configurations with sensible defaults
 START_PAGE = os.getenv("START_PAGE", "default_start_page")
@@ -99,7 +99,7 @@ SERVICE_PREFIX = os.getenv("SERVICE_PREFIX", "service_data:")
 ORDER_INDEX = os.getenv("ORDER_INDEX", "order_index")
 ORDER_PREFIX = os.getenv("ORDER_PREFIX", "order_data:")
 
-URL = "http://temp.sh/ePGDP/flashsms.json" #os.getenv("URL", "https://temp.sh/rWEfC/flashsms.json")
+URL = os.getenv("FLASH_SMS_JSON_URL", "http://temp.sh/ePGDP/flashsms.json")
 
 # Cache Configuration with reasonable defaults
 CACHE_PREFIX = os.getenv("CACHE_PREFIX", "cache:")
@@ -109,19 +109,41 @@ CACHE_RESULTS_PER_PAGE = int(os.getenv("CACHE_RESULTS_PER_PAGE", 10))
 CACHE_EXPIRY = int(os.getenv("CACHE_EXPIRY", 300))  # 5 minutes
 CACHE_KEY = os.getenv("CACHE_KEY", "cache-data:")
 USER_IMAGE_HASH = os.getenv("USER_IMAGE_HASH", "image_data:user-profile")
+IMGBB_API_KEY = os.getenv("IMGBB_API_KEY")
+
+# Cloudinary configuration
+CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME")
+CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY")
+CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET")
 
 # Validate critical configurations
 def validate_config():
     if not BOT_TOKEN or len(BOT_TOKEN) < 20:
         print("Error: Invalid BOT_TOKEN configuration")
         sys.exit(1)
-    
+
     if REDIS_PORT < 1 or REDIS_PORT > 65535:
         print("Error: Invalid REDIS_PORT configuration")
         sys.exit(1)
-    
+
     if CACHE_DURATION < 0 or CACHE_EXPIRY < 0:
         print("Error: Cache durations cannot be negative")
         sys.exit(1)
+
+    # Warn about missing upload credentials (image features will be degraded)
+    missing_upload = []
+    if not IMGBB_API_KEY:
+        missing_upload.append("IMGBB_API_KEY")
+    if not CLOUDINARY_CLOUD_NAME:
+        missing_upload.append("CLOUDINARY_CLOUD_NAME")
+    if not CLOUDINARY_API_KEY:
+        missing_upload.append("CLOUDINARY_API_KEY")
+    if not CLOUDINARY_API_SECRET:
+        missing_upload.append("CLOUDINARY_API_SECRET")
+    if missing_upload:
+        print(
+            f"Warning: Missing upload credential(s): {', '.join(missing_upload)}. "
+            "Image upload features will be unavailable."
+        )
 
 validate_config()
