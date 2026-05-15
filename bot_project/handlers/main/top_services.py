@@ -57,10 +57,8 @@ class TopServiceManager:
         """Fetch service data from Redis and sort by purchase count."""
         try:
             service_key = 'main_data:details:service_data'
-            # Initialize key if it doesn't exist
-            if not await self.redis_client.exists(service_key):
-                await self.redis_client.json().set(service_key, '$', {})
-                #logger.info(f"Initialized empty {service_key}")
+            # Initialize key atomically if it doesn't exist
+            await self.redis_client.json().set(service_key, '$', {}, nx=True)
 
             service_data = await self.redis_client.json().get(service_key)
             
