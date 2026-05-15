@@ -5,36 +5,25 @@ import logging
 import asyncio
 import aiohttp
 import pytz
-import asyncio
-import logging
-from datetime import datetime
-
-import requests
-import json
+import re
 import io
 import json
+import requests
+from datetime import datetime
+from aiohttp import FormData
 from termcolor import colored
 from colorama import Fore, Style, init as colorama_init
 import redis.asyncio as redis
 from utils.redis_manager import RedisManager, redis_manager
 from more_itertools import chunked
-from utils.config import  WEBHOOK_HOST as FIVE_SIM_URL, URL
+from utils.config import URL, ADMIN_ID
 from handlers.manager.operation import (
     FiveSimManagement, FastSmsManagement, SmsHubManagement, GrizzlySmsManagement,
     SmsBowerManagement, VakSmsManagement, TigerSmsManagement, SmsActivateManagement
 )
 from utils.api import SMS_PROVIDERS_ID, SMS_PROVIDERS_KEY
 from telebot.async_telebot import AsyncTeleBot
-import io
-import re
-from utils.config import ADMIN_ID
 import handlers.manager.operation as _ops
-
-import io
-import json
-import logging
-import aiohttp
-from aiohttp import FormData
 
 
 # -------------------- logging Configuration --------------------
@@ -403,23 +392,23 @@ class AutoUpdater:
         match_pattern = f"{PREFIX}:*:free"
         matches: list[str] = []
 
-        # Use connection pool via async context manager
-        async with self.redis_client as r:
-            cursor = 0
-            # Loop until SCAN returns cursor=0
-            while True:
-                cursor, keys = await r.scan(cursor=cursor, match=match_pattern, count=10_000)
-                if keys:
-                    # Fast parsing via split
-                    matches.extend(
-                        ":".join(key.split(":")[1:-1])
-                        for key in keys
-                        if key.startswith(f"{PREFIX}:") and key.endswith(":free")
-                    )
-                # Give up control so we don't starve the loop
-                await asyncio.sleep(0)
-                if cursor == 0:
-                    break
+        # Scan directly via redis_client (not an async context manager in redis-py)
+        r = self.redis_client
+        cursor = 0
+        # Loop until SCAN returns cursor=0
+        while True:
+            cursor, keys = await r.scan(cursor=cursor, match=match_pattern, count=10_000)
+            if keys:
+                # Fast parsing via split
+                matches.extend(
+                    ":".join(key.split(":")[1:-1])
+                    for key in keys
+                    if key.startswith(f"{PREFIX}:") and key.endswith(":free")
+                )
+            # Give up control so we don't starve the loop
+            await asyncio.sleep(0)
+            if cursor == 0:
+                break
         print(colored(f"Matches found: {matches}", "green"))
 
         # split into country‐batches of N=1 (change N if you want larger batches)
@@ -531,15 +520,17 @@ class AutoUpdater:
         try:
             print(url)
             if not url.startswith("http"):
-                print("❌ Invalid URL. Must start with http or https.")
+                print("[recover_data] Invalid URL. Must start with http or https.")
                 return
 
-            await self.bot.send_message(ADMIN_ID, f"⏳ Importing Redis data from:\n{url}")
+            if self.bot:
+                await self.bot.send_message(ADMIN_ID, f"Importing Redis data from:\n{url}")
             await self.import_redis_dump(url)
-            await self.bot.send_message(ADMIN_ID, "✅ Redis import complete.")
+            if self.bot:
+                await self.bot.send_message(ADMIN_ID, "Redis import complete.")
             return True
         except Exception as e:
-            logging.error(f"[add_dump_from_url] Error: {e}")
+            logging.error(f"[recover_data] Error: {e}")
             return False
 
 
@@ -797,12 +788,12 @@ class AutoUpdater:
         if not file_url:
             logging.warning("[AutoUpdate.send_dump_link] Empty URL")
             return
+        if not self.bot:
+            logging.warning("[AutoUpdate.send_dump_link] Bot not initialized, skipping notification")
+            return
         try:
-            text = f"🔗 Redis dump: {file_url}"
-            try:
-                await self.bot.send_message(chat_id, text)
-            except Exception as e:
-                logging.error(f"[AutoUpdate.send_dump_link] Telegram error: {e}")
+            text = f"Redis dump: {file_url}"
+            await self.bot.send_message(chat_id, text)
             logging.info("[AutoUpdate.send_dump_link] Sent link")
         except Exception as e:
             logging.error(f"[AutoUpdate.send_dump_link] Telegram error: {e}")

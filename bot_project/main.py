@@ -222,12 +222,12 @@ class TelegramBot:
     async def _initialize_trackers(self) -> None:
         """Initialize order and deposit trackers."""
         # Initialize and register order tracker
-        await order_tracker_init(self.order_manager, self.bot)
+        await order_tracker_init(order_manager=self.order_manager, user_manager=self.user_manager, bot=self.bot)
         await order_tracker_register(self.bot)
         await order_tracker.start()
 
         # Initialize and register deposit tracker
-        await deposit_tracker_init(self.deposit_manager, self.bot)
+        await deposit_tracker_init(deposit_manager=self.deposit_manager, user_manager=self.user_manager, bot=self.bot)
         await deposit_tracker_register(self.bot)
         await deposit_tracker.start()
 
@@ -272,11 +272,15 @@ class TelegramBot:
         for handler, name in handlers:
             try:
                 if hasattr(handler, 'init_managers'):
-                    await handler.init_managers(
-                        user_manager=self.user_manager,
-                        order_manager=self.order_manager,
-                        bot=self.bot
-                    )
+                    import inspect
+                    sig = inspect.signature(handler.init_managers)
+                    kwargs = {}
+                    if 'user_manager' in sig.parameters: kwargs['user_manager'] = self.user_manager
+                    if 'order_manager' in sig.parameters: kwargs['order_manager'] = self.order_manager
+                    if 'deposit_manager' in sig.parameters: kwargs['deposit_manager'] = self.deposit_manager
+                    if 'bot' in sig.parameters: kwargs['bot'] = self.bot
+                    
+                    await handler.init_managers(**kwargs)
                 await handler.register_handlers(self.bot)
                 logger = await get_async_logger()
                 await logger.info(f"Handler registered: {name}")
